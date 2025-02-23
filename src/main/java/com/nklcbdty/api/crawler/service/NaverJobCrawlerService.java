@@ -2,40 +2,41 @@ package com.nklcbdty.api.crawler.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
+import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class NaverJobCrawlerService implements JobCrawler {
 
+    private final CrawlerRepository crawlerRepository;
     private final String apiUrl;
 
-    public NaverJobCrawlerService() {
+    @Autowired
+    public NaverJobCrawlerService(CrawlerRepository crawlerRepository) {
+        this.crawlerRepository = crawlerRepository;
         this.apiUrl = createApiUrl();
     }
 
-    protected String createApiUrl() {
-        List<String> subJobCodes = new ArrayList<>();
-        subJobCodes.add("1010001");
-        subJobCodes.add("1010002");
-        subJobCodes.add("1010003");
-
-        return "https://recruit.navercorp.com/rcrt/loadJobList.do?annoId=&sw=&subJobCdArr="
-                + String.join(",", subJobCodes) + "&sysCompanyCdArr=&empTypeCdArr=&entTypeCdArr=&workAreaCdArr=&firstIndex=10";
-    }
-
-    protected HttpURLConnection createConnection(URL url) throws Exception {
-        return (HttpURLConnection) url.openConnection();
+    private String createApiUrl() {
+        return "https://recruit.navercorp.com/rcrt/loadJobList.do?subJobCdArr=1010004&sysCompanyCdArr=&empTypeCdArr=&entTypeCdArr=&workAreaCdArr=&sw=&subJobCdData=1010004&firstIndex=0";
     }
 
     @Override
@@ -44,26 +45,52 @@ public class NaverJobCrawlerService implements JobCrawler {
 
         try {
             URL url = new URL(apiUrl);
-            HttpURLConnection conn = createConnection(url);
+            HttpURLConnection conn = createConnection(url); // 바꿔야 함
             conn.setRequestMethod("GET");
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String inputLine;
+            // 응답 읽기
             StringBuilder response = new StringBuilder();
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
             }
-            in.close();
 
-            JSONObject jsonResponse = new JSONObject(response.toString());
-            JSONArray jobList = jsonResponse.getJSONArray("list");
+            // JSON 파싱 및 변환
+            JSONArray jobList = new JSONObject(response.toString()).getJSONArray("list");
+            ObjectMapper objectMapper = new ObjectMapper();
+            Job_mst[] jobArray = objectMapper.readValue(jobList.toString(), Job_mst[].class);
+            result = new ArrayList<>(List.of(jobArray));
 
-            result = new ArrayList<>();
-            for (int i = 0; i < jobList.length(); i++) {
-                JSONObject job = jobList.getJSONObject(i);
-                Job_mst item = new Job_mst(); // 필요한 필드 추가
-                result.add(item);
+            // 모든 기존 데이터 조회
+            List<Long> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
+            List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds); // 기존 Job_mst 조회
+
+            List<Job_mst> jobsToSave = new ArrayList<>();
+
+            for (Job_mst job : result) {
+                boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
+
+                if (exists) {
+                    // 기존 데이터가 존재하는 경우
+                    Job_mst existingJob = existingJobs.stream()
+                            .filter(e -> e.getAnnoId().equals(job.getAnnoId()))
+                            .findFirst()
+                            .orElse(null);
+                    if (existingJob != null && !existingJob.getAnnoSubject().equals(job.getAnnoSubject())) {
+                        // annoSubject가 다를 경우에만 저장
+                        jobsToSave.add(job);
+                    }
+                } else {
+                    // 존재하지 않으면 새로 저장
+                    jobsToSave.add(job);
+                }
+            }
+
+            // 한 번에 저장
+            if (!jobsToSave.isEmpty()) {
+                crawlerRepository.saveAll(jobsToSave);
             }
 
         } catch (Exception e) {
@@ -71,5 +98,9 @@ public class NaverJobCrawlerService implements JobCrawler {
         }
 
         return result;
+    }
+
+    public HttpURLConnection createConnection(URL url) throws Exception {
+        return (HttpURLConnection) url.openConnection();
     }
 }
