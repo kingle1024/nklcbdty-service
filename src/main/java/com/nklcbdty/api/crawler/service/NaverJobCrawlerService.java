@@ -5,17 +5,15 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
@@ -27,11 +25,13 @@ import lombok.extern.slf4j.Slf4j;
 public class NaverJobCrawlerService implements JobCrawler {
 
     private final CrawlerRepository crawlerRepository;
+    private final CrawlerCommonService crawlerCommonService;
     private final String apiUrl;
 
     @Autowired
-    public NaverJobCrawlerService(CrawlerRepository crawlerRepository) {
+    public NaverJobCrawlerService(CrawlerRepository crawlerRepository, CrawlerCommonService crawlerCommonService) {
         this.crawlerRepository = crawlerRepository;
+        this.crawlerCommonService = crawlerCommonService;
         this.apiUrl = createApiUrl();
     }
 
@@ -44,21 +44,10 @@ public class NaverJobCrawlerService implements JobCrawler {
         List<Job_mst> result = Collections.emptyList();
 
         try {
-            URL url = new URL(apiUrl);
-            HttpURLConnection conn = createConnection(url); // 바꿔야 함
-            conn.setRequestMethod("GET");
-
-            // 응답 읽기
-            StringBuilder response = new StringBuilder();
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-            }
+            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
 
             // JSON 파싱 및 변환
-            JSONArray jobList = new JSONObject(response.toString()).getJSONArray("list");
+            JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("list");
             ObjectMapper objectMapper = new ObjectMapper();
             Job_mst[] jobArray = objectMapper.readValue(jobList.toString(), Job_mst[].class);
             result = new ArrayList<>(List.of(jobArray));
@@ -94,7 +83,7 @@ public class NaverJobCrawlerService implements JobCrawler {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
         return result;
