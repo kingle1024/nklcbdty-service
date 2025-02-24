@@ -15,6 +15,9 @@ public class Job_mst {
     private Long id;
 
     @Column(nullable = false)
+    private String companyCd; // 회사구분
+
+    @Column(nullable = false)
     private Long annoId; // 공고 고유 번호
 
     @Column(nullable = false)
