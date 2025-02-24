@@ -79,6 +79,9 @@ public class NaverJobCrawlerService implements JobCrawler {
 
             // 한 번에 저장
             if (!jobsToSave.isEmpty()) {
+                for (Job_mst item : jobsToSave) {
+                    item.setCompanyCd("NAVER");
+                }
                 crawlerRepository.saveAll(jobsToSave);
             }
 
