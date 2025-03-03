@@ -2,7 +2,6 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
-import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 public class LineJobCrawlerService implements JobCrawler {
 
     private final CrawlerCommonService crawlerCommonService;
-    private final CrawlerRepository crawlerRepository;
 
     @Autowired
-    public LineJobCrawlerService(CrawlerCommonService crawlerCommonService, CrawlerRepository crawlerRepository) {
+    public LineJobCrawlerService(CrawlerCommonService crawlerCommonService) {
         this.crawlerCommonService = crawlerCommonService;
-        this.crawlerRepository = crawlerRepository;
     }
 
     @Override
@@ -62,7 +58,6 @@ public class LineJobCrawlerService implements JobCrawler {
                     if (("Bundang".equals(citiesName) || "Seoul".equals(citiesName)) && "Engineering".equals(jobUnitName)) {
                         // title 값 가져오기
                         String title = node.getString("title");
-                        System.out.println("Title for edge " + i + ": " + title);
                         String companies = node.getJSONArray("companies").getJSONObject(0).getString("name");
                         Job_mst item = new Job_mst();
                         item.setAnnoId(node.getLong("strapiId"));
@@ -84,38 +79,8 @@ public class LineJobCrawlerService implements JobCrawler {
                 }
             }
 
-            // 모든 기존 데이터 조회
-            List<Long> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
-            List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds); // 기존 Job_mst 조회
+            crawlerCommonService.saveAll("LINE", result);
 
-            List<Job_mst> jobsToSave = new ArrayList<>();
-
-            for (Job_mst job : result) {
-                boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
-
-                if (exists) {
-                    // 기존 데이터가 존재하는 경우
-                    Job_mst existingJob = existingJobs.stream()
-                            .filter(e -> e.getAnnoId().equals(job.getAnnoId()))
-                            .findFirst()
-                            .orElse(null);
-                    if (existingJob != null && !existingJob.getAnnoSubject().equals(job.getAnnoSubject())) {
-                        // annoSubject가 다를 경우에만 저장
-                        jobsToSave.add(job);
-                    }
-                } else {
-                    // 존재하지 않으면 새로 저장
-                    jobsToSave.add(job);
-                }
-            }
-
-            // 한 번에 저장
-            if (!jobsToSave.isEmpty()) {
-                for (Job_mst item : jobsToSave) {
-                    item.setCompanyCd("LINE");
-                }
-                crawlerRepository.saveAll(jobsToSave);
-            }
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
