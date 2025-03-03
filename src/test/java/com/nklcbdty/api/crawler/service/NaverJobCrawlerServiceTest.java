@@ -39,7 +39,7 @@ class NaverJobCrawlerServiceTest {
         when(mockConnection.getInputStream()).thenReturn(mockInputStream);
 
         // createConnection 메서드를 오버라이드하여 mockConnection을 사용
-        doReturn(mockConnection).when(naverJobCrawlerService).createConnection(any(URL.class));
+        // doReturn(mockConnection).when(naverJobCrawlerService).createConnection(any(URL.class));
     }
 
     private String getMockApiResponse() {
