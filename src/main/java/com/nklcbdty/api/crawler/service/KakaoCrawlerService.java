@@ -29,49 +29,62 @@ public class KakaoCrawlerService implements JobCrawler {
     public List<Job_mst> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
-            String apiUrl = "https://careers.kakao.com/public/api/job-list?skillSet=&part=TECHNOLOGY&company=KAKAO&keyword=&employeeType=&page=1";
-            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
-
-            // JSON 파싱 및 변환
-            JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("jobList");
-
-            // edges 배열을 반복
-            for (int i = 0; i < jobList.length(); i++) {
-                JSONObject edge = jobList.getJSONObject(i);
-                String title = edge.getString("jobOfferTitle");
-                long jobOfferId = edge.getLong("jobOfferId");
-
-                String employeeTypeName = edge.getString("employeeTypeName");
-                if("정규직".equals(employeeTypeName)) {
-                    employeeTypeName = "정규";
-                } else {
-                    employeeTypeName = "비정규";
-                }
-                String jobType = edge.getString("jobType");
-                if("TECHNOLOGY".equals(jobType)) {
-                    jobType = "Tech";
-                }
-                String skillSetType = edge.getJSONArray("skillSetList").getJSONObject(0).getString("skillSetType");
-                String companyNameEn = edge.getString("companyNameEn");
-
-                Job_mst item = new Job_mst();
-                item.setAnnoSubject(String.valueOf(title));
-                item.setAnnoId(jobOfferId);
-                item.setEmpTypeCdNm(employeeTypeName);
-                item.setClassCdNm(jobType);
-                item.setSubJobCdNm(skillSetType);
-                item.setSysCompanyCdNm(companyNameEn);
-                item.setJobDetailLink("https://careers.kakao.com/jobs/S-" + jobOfferId);
-                result.add(item);
-            }
+            addRecruitContent("P", result);
+            addRecruitContent("S", result);
 
             crawlerCommonService.saveAll("KAKAO", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
-        return List.of();
+        return result;
     }
 
+    private void addRecruitContent(String type, List<Job_mst> result) {
+        final String companyType;
+        if ("P".equals(type)) {
+            companyType = "KAKAO";
+        } else {
+            companyType = "SUBSIDIARY";
+        }
 
+        final String apiUrl = "https://careers.kakao.com/public/api/job-list?skillSet=&part=TECHNOLOGY&company="+companyType+"&keyword=&employeeType=&page=1";
+        final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+
+        // JSON 파싱 및 변환
+        JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("jobList");
+
+        // edges 배열을 반복
+        for (int i = 0; i < jobList.length(); i++) {
+            JSONObject edge = jobList.getJSONObject(i);
+            String title = edge.getString("jobOfferTitle");
+            long jobOfferId = edge.getLong("jobOfferId");
+
+            String employeeTypeName = edge.getString("employeeTypeName");
+            if("정규직".equals(employeeTypeName)) {
+                employeeTypeName = "정규";
+            } else {
+                employeeTypeName = "비정규";
+            }
+            String jobType = edge.getString("jobType");
+            if("TECHNOLOGY".equals(jobType)) {
+                jobType = "Tech";
+            }
+            String skillSetType = "etc";
+            if(edge.has("skillSetList") && !edge.isNull("skillSetList")) {
+                skillSetType = edge.getJSONArray("skillSetList").getJSONObject(0).getString("skillSetType");
+            }
+
+            String companyNameEn = edge.getString("companyNameEn");
+            Job_mst item = new Job_mst();
+            item.setAnnoSubject(String.valueOf(title));
+            item.setAnnoId(jobOfferId);
+            item.setEmpTypeCdNm(employeeTypeName);
+            item.setClassCdNm(jobType);
+            item.setSubJobCdNm(skillSetType);
+            item.setSysCompanyCdNm(companyNameEn);
+            item.setJobDetailLink("https://careers.kakao.com/jobs/" + type + "-" + jobOfferId +"?skillSet=&part=TECHNOLOGY&company="+companyType+"&keyword=&employeeType=&page=1");
+            result.add(item);
+        }
+    }
 }
