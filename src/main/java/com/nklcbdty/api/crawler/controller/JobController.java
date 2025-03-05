@@ -12,6 +12,7 @@ import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.service.KakaoCrawlerService;
 import com.nklcbdty.api.crawler.service.LineJobCrawlerService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
+import com.nklcbdty.api.crawler.service.TossJobCrawlerService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 @RestController
@@ -20,14 +21,17 @@ public class JobController {
     private final NaverJobCrawlerService naverJobCrawlerService;
     private final KakaoCrawlerService kakaoCrawlerService;
     private final LineJobCrawlerService lineJobCrawlerService;
+    private final TossJobCrawlerService tossJobCrawlerService;
     private final JobService jobService;
 
     @Autowired
     public JobController(NaverJobCrawlerService naverJobCrawlerService, KakaoCrawlerService kakaoCrawlerService, LineJobCrawlerService lineJobCrawlerService,
+        TossJobCrawlerService tossJobCrawlerService,
         JobService jobService) {
         this.naverJobCrawlerService = naverJobCrawlerService;
         this.kakaoCrawlerService = kakaoCrawlerService;
         this.lineJobCrawlerService = lineJobCrawlerService;
+        this.tossJobCrawlerService = tossJobCrawlerService;
         this.jobService = jobService;
     }
 
@@ -58,7 +62,7 @@ public class JobController {
 
             }
             case "toss": {
-
+                return tossJobCrawlerService.crawlJobs();
             }
             case "yanolja": {
 
