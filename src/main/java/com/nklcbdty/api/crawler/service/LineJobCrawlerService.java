@@ -29,7 +29,7 @@ public class LineJobCrawlerService implements JobCrawler {
     public List<Job_mst> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
-            String apiUrl = "https://careers.linecorp.com/page-data/ko/jobs/page-data.json";
+            final String apiUrl = "https://careers.linecorp.com/page-data/ko/jobs/page-data.json";
             final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
 
             // JSON 객체로 변환
