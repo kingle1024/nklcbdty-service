@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nklcbdty.api.crawler.service.CoupangJobCrawlerService;
 import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.service.LineJobCrawlerService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
@@ -19,13 +20,15 @@ public class JobController {
     private final NaverJobCrawlerService naverJobCrawlerService;
     private final LineJobCrawlerService lineJobCrawlerService;
     private final JobService jobService;
+    private final CoupangJobCrawlerService coupangJobCrawlerService;
 
     @Autowired
     public JobController(NaverJobCrawlerService naverJobCrawlerService, LineJobCrawlerService lineJobCrawlerService,
-        JobService jobService) {
+        JobService jobService, CoupangJobCrawlerService coupangJobCrawlerService) {
         this.naverJobCrawlerService = naverJobCrawlerService;
         this.lineJobCrawlerService = lineJobCrawlerService;
         this.jobService = jobService;
+        this.coupangJobCrawlerService = coupangJobCrawlerService;
     }
 
     @GetMapping("/list")
@@ -44,6 +47,9 @@ public class JobController {
             }
             case "line": {
                 return lineJobCrawlerService.crawlJobs();
+            }
+            case "coupang" : {
+            	return coupangJobCrawlerService.crawlJobs();
             }
             default: {
 
