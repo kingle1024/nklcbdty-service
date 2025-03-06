@@ -1,4 +1,10 @@
-# 
+# 확인 필요! https://www.coupang.jobs/kr/jobs/?page=4&location=South%20Korea&pagesize=20#results
+```
+쿠팡 크롤링은 Job_mst VO 매핑 시, 해당 컬럼을 모두 충족하기는 어려워
+모든 컬럼에 대해 nullable false를 true로 수정 요청. (main 브랜치)
+
+로컬브랜치에서 수정하여 테스트 예정(feta/coupang 브랜치)
+```
 
 ## 브랜치 네이밍
 
