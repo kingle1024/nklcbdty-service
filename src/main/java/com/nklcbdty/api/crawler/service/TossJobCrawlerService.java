@@ -44,11 +44,16 @@ public class TossJobCrawlerService implements JobCrawler {
                 for (int j = 0; j < contents.length(); j++) {
                     JSONObject contentItem = contents.getJSONObject(j);
                     JSONArray metadata = contentItem.getJSONArray("metadata");
+                    boolean saveOk = true;
                     Job_mst item = new Job_mst();
                     for (int k = 0; k < metadata.length(); k++) {
                         JSONObject jsonObject = metadata.getJSONObject(k);
                         String name = jsonObject.getString("name");
-                        String value = jsonObject.getString("value");
+                        Object objectValue = jsonObject.get("value");
+                        String value = objectValue.toString();
+                        if(value == null) {
+                            continue;
+                        }
                         switch (name) {
                             case "포지션의 소속 자회사를 선택해 주세요.": {
                                 item.setSysCompanyCdNm(value);
@@ -74,7 +79,14 @@ public class TossJobCrawlerService implements JobCrawler {
                     item.setAnnoId(contentItem.getLong("id"));
                     item.setAnnoSubject(contentItem.getString("title"));
                     item.setJobDetailLink(contentItem.getString("absolute_url"));
-                    result.add(item);
+
+                    if("null".equals(item.getSysCompanyCdNm())) {
+                      saveOk = false;
+                    }
+
+                    if(saveOk) {
+                        result.add(item);
+                    }
                 }
             }
 
