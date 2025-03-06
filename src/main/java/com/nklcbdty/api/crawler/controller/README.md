@@ -1,6 +1,7 @@
 # 쿠팡 크롤러 사이트
 ```
 ex) https://www.coupang.jobs/kr/jobs/?search=&pagesize=20
+or https://www.coupang.jobs/kr/jobs/?page=4#results
 ```
 
 # 배달의민족 사이트
