@@ -1,13 +1,10 @@
 package com.nklcbdty.api.crawler.common;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -15,8 +12,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpServletRequest;
+
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class CrawlerCommonService {
 
+	@Autowired
+	CrawlerRepository crawlerRepository;
+	
     public String fetchApiResponse(String apiUrl) {
 
         try {
@@ -48,66 +49,41 @@ public class CrawlerCommonService {
     }
     
     /**
-     * <p>서버통신 리스폰스 데이터가 HTML데이터인경우 Jsoup으로 파싱한다.</p>
-     * @author DavieLee
-     * @return Document
-     * @param String apiUrl
-     * 
+     * <p> 크롤러 사이트 서버 통신 후, JSON or HTML데이터를 파싱한 List<\Job_mst\> 데이터를 
+     * 	   annoId 중복여부를 판별하고, Repository에 데이터를 삽입한다.
+     * </p>
+     * @return void
      * */
-    public List<Job_mst> parseHtmlData(String apiUrl) {
-		List<Job_mst> resList = new ArrayList<>();
+    public void insertJobMst(List<Job_mst> resList) {
+    	List<Long> annoIds = new ArrayList<>();
+		List<Job_mst> existingJobs = new ArrayList<>();
+		List<Job_mst> jobsToSave = new ArrayList<>();
 		
-        try {
-        	Document doc = Jsoup.connect(apiUrl).get();
-        	Elements root = doc.select("main#content div#js-job-search-results .card.card-job");
-        	
-        	for (Element cardJobRoot : root) {
-        		Job_mst job_mst = new Job_mst();
-        		// 상세공고 url
-        		String jobDetailLink = cardJobRoot.select("a.stretched-link.js-view-job").attr("href");
-        		// 공고명
-        		String annoSubject = cardJobRoot.select("a.stretched-link.js-view-job").text();
-        		String rowAnnoId = cardJobRoot.select(".card-job-actions.js-job").attr("data-id");
-        		// 공고번호
-        		Long annoId = Long.parseLong(rowAnnoId);
-        		// 근무지
-        		String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
-
-        		job_mst.setJobDetailLink("https://www.coupang.jobs".concat(jobDetailLink));
-        		job_mst.setAnnoSubject(annoSubject);
-        		job_mst.setAnnoId(annoId);
-        		job_mst.setWorkplace(workplace);
-        		resList.add(job_mst);
-        	}
-        	
-        } catch (Exception e) {
-            log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
-            throw new ApiException("Failed to fetch API response");  // 커스텀 예외 던지기
-        }
-        return resList;
-    }
-    
-    
-    /**
-     * <p>모든 공고를 파싱하기 위해 필요한 총 건수를 반환한다.</p>
-     * 
-     * */
-    public int getTotalListCnt(String apiUrl) {
-    	int resultCnt = 0;
-    	String strTotalCnt = "";
+		annoIds = resList.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
+		existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
 		
-    	try {
-    		Document doc = Jsoup.connect(apiUrl).get();
-//    		Elements root = doc.select("main#content p.job-count");
-    		// 총건수 파싱하기.
-//    		strTotalCnt = root.select("strong:nth-of-type(3)").text();
-    		strTotalCnt = doc.select("main#content div#js-job-search-results").attr("data-results");
-    		
-        } catch (Exception e) {
-            log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
-            throw new ApiException("Failed to Jsoup response");  // 커스텀 예외 던지기
-        }
+		for (Job_mst jobItem : resList) {
+			boolean exists = existingJobs.stream().anyMatch(item -> item.getAnnoId().equals(jobItem.getAnnoId()));
+			if (exists) {
+				Job_mst existingJob = existingJobs.stream()
+					.filter(item -> item.getAnnoId().equals(jobItem.getAnnoId()))
+					.findFirst()
+					.orElse(null);
+				if (existingJob != null && !existingJob.getAnnoSubject().equals(jobItem.getAnnoSubject())) {
+                    // annoSubject가 다를 경우에만 저장
+                    jobsToSave.add(jobItem);
+                }
+			} else {
+				jobsToSave.add(jobItem);
+			}
+		}
 		
-		return resultCnt = Integer.parseInt(strTotalCnt);
+		if (!jobsToSave.isEmpty()) {
+			for (Job_mst jobItem : jobsToSave) {
+				jobItem.setCompanyCd("COUPANG");
+			}
+			crawlerRepository.saveAll(jobsToSave);
+		}
+		
     }
 }
