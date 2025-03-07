@@ -38,7 +38,7 @@ public class Job_mst {
     @Column(nullable = true)
     private String jobDetailLink; // 공고 URL
     
-    @Column
+    @Column(nullable = true)
     private String workplace; // 근무지
 
 }
