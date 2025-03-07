@@ -142,9 +142,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		
     	try {
     		Document doc = Jsoup.connect(apiUrl).get();
-//    		Elements root = doc.select("main#content p.job-count");
     		// 총건수 파싱하기.
-//    		strTotalCnt = root.select("strong:nth-of-type(3)").text();
     		strTotalCnt = doc.select("main#content div#js-job-search-results").attr("data-results");
     		
         } catch (Exception e) {
