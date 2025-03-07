@@ -14,28 +14,28 @@ public class Job_mst {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String companyCd; // 회사구분
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long annoId; // 공고 고유 번호
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String classCdNm; // Tech, Business, ...
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String empTypeCdNm; // 정규, 비정규
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String annoSubject; // 채용공고명
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String subJobCdNm; // 직무 구분
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String sysCompanyCdNm; // 회사 구분
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String jobDetailLink; // 공고 URL
     
     @Column
