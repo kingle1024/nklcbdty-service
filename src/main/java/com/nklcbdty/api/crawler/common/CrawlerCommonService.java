@@ -10,6 +10,10 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -118,4 +122,23 @@ public class CrawlerCommonService {
 			crawlerRepository.saveAll(jobsToSave);
 		}
     }
+    
+    /**
+	 * <p>밀리세컨드로 된 데이터를 yyyy-MM-dd HH:mm:ss format String으로 변환한다. </p>
+	 * @author David Lee
+	 * */
+	public String formatCurrentTime() {
+		long currentTimeMillis = System.currentTimeMillis();
+		
+        // 밀리초를 LocalDateTime으로 변환
+        LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTimeMillis), ZoneId.systemDefault());
+        // LocalDateTime today = LocalDateTime.now();
+        
+        // 원하는 형식으로 포맷팅
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = dateTime.format(formatter);
+        // String todayFormatter = today.format(formatter);
+        
+        return formattedDate;
+	}
 }
