@@ -55,6 +55,9 @@ public class CrawlerCommonService {
         List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
         List<Job_mst> jobsToSave = new ArrayList<>();
 
+        // DB 저장 시 데이터 정제 처리
+        refineJobData(result);
+
         for (Job_mst job : result) {
             boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
 
@@ -78,6 +81,20 @@ public class CrawlerCommonService {
                 item.setCompanyCd(company);
             }
             crawlerRepository.saveAll(jobsToSave);
+        }
+    }
+
+    private void refineJobData(List<Job_mst> result) {
+        for (Job_mst job : result) {
+            if (job.getEmpTypeCdNm() == null) {
+                job.setEmpTypeCdNm(JobEnums.REGULAR.getTitle());
+            } else if (job.getEmpTypeCdNm().contains("계약")) {
+                job.setEmpTypeCdNm(JobEnums.CONTRACT.getTitle());
+            }
+
+            if (job.getWorkplace() == null) {
+                job.setWorkplace(JobEnums.SEOUL.getTitle());
+            }
         }
     }
 
