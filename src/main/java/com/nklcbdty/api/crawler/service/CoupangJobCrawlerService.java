@@ -44,7 +44,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
     @Override
 	public List<Job_mst> crawlJobs() {
 		List<Job_mst> resList = new ArrayList<>();
-		String formattedDate = formatCurrentTime(); 
+		String formattedDate = crawlerCommonService.formatCurrentTime(); 
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
 		
 		int totalCnt = getCoupangTotalListCnt(apiUrl);
@@ -71,26 +71,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		}
 		return resList;	
 	}
-	
-	/**
-	 * <p>밀리세컨드로 된 데이터를 yyyy-MM-dd HH:mm:ss format String으로 변환한다. </p>
-	 * @author David Lee
-	 * */
-	private String formatCurrentTime() {
-		long currentTimeMillis = System.currentTimeMillis();
 		
-        // 밀리초를 LocalDateTime으로 변환
-        LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTimeMillis), ZoneId.systemDefault());
-        // LocalDateTime today = LocalDateTime.now();
-        
-        // 원하는 형식으로 포맷팅
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String formattedDate = dateTime.format(formatter);
-        // String todayFormatter = today.format(formatter);
-        
-        return formattedDate;
-	}
-	
     /**
      * <p>서버통신 리스폰스 데이터가 HTML데이터인경우 Jsoup으로 파싱한다.</p>
      * @author DavieLee
