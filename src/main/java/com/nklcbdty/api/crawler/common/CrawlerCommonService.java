@@ -99,6 +99,34 @@ public class CrawlerCommonService {
             if (job.getWorkplace() == null) {
                 job.setWorkplace(JobEnums.SEOUL.getTitle());
             }
+
+            // 채용 공고로 보정하기
+            final String jobTitle = job.getAnnoSubject().toUpperCase().replace(" ", "");
+            if ("BACK-END".equalsIgnoreCase(jobTitle)) {
+                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+            } else if ("SERVER".equalsIgnoreCase(jobTitle)) {
+                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+            } else if (jobTitle.contains("BACKEND")) {
+                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+            } else if (jobTitle.contains("SERVERENGINEER")) {
+                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+            } else if (jobTitle.contains("FULL-STACK")) {
+                job.setSubJobCdNm(JobEnums.FullStack.getTitle());
+            } else if (jobTitle.contains("SOFTWAREENGINEER-") && "R&D".equals(job.getClassCdNm())) {
+                job.setSubJobCdNm(JobEnums.FullStack.getTitle());
+            } else if (jobTitle.contains("IOS")) {
+                job.setSubJobCdNm(JobEnums.iOS.getTitle());
+            } else if (jobTitle.contains("ANDROID")) {
+                job.setSubJobCdNm(JobEnums.Android.getTitle());
+            } else if (jobTitle.contains("DEVOPS")) {
+                job.setSubJobCdNm(JobEnums.DevOps.getTitle());
+            } else if (jobTitle.contains("DATAANALYST")) {
+                job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+            } else if (jobTitle.contains("DATASCIENTIST")) {
+                job.setSubJobCdNm(JobEnums.DataScientist.getTitle());
+            } else if (jobTitle.contains("DBA")) {
+                job.setSubJobCdNm(JobEnums.DBA.getTitle());
+            }
         }
     }
 
