@@ -5,7 +5,8 @@ public enum JobEnums implements EnumMapperType {
     REGULAR("정규"),
     CONTRACT("비정규"),
     SEOUL("서울"),
-    Backend("Backend"),
+    BackEnd("Backend"),
+    FrontEnd("FrontEnd"),
     iOS("iOS"),
     Android("Android"),
     DevOps("DevOps"),
@@ -13,6 +14,8 @@ public enum JobEnums implements EnumMapperType {
     DataScientist("DataScientist"),
     FullStack("FullStack"),
     DBA("DBA"),
+    SecurityEngineering("SecurityEngineering"),
+    ML("ML"),
     ;
 
     private String title;
