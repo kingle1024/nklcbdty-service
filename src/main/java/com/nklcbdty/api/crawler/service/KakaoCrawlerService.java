@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -32,6 +33,18 @@ public class KakaoCrawlerService implements JobCrawler {
             addRecruitContent("P", result);
             addRecruitContent("S", result);
 
+            for (Job_mst job : result) {
+                if (job.getAnnoSubject().contains("DevOps")) {
+                    job.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                } else if (
+                    job.getAnnoSubject().contains("백엔드") ||
+                        job.getAnnoSubject().contains("Back-End")
+                ) {
+                    job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (job.getAnnoSubject().contains("Data Analyst")) {
+                    job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                }
+            }
             crawlerCommonService.saveAll("KAKAO", result);
 
         } catch (Exception e) {

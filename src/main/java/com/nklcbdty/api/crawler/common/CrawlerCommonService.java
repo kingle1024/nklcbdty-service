@@ -103,13 +103,13 @@ public class CrawlerCommonService {
             // 채용 공고로 보정하기
             final String jobTitle = job.getAnnoSubject().toUpperCase().replace(" ", "");
             if ("BACK-END".equalsIgnoreCase(jobTitle)) {
-                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
             } else if ("SERVER".equalsIgnoreCase(jobTitle)) {
-                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
             } else if (jobTitle.contains("BACKEND")) {
-                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
             } else if (jobTitle.contains("SERVERENGINEER")) {
-                job.setSubJobCdNm(JobEnums.Backend.getTitle());
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
             } else if (jobTitle.contains("FULL-STACK")) {
                 job.setSubJobCdNm(JobEnums.FullStack.getTitle());
             } else if (jobTitle.contains("SOFTWAREENGINEER-") && "R&D".equals(job.getClassCdNm())) {
