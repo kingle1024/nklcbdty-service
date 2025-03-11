@@ -36,13 +36,33 @@ public class KakaoCrawlerService implements JobCrawler {
             for (Job_mst job : result) {
                 if (job.getAnnoSubject().contains("DevOps")) {
                     job.setSubJobCdNm(JobEnums.DevOps.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("백엔드") ||
-                        job.getAnnoSubject().contains("Back-End")
+                } else if (job.getAnnoSubject().contains("백엔드") ||
+                    job.getAnnoSubject().contains("Back-End")
                 ) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst")) {
                     job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (job.getAnnoSubject().contains("머신러닝 엔지니어")) {
+                    job.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (job.getAnnoSubject().contains("PM")) {
+                    job.setSubJobCdNm(JobEnums.PM.getTitle());
+                }
+
+                if ("etc".equals(job.getSubJobCdNm())) {
+                    if (job.getAnnoSubject().contains("네트워크 드라이버") ||
+                        job.getAnnoSubject().contains("FPGA Engineer") ||
+                        job.getAnnoSubject().contains("컴퓨팅 서비스") ||
+                        job.getAnnoSubject().contains("네트워킹 서비스") ||
+                        job.getAnnoSubject().contains("시스템 엔지니어")
+                    ) {
+                        job.setSubJobCdNm(JobEnums.Infra.getTitle());
+                    }
+                }
+            }
+
+            for (Job_mst job : result) {
+                if ("Server".equals(job.getSubJobCdNm())) {
+                    job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 }
             }
             crawlerCommonService.saveAll("KAKAO", result);
