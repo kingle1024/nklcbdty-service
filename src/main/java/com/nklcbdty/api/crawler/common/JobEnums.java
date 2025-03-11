@@ -10,12 +10,14 @@ public enum JobEnums implements EnumMapperType {
     iOS("iOS"),
     Android("Android"),
     DevOps("DevOps"),
+    Infra("Infra"),
     DataAnalyst("DataAnalyst"),
     DataScientist("DataScientist"),
     FullStack("FullStack"),
     DBA("DBA"),
     SecurityEngineering("SecurityEngineering"),
     ML("ML"),
+    PM("PM"),
     ;
 
     private String title;
