@@ -16,7 +16,9 @@ public enum JobEnums implements EnumMapperType {
     FullStack("FullStack"),
     DBA("DBA"),
     SecurityEngineering("SecurityEngineering"),
+    Security("Security"),
     ML("ML"),
+    TechnicalSupport("TechnicalSupport"),
     PM("PM"),
     ;
 
