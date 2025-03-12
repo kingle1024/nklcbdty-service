@@ -44,6 +44,13 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
                 } else if (job.getAnnoSubject().contains("머신러닝 엔지니어")) {
                     job.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (job.getAnnoSubject().contains("DB운영")) {
+                    job.setSubJobCdNm(JobEnums.DBA.getTitle());
+                } else if (job.getAnnoSubject().contains("안정성 관리") ||
+                    job.getAnnoSubject().contains("Technical Writer") ||
+                    job.getAnnoSubject().contains("기술 문서")
+                ) {
+                    job.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
                 } else if (job.getAnnoSubject().contains("PM")) {
                     job.setSubJobCdNm(JobEnums.PM.getTitle());
                 }
