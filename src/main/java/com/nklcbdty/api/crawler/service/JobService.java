@@ -18,6 +18,10 @@ public class JobService {
     }
 
     public List<Job_mst> list(String company) {
-        return jobRepository.findAllByCompanyCd(company);
+        if ("ALL".equals(company)) {
+            return jobRepository.findAll();
+        } else {
+            return jobRepository.findAllByCompanyCd(company);
+        }
     }
 }

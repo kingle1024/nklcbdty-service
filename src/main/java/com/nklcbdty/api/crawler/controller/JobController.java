@@ -50,7 +50,7 @@ public class JobController {
     }
 
     @GetMapping("/list")
-    public List<Job_mst> list(@RequestParam(defaultValue = "NAVER") String company) {
+    public List<Job_mst> list(@RequestParam(defaultValue = "ALL") String company) {
         return jobService.list(company);
     }
 
