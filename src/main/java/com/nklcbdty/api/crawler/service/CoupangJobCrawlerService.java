@@ -1,9 +1,5 @@
 package com.nklcbdty.api.crawler.service;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +24,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 	
     private final CrawlerCommonService crawlerCommonService;
     private String apiUrl;
-    private final int pagesize = 20; 
-	
+
     @Autowired
 	public CoupangJobCrawlerService(CrawlerCommonService crawlerCommonService) {
 		this.crawlerCommonService = crawlerCommonService;
@@ -43,15 +38,17 @@ public class CoupangJobCrawlerService implements JobCrawler{
     
     @Override
 	public List<Job_mst> crawlJobs() {
-		List<Job_mst> resList = new ArrayList<>();
+		List<Job_mst> resList;
 		String formattedDate = crawlerCommonService.formatCurrentTime(); 
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
 		
 		int totalCnt = getCoupangTotalListCnt(apiUrl);
 		resList = coupangParseHtmlData(apiUrl);
 		crawlerCommonService.insertJobMst(resList);
-		
-		double totalLoopCnt = totalCnt % pagesize == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)(totalCnt / pagesize));
+
+        int pagesize = 20;
+        double totalLoopCnt = totalCnt % pagesize
+            == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
 
 		for (int i = 1; i <= (int)totalLoopCnt; i++) {
 			apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"#results";
@@ -118,8 +115,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
      * 
      * */
     private int getCoupangTotalListCnt(String apiUrl) {
-    	int resultCnt = 0;
-    	String strTotalCnt = "";
+        String strTotalCnt;
 		
     	try {
     		Document doc = Jsoup.connect(apiUrl).get();
@@ -131,6 +127,6 @@ public class CoupangJobCrawlerService implements JobCrawler{
             throw new ApiException("Failed to Jsoup response");  // 커스텀 예외 던지기
         }
 		
-		return resultCnt = Integer.parseInt(strTotalCnt);
+		return Integer.parseInt(strTotalCnt);
     }
 }
