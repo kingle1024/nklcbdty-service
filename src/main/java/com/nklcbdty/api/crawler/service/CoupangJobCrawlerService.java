@@ -84,6 +84,12 @@ public class CoupangJobCrawlerService implements JobCrawler{
         	Elements root = doc.select("main#content div#js-job-search-results .card.card-job");
         	
         	for (Element cardJobRoot : root) {
+				// 근무지
+				String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
+				if (!"서울".equals(workplace)) {
+					continue;
+				}
+
         		Job_mst job_mst = new Job_mst();
         		// 상세공고 url
         		String jobDetailLink = cardJobRoot.select("a.stretched-link.js-view-job").attr("href");
@@ -92,8 +98,6 @@ public class CoupangJobCrawlerService implements JobCrawler{
         		String rowAnnoId = cardJobRoot.select(".card-job-actions.js-job").attr("data-id");
         		// 공고번호
         		Long annoId = Long.parseLong(rowAnnoId);
-        		// 근무지
-        		String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
 
         		job_mst.setJobDetailLink("https://www.coupang.jobs".concat(jobDetailLink));
         		job_mst.setAnnoSubject(annoSubject);
