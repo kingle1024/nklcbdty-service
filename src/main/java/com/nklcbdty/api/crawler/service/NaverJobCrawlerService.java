@@ -14,7 +14,6 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
-import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +47,27 @@ public class NaverJobCrawlerService implements JobCrawler {
             ObjectMapper objectMapper = new ObjectMapper();
             Job_mst[] jobArray = objectMapper.readValue(jobList.toString(), Job_mst[].class);
             result = new ArrayList<>(List.of(jobArray));
+
+            for (Job_mst item : result) {
+                if ("AI/ML".equals(item.getSubJobCdNm())) {
+                    item.setSubJobCdNm("ML");
+                }
+
+                switch (item.getSysCompanyCdNm()) {
+                    case "NAVER": {
+                        item.setSubJobCdNm("네이버");
+                        break;
+                    }
+                    case "NAVER FINANCIAL": {
+                        item.setSubJobCdNm("네이버페이");
+                        break;
+                    }
+                    case "NAVER WEBTOON": {
+                        item.setSubJobCdNm("네이버웹툰");
+                        break;
+                    }
+               }
+            }
 
             crawlerCommonService.saveAll("NAVER", result);
 
