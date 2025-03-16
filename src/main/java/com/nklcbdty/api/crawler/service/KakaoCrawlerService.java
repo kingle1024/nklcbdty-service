@@ -36,14 +36,22 @@ public class KakaoCrawlerService implements JobCrawler {
             for (Job_mst job : result) {
                 if (job.getAnnoSubject().contains("DevOps")) {
                     job.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                } else if (job.getAnnoSubject().contains("프론트")) {
+                    job.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
                 } else if (job.getAnnoSubject().contains("백엔드") ||
+                    job.getAnnoSubject().contains("서버 개발자 모집") ||
                     job.getAnnoSubject().contains("Back-End")
                 ) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst")) {
                     job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
-                } else if (job.getAnnoSubject().contains("머신러닝 엔지니어")) {
+                } else if (
+                    job.getAnnoSubject().contains("머신러닝 엔지니어") ||
+                    job.getAnnoSubject().contains("머신러닝 research scientist")
+                ) {
                     job.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (job.getAnnoSubject().contains("데이터 사이언티스트")) {
+
                 } else if (job.getAnnoSubject().contains("DB운영")) {
                     job.setSubJobCdNm(JobEnums.DBA.getTitle());
                 } else if (job.getAnnoSubject().contains("안정성 관리") ||
@@ -68,9 +76,54 @@ public class KakaoCrawlerService implements JobCrawler {
             }
 
             for (Job_mst job : result) {
+                String replaeTitle = job.getAnnoSubject().replaceAll("\\[.*?]\\s*", "");
+                job.setAnnoSubject(replaeTitle);
                 if ("Server".equals(job.getSubJobCdNm())) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 }
+                if (job.getAnnoSubject().contains("카카오페이")) {
+                    String replaceTitle = job.getAnnoSubject().replace("카카오페이", "");
+                    job.setAnnoSubject(replaceTitle);
+                } else if (job.getAnnoSubject().contains("카카오모빌리티")) {
+                    String replaceTitle = job.getAnnoSubject().replace("카카오모빌리티", "");
+                    job.setAnnoSubject(replaceTitle);
+                } else if (job.getAnnoSubject().contains("카카오엔터프라이즈")) {
+                    String replaceTitle = job.getAnnoSubject().replace("카카오엔터프라이즈", "");
+                    job.setAnnoSubject(replaceTitle);
+                } else if (job.getAnnoSubject().contains("카카오게임즈")) {
+                    String replaceTitle = job.getAnnoSubject().replace("카카오게임즈", "");
+                    job.setAnnoSubject(replaceTitle);
+                } else if (job.getAnnoSubject().contains("카카오헬스케어")) {
+                    String replaceTitle = job.getAnnoSubject().replace("카카오헬스케어", "");
+                    job.setAnnoSubject(replaceTitle);
+                }
+
+                switch (job.getSysCompanyCdNm()) {
+                    case "kakao mobility": {
+                        job.setSysCompanyCdNm("카카오 모빌리티");
+                        break;
+                    }
+                    case "Kakao Pay Corp.": {
+                        job.setSysCompanyCdNm("카카오 페이");
+                        break;
+                    }
+                    case "Kakao Enterprise": {
+                        job.setSysCompanyCdNm("카카오 엔터프라이즈");
+                        break;
+                    }
+                    case "KakaoGames": {
+                        job.setSysCompanyCdNm("카카오 게임즈");
+                        break;
+                    }
+                    case "kakaohealthcare": {
+                        job.setSysCompanyCdNm("카카오 헬스케어");
+                        break;
+                    }
+                    default: {
+                        job.setSysCompanyCdNm("카카오");
+                    }
+                }
+
             }
             crawlerCommonService.saveAll("KAKAO", result);
 
@@ -88,11 +141,28 @@ public class KakaoCrawlerService implements JobCrawler {
             companyType = "SUBSIDIARY";
         }
 
-        final String apiUrl = "https://careers.kakao.com/public/api/job-list?skillSet=&part=TECHNOLOGY&company="+companyType+"&keyword=&employeeType=&page=1";
+        int idx = 1;
+        while (true) {
+            boolean isContinue = addResult(idx, type, result, companyType);
+            if (!isContinue) {
+                break;
+            }
+            idx++;
+        }
+    }
+
+    private boolean addResult(int idx, String type, List<Job_mst> result, String companyType) {
+        final String apiUrl = "https://careers.kakao.com/public/api/job-list?"
+            + "skillSet=&part=TECHNOLOGY"
+            + "&company="+ companyType
+            + "&keyword=&employeeType=&page=" + idx;
         final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
 
         // JSON 파싱 및 변환
         JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("jobList");
+        if (jobList.isEmpty()) {
+            return false;
+        }
 
         // edges 배열을 반복
         for (int i = 0; i < jobList.length(); i++) {
@@ -123,8 +193,11 @@ public class KakaoCrawlerService implements JobCrawler {
             item.setClassCdNm(jobType);
             item.setSubJobCdNm(skillSetType);
             item.setSysCompanyCdNm(companyNameEn);
-            item.setJobDetailLink("https://careers.kakao.com/jobs/" + type + "-" + jobOfferId +"?skillSet=&part=TECHNOLOGY&company="+companyType+"&keyword=&employeeType=&page=1");
+            item.setJobDetailLink("https://careers.kakao.com/jobs/" + type + "-" + jobOfferId +"?skillSet=&part=TECHNOLOGY"
+                + "&company="+ companyType +"&keyword=&employeeType=&page=" + idx);
             result.add(item);
         }
+
+        return true;
     }
 }
