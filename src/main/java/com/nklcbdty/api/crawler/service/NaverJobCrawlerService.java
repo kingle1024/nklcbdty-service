@@ -49,6 +49,9 @@ public class NaverJobCrawlerService implements JobCrawler {
             result = new ArrayList<>(List.of(jobArray));
 
             for (Job_mst item : result) {
+                String replaeTitle = item.getAnnoSubject().replaceAll("\\[.*?]\\s*", "");
+                item.setAnnoSubject(replaeTitle);
+
                 if ("AI/ML".equals(item.getSubJobCdNm())) {
                     item.setSubJobCdNm("ML");
                 }
