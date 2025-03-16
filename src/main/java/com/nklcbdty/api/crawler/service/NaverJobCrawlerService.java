@@ -55,15 +55,15 @@ public class NaverJobCrawlerService implements JobCrawler {
 
                 switch (item.getSysCompanyCdNm()) {
                     case "NAVER": {
-                        item.setSubJobCdNm("네이버");
+                        item.setSysCompanyCdNm("네이버");
                         break;
                     }
                     case "NAVER FINANCIAL": {
-                        item.setSubJobCdNm("네이버페이");
+                        item.setSysCompanyCdNm("네이버페이");
                         break;
                     }
                     case "NAVER WEBTOON": {
-                        item.setSubJobCdNm("네이버웹툰");
+                        item.setSysCompanyCdNm("네이버웹툰");
                         break;
                     }
                }
