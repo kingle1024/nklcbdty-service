@@ -123,7 +123,7 @@ public class CrawlerCommonService {
             } else if (jobTitle.contains("DATAANALYST")) {
                 job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
             } else if (jobTitle.contains("DATASCIENTIST")) {
-                job.setSubJobCdNm(JobEnums.DataScientist.getTitle());
+                job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
             } else if (jobTitle.contains("DBA")) {
                 job.setSubJobCdNm(JobEnums.DBA.getTitle());
             }
