@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -79,6 +80,25 @@ public class LineJobCrawlerService implements JobCrawler {
                 }
             }
 
+            for (Job_mst item : result) {
+                if (item.getAnnoSubject().contains("Server Engineer") ||
+                    item.getAnnoSubject().contains("Backend Software") ||
+                    item.getAnnoSubject().contains("Backend Server") ||
+                    item.getAnnoSubject().contains("Financial System Developer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Frontend Engineer")) {
+                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Android Engineer")) {
+                    item.setSubJobCdNm(JobEnums.Android.getTitle());
+                } else if (item.getAnnoSubject().contains("Data Engineer")) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("ML Engineer")) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (item.getAnnoSubject().contains("Network Security Engineer")) {
+                    item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
+                }
+            }
             crawlerCommonService.saveAll("LINE", result);
 
         } catch (Exception e) {
