@@ -87,18 +87,39 @@ public class LineJobCrawlerService implements JobCrawler {
                     item.getAnnoSubject().contains("Financial System Developer")
                 ) {
                     item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                } else if (item.getAnnoSubject().contains("Frontend Engineer")) {
+                } else if (
+                    item.getAnnoSubject().contains("Frontend Engineer") ||
+                    item.getAnnoSubject().contains("Front-End Engineer")
+                ) {
                     item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
                 } else if (item.getAnnoSubject().contains("Android Engineer")) {
                     item.setSubJobCdNm(JobEnums.Android.getTitle());
-                } else if (item.getAnnoSubject().contains("Data Engineer")) {
+                } else if (item.getAnnoSubject().contains("iOS")) {
+                    item.setSubJobCdNm(JobEnums.iOS.getTitle());
+                } else if (
+                    item.getAnnoSubject().contains("Data Engineer") ||
+                    item.getAnnoSubject().contains("MongoDB Engineer")
+                ) {
                     item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
                 } else if (item.getAnnoSubject().contains("ML Engineer")) {
                     item.setSubJobCdNm(JobEnums.ML.getTitle());
                 } else if (item.getAnnoSubject().contains("Network Security Engineer")) {
                     item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("Kubernetes Engineer")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getCode());
+                } else if (item.getAnnoSubject().contains("Technical Account Manager")) {
+                    item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
                 }
             }
+
+            for (Job_mst item : result) {
+                if ("Server-side".equals(item.getSubJobCdNm())) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if ("QA/SET".equals(item.getSubJobCdNm())) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                }
+            }
+
             crawlerCommonService.saveAll("LINE", result);
 
         } catch (Exception e) {
