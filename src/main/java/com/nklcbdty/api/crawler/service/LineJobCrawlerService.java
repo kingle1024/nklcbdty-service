@@ -118,6 +118,9 @@ public class LineJobCrawlerService implements JobCrawler {
                 } else if ("QA/SET".equals(item.getSubJobCdNm())) {
                     item.setSubJobCdNm(JobEnums.QA.getTitle());
                 }
+
+                final String subJobCdNmReplace = item.getSubJobCdNm().replace(" ", "");
+                item.setSubJobCdNm(subJobCdNmReplace);
             }
 
             crawlerCommonService.saveAll("LINE", result);
