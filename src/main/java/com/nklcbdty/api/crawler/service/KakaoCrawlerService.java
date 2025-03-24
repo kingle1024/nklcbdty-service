@@ -30,8 +30,8 @@ public class KakaoCrawlerService implements JobCrawler {
     public List<Job_mst> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
-            // addRecruitContent("P", result);
-            // addRecruitContent("S", result);
+            addRecruitContent("P", result);
+            addRecruitContent("S", result);
 
             for (Job_mst job : result) {
                 if (job.getAnnoSubject().contains("DevOps") ||
