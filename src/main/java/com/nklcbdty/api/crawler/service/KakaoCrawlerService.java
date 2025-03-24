@@ -30,8 +30,8 @@ public class KakaoCrawlerService implements JobCrawler {
     public List<Job_mst> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
-            addRecruitContent("P", result);
-            addRecruitContent("S", result);
+            // addRecruitContent("P", result);
+            // addRecruitContent("S", result);
 
             for (Job_mst job : result) {
                 if (job.getAnnoSubject().contains("DevOps") ||
@@ -148,14 +148,100 @@ public class KakaoCrawlerService implements JobCrawler {
                         job.setSysCompanyCdNm("카카오");
                     }
                 }
-
             }
+
+            List<Job_mst> kakaoBankResult = new ArrayList<>();
+            addRecruitKakaoBank(kakaoBankResult);
+            for (Job_mst item : kakaoBankResult) {
+                if (item.getAnnoSubject().contains("QA")) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                } else if (item.getAnnoSubject().contains("iOS")) {
+                    item.setSubJobCdNm(JobEnums.iOS.getTitle());
+                } else if (item.getAnnoSubject().contains("머신러닝 엔지니어")) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (item.getAnnoSubject().contains("데이터 엔지니어") ||
+                    item.getAnnoSubject().contains("데이터 플랫폼 엔지니어") ||
+                    item.getAnnoSubject().contains("데이터 마트 개발 담당자")
+                ) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("데이터베이스 관리자")) {
+                    item.setSubJobCdNm(JobEnums.DBA.getTitle());
+                } else if (item.getAnnoSubject().contains("시스템 엔지니어")) {
+                    item.setSubJobCdNm(JobEnums.Infra.getTitle());
+                } else if (item.getAnnoSubject().contains("PM")) {
+                    item.setSubJobCdNm(JobEnums.PM.getTitle());
+                } else if (item.getAnnoSubject().contains("프론트엔드 개발자") ||
+                    item.getAnnoSubject().contains("React")
+                ) {
+                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("서버 개발자") ||
+                    item.getAnnoSubject().contains("백엔드 개발자")
+                ) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("상담업무 시스템 개발자") ||
+                    item.getAnnoSubject().contains("업무 개발자") ||
+                    item.getAnnoSubject().contains("서비스 개발자") ||
+                    item.getAnnoSubject().contains("개발 담당자")
+                ) {
+                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
+                } else if (item.getAnnoSubject().contains("DevOps")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                }
+            }
+
+            result.addAll(kakaoBankResult);
             crawlerCommonService.saveAll("KAKAO", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
         return result;
+    }
+
+    private void addRecruitKakaoBank(List<Job_mst> result) {
+
+        int idx = 1;
+        int lastIdx = 999;
+        while (true) {
+            if(idx > lastIdx) {
+                break;
+            }
+
+            String apiUrl = "https://recruit.kakaobank.com/api/user/recruit?pageNumber=" + idx + "&pageSize=20";
+            String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+            if (jsonResponse.isEmpty()) {
+                break;
+            }
+
+            JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("list");
+            JSONObject paging = new JSONObject(jsonResponse).getJSONObject("paging");
+            lastIdx = paging.getInt("totalPages");
+            for (int i = 0; i < jobList.length(); i++) {
+                JSONObject edge = jobList.getJSONObject(i);
+                String title = edge.getString("recruitNoticeName");
+                long recruitNoticeSn = edge.getLong("recruitNoticeSn");
+
+                String employeeTypeName;
+                if (title.contains("계약직") || title.contains("인턴")) {
+                    employeeTypeName = "비정규";
+                } else {
+                    employeeTypeName = "정규";
+                }
+                String jobType = edge.getString("recruitClassName");
+
+                Job_mst item = new Job_mst();
+                item.setAnnoId(recruitNoticeSn);
+                item.setAnnoSubject(title);
+                item.setEmpTypeCdNm(employeeTypeName);
+                item.setClassCdNm("Tech");
+                item.setSubJobCdNm(jobType);
+                item.setSysCompanyCdNm("카카오 뱅크");
+                item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
+                result.add(item);
+            }
+            idx++;
+        }
+
     }
 
     private void addRecruitContent(String type, List<Job_mst> result) {
