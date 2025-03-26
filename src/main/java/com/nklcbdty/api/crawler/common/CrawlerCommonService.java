@@ -137,8 +137,8 @@ public class CrawlerCommonService {
      * @return void
      * */
     public void insertJobMst(List<Job_mst> resList) {
-    	List<Long> annoIds = new ArrayList<>();
-		List<Job_mst> existingJobs = new ArrayList<>();
+    	List<Long> annoIds;
+		List<Job_mst> existingJobs;
 		List<Job_mst> jobsToSave = new ArrayList<>();
 		
 		annoIds = resList.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
@@ -177,13 +177,11 @@ public class CrawlerCommonService {
 		
         // 밀리초를 LocalDateTime으로 변환
         LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTimeMillis), ZoneId.systemDefault());
-        // LocalDateTime today = LocalDateTime.now();
-        
+
         // 원하는 형식으로 포맷팅
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedDate = dateTime.format(formatter);
-        // String todayFormatter = today.format(formatter);
-        
+
         return formattedDate;
 	}
 }

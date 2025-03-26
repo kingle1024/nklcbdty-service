@@ -23,7 +23,7 @@ public enum JobEnums implements EnumMapperType {
     PM("PM"),
     ;
 
-    private String title;
+    private final String title;
 
     JobEnums(String title) {
         this.title = title;
