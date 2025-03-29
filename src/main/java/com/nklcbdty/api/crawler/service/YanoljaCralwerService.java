@@ -2,9 +2,15 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +36,22 @@ public class YanoljaCralwerService implements JobCrawler {
         List<Job_mst> result = new ArrayList<>();
 
         try {
-            final String apiUrl = "https://careers.yanolja.co/_next/data/sJUnNdEtewjNtbIuibBtF/ko.json";
+            Document doc = Jsoup.connect("https://careers.yanolja.co/home").get();
+            Elements scripts = doc.getElementsByTag("script");
+            String regex = "/_next/static/(.*?)/_ssgManifest.js";
+            Pattern pattern = Pattern.compile(regex);
+            String buildName = "";
+            for (Element script : scripts) {
+                String src = script.attr("src"); // src 속성 값 가져오기
+
+                // 정규식으로 매칭
+                Matcher matcher = pattern.matcher(src);
+                if (matcher.find()) {
+                    buildName = matcher.group(1); // 첫 번째 그룹 추출
+                }
+            }
+
+            final String apiUrl = "https://careers.yanolja.co/_next/data/"+buildName+"/ko/home.json?occupations=R%26D&employments=FULL_TIME_WORKER&page=home";
             final String jsonResponse = commonService.fetchApiResponse(apiUrl);
 
             // JSON 객체로 변환
@@ -42,8 +63,9 @@ public class YanoljaCralwerService implements JobCrawler {
                 .getJSONArray("queries");
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                String queryHash = jsonObject.getString("queryHash");
-                if(!"[\"openings\",\"\"]".equals(queryHash)) {
+
+                if (jsonObject.getJSONObject("state") == null ||
+                    jsonObject.getJSONObject("state").get("data") instanceof JSONObject) {
                     continue;
                 }
 
