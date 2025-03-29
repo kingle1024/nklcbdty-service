@@ -32,7 +32,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 	}
 
     private String getApiUrl() {
-    	return "https://www.coupang.jobs/kr/jobs/?page=1#results";
+    	return "https://www.coupang.jobs/kr/jobs/?page=1";
     }
 
     
@@ -80,7 +80,9 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		List<Job_mst> resList = new ArrayList<>();
 		
         try {
-        	Document doc = Jsoup.connect(apiUrl).get();
+        	Document doc = Jsoup.connect(apiUrl)
+                .header("User-Agent", "PostmanRuntime/7.43.2") // User-Agent 설정
+                .get();
         	Elements root = doc.select("main#content div#js-job-search-results .card.card-job");
         	
         	for (Element cardJobRoot : root) {
@@ -120,9 +122,12 @@ public class CoupangJobCrawlerService implements JobCrawler{
      * */
     private int getCoupangTotalListCnt(String apiUrl) {
         String strTotalCnt;
-		
+
     	try {
-    		Document doc = Jsoup.connect(apiUrl).get();
+            Document doc = Jsoup.connect(apiUrl)
+                                .header("User-Agent", "PostmanRuntime/7.43.2") // User-Agent 설정
+                                .get(); // GET 요청
+
     		// 총건수 파싱하기.
     		strTotalCnt = doc.select("main#content div#js-job-search-results").attr("data-results");
     		
