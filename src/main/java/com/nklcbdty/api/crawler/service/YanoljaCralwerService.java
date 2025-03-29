@@ -30,7 +30,7 @@ public class YanoljaCralwerService implements JobCrawler {
         List<Job_mst> result = new ArrayList<>();
 
         try {
-            final String apiUrl = "https://careers.yanolja.co/_next/data/qQ_dgc_yJImTqGdio_XOn/ko.json";
+            final String apiUrl = "https://careers.yanolja.co/_next/data/sJUnNdEtewjNtbIuibBtF/ko.json";
             final String jsonResponse = commonService.fetchApiResponse(apiUrl);
 
             // JSON 객체로 변환
