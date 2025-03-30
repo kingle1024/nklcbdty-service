@@ -32,29 +32,26 @@ public class CoupangJobCrawlerService implements JobCrawler{
 	}
 
     private String getApiUrl() {
-    	return "https://www.coupang.jobs/kr/jobs/?page=1";
+    	return "https://www.coupang.jobs/kr/jobs";
     }
 
-    
     @Override
 	public List<Job_mst> crawlJobs() {
-		List<Job_mst> resList;
+        List<Job_mst> resList = new ArrayList<>();
 		String formattedDate = crawlerCommonService.formatCurrentTime(); 
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
 		
 		int totalCnt = getCoupangTotalListCnt(apiUrl);
-		resList = coupangParseHtmlData(apiUrl);
-		crawlerCommonService.insertJobMst(resList);
+		resList.addAll(coupangParseHtmlData(apiUrl));
 
         int pagesize = 20;
         double totalLoopCnt = totalCnt % pagesize
             == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
 
 		for (int i = 1; i <= (int)totalLoopCnt; i++) {
-			apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"#results";
-			resList = coupangParseHtmlData(apiUrl);
-			crawlerCommonService.insertJobMst(resList);
-	
+			apiUrl = "https://www.coupang.jobs/kr/jobs?page="+i+"#results";
+			resList.addAll(coupangParseHtmlData(apiUrl));
+            log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
 		    try {
 		    	// 1초에서 2초 사이의 랜덤한 시간(1000ms ~ 2000ms) 동안 대기
 		        int sleepTime = 1000 + (int)(Math.random() * 1000); // 1000ms ~ 2000ms
@@ -66,6 +63,8 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		        throw new ApiException(e.getMessage(), e);
 		    }
 		}
+
+        crawlerCommonService.saveAll("COUPANG", resList);
 		return resList;	
 	}
 		
@@ -89,6 +88,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 				// 근무지
 				String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
 				if (!"서울".equals(workplace)) {
+                    log.info(workplace);
 					continue;
 				}
 
