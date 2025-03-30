@@ -20,7 +20,7 @@ public class LogAspect {
         this.logService = logService;
     }
 
-    @Before("execution (* com.nklcbdty.api.crawler.controller..*.*(..))")
+    @Before("execution (* com.nklcbdty.api.crawler.controller.JobController.*(..))")
     public void before(JoinPoint joinPoint) {
         logService.insertLog();
     }
