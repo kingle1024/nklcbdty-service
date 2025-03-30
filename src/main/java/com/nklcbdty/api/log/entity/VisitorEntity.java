@@ -1,5 +1,7 @@
 package com.nklcbdty.api.log.entity;
 
+import java.util.Date;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -27,5 +29,5 @@ public class VisitorEntity {
     private String region_name;
     private String city_name;
     private String insert_ip;
-    private String timestamp; // 방문 시간
+    private Date insert_dts; // 방문 시간
 }
