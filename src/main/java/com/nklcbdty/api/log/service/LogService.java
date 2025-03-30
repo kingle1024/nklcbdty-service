@@ -5,9 +5,13 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +39,10 @@ public class LogService {
     public VisitorEntity insertLog() {
         HttpServletRequest request =
                 ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-        if("0:0:0:0:0:0:0:1".equals(request.getRemoteAddr()) || "127.0.0.1".equals(request.getRemoteAddr())) {
+        HttpServletResponse response =
+                ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getResponse();
+
+        if(!"0:0:0:0:0:0:0:1".equals(request.getRemoteAddr()) || "127.0.0.1".equals(request.getRemoteAddr())) {
             // local에서는 히스토리 남기지 않도록 처리
             return null;
         }
@@ -43,11 +50,20 @@ public class LogService {
         final String requestURI = request.getRequestURI();
         final String clientIpAddr = getClientIpAddr(request);
 
+        final String lastPath = getLastPathFromCookie(request);
+        if (lastPath != null && lastPath.equals(requestURI)) {
+            // 추후 추가 로직 가능
+            return null; // 로그 기록 생략
+        }
+
+        createCookie(requestURI, Objects.requireNonNull(response));
+
         VisitorEntity result = VisitorEntity.builder()
                 .path(requestURI)
                 .accept_language(request.getHeader("Accept-Language"))
                 .referer(request.getHeader("Referer"))
                 .insert_ip(clientIpAddr)
+                .insert_dts(new Date())
           .build();
 
         Map<String, Object> ipLocation = getCountryInfo(clientIpAddr.trim().split(",")[0]);
@@ -57,6 +73,18 @@ public class LogService {
             result.setCity_name((String)ipLocation.get("city_name"));
         }
         return logRepository.save(result);
+    }
+
+    private String getLastPathFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies(); // 요청에서 쿠키 가져오기
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("lastPath".equals(cookie.getName())) {
+                    return cookie.getValue(); // 쿠키에서 경로 값 반환
+                }
+            }
+        }
+        return null; // 쿠키가 없을 경우 null 반환
     }
 
     private Map<String, Object> getCountryInfo(String ip) {
@@ -131,5 +159,14 @@ public class LogService {
         }
 
         return ip;
+    }
+
+    private void createCookie(String path, HttpServletResponse response) {
+        Cookie cookie = new Cookie("lastPath", path);
+        cookie.setMaxAge(24 * 60 * 60); // 1일
+        cookie.setPath("/"); // 모든 경로에서 접근 가능
+        cookie.setSecure(true); // HTTPS에서만 전송되도록 설정
+        cookie.setHttpOnly(true); // JavaScript에서 접근하지 못하도록 설정
+        response.addCookie(cookie);
     }
 }
