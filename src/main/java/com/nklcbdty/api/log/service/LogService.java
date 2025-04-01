@@ -23,6 +23,9 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import com.nklcbdty.api.log.entity.VisitorEntity;
 import com.nklcbdty.api.log.repository.VisitorRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class LogService {
 
@@ -42,6 +45,7 @@ public class LogService {
         HttpServletResponse response =
                 ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getResponse();
 
+        log.info("request.getRemoteAddr() : {}", request.getRemoteAddr());
         if("0:0:0:0:0:0:0:1".equals(request.getRemoteAddr()) || "127.0.0.1".equals(request.getRemoteAddr())) {
             // local에서는 히스토리 남기지 않도록 처리
             return null;
