@@ -136,7 +136,11 @@ public class CrawlerCommonService {
      * </p>
      * @return void
      * */
-    public void insertJobMst(List<Job_mst> resList) {
+    public List<Job_mst> insertJobMst(List<Job_mst> resList) {
+        if (resList.isEmpty()) {
+            log.info("resList.isEmpty()");
+            return resList;
+        }
     	List<Long> annoIds;
 		List<Job_mst> existingJobs;
 		List<Job_mst> jobsToSave = new ArrayList<>();
@@ -164,8 +168,9 @@ public class CrawlerCommonService {
 			for (Job_mst jobItem : jobsToSave) {
 				jobItem.setCompanyCd("COUPANG");
 			}
-			crawlerRepository.saveAll(jobsToSave);
 		}
+
+        return jobsToSave;
     }
     
     /**

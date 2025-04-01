@@ -33,7 +33,7 @@ public class DaangnJobCrawlerService implements JobCrawler{
 	
 	@Override
 	public List<Job_mst> crawlJobs() {
-		List<Job_mst> list = new ArrayList<Job_mst>();
+		List<Job_mst> list = new ArrayList<>();
 		try {
 			
 			String formattedDate = crawlerCommonService.formatCurrentTime(); 
