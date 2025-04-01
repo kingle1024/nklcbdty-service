@@ -55,7 +55,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 ) {
                     job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
                 } else if (job.getAnnoSubject().contains("Flutter")) {
-                    job.setSubJobCdNm(JobEnums.Android.getTitle());
+                    job.setSubJobCdNm(JobEnums.Flutter.getTitle());
                 } else if (job.getAnnoSubject().contains("데이터 엔지니어") ||
                     job.getAnnoSubject().contains("NoSQL 엔지니어")
                 ) {
