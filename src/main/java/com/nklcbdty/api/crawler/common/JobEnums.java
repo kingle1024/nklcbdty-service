@@ -17,10 +17,14 @@ public enum JobEnums implements EnumMapperType {
     DBA("DBA"),
     SecurityEngineering("SecurityEngineering"),
     Security("Security"),
+    SAP("SAP"),
     ML("ML"),
     QA("QA"),
     TechnicalSupport("TechnicalSupport"),
     PM("PM"),
+    Flutter("Flutter"),
+    ProductDesigner("ProductDesigner"),
+    PO("PO")
     ;
 
     private final String title;
