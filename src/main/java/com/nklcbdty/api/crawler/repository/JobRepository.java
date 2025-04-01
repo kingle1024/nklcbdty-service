@@ -9,5 +9,5 @@ import com.nklcbdty.api.crawler.vo.Job_mst;
 
 @Repository
 public interface JobRepository extends JpaRepository<Job_mst, Long> {
-    List<Job_mst> findAllByCompanyCd(String company);
+    List<Job_mst> findAllByCompanyCdAndSubJobCdNmIsNotNull(String company);
 }
