@@ -1,6 +1,7 @@
 package com.nklcbdty.api.crawler.service;
 
 import java.util.List;
+import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,10 @@ public class JobService {
             items = jobRepository.findAllByCompanyCd(company);
         }
 
+        Random random = new Random();
+        for (Job_mst item : items) {
+            item.setId(random.nextLong());
+        }
 
         return items;
     }
