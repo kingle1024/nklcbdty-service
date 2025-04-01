@@ -23,7 +23,7 @@ public class JobService {
         if ("ALL".equals(company)) {
             items = jobRepository.findAll();
         } else {
-            items = jobRepository.findAllByCompanyCd(company);
+            items = jobRepository.findAllByCompanyCdAndSubJobCdNmIsNotNull(company);
         }
 
         Random random = new Random();
