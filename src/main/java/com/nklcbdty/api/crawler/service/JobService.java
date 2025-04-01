@@ -21,7 +21,7 @@ public class JobService {
     public List<Job_mst> list(String company) {
         List<Job_mst> items;
         if ("ALL".equals(company)) {
-            items = jobRepository.findAll();
+            items = jobRepository.findAllBySubJobCdNmIsNotNull();
         } else {
             items = jobRepository.findAllByCompanyCdAndSubJobCdNmIsNotNull(company);
         }
