@@ -19,6 +19,9 @@ import com.nklcbdty.api.crawler.service.TossJobCrawlerService;
 import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/api")
 public class JobController {
@@ -56,6 +59,7 @@ public class JobController {
 
     @GetMapping("/crawler")
     public List<Job_mst> cralwer(@RequestParam String company) {
+        log.info("cralwer company : {}", company);
         switch (company) {
             case "naver": {
                 return naverJobCrawlerService.crawlJobs();
