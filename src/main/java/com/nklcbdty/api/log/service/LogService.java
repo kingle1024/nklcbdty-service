@@ -76,6 +76,21 @@ public class LogService {
             result.setRegion_name((String)ipLocation.get("region_name"));
             result.setCity_name((String)ipLocation.get("city_name"));
         }
+
+        switch (result.getInsert_ip()) {
+            case "59.30.128.202" : {
+                result.setInsert_ip("지용_춘천방");
+                break;
+            }
+            case "221.133.55.105": {
+                result.setInsert_ip("지용_사무실");
+                break;
+            }
+            case "210.90.19.117": {
+                result.setInsert_ip("민재_집");
+                break;
+            }
+        }
         return logRepository.save(result);
     }
 
