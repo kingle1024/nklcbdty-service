@@ -90,6 +90,10 @@ public class LogService {
                 result.setInsert_ip("민재_집");
                 break;
             }
+            case "115.21.251.184": {
+                result.setInsert_ip("민재_집2");
+                break;
+            }
         }
         return logRepository.save(result);
     }
