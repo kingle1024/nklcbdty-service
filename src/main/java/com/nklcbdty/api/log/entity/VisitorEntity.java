@@ -8,8 +8,10 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
@@ -17,6 +19,8 @@ import lombok.Setter;
 @Setter
 @Table(name = "visitor")
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class VisitorEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
