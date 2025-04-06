@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -87,6 +88,78 @@ public class TossJobCrawlerService implements JobCrawler {
                     if(saveOk) {
                         result.add(item);
                     }
+                }
+            }
+
+            for (Job_mst item : result) {
+                if (item.getAnnoSubject().contains("Frontend Developer") ||
+                    item.getAnnoSubject().contains("Frontend UX")
+                ) {
+                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Server Developer")) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Full Stack Developer") ||
+                    item.getAnnoSubject().contains("Finance(ALM) Developer") ||
+                    item.getAnnoSubject().contains("Financial Systems Engineer") ||
+                    item.getAnnoSubject().contains("Device Software Engineer") ||
+                    item.getAnnoSubject().contains("Node.js Developer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
+                } else if (item.getAnnoSubject().contains("iOS Platform Engineer") ||
+                    item.getAnnoSubject().contains("iOS Platform Engineer (React Native)")
+                ) {
+                    item.setSubJobCdNm(JobEnums.iOS.getTitle());
+                } else if(item.getAnnoSubject().contains("DevOps Engineer")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                } else if (item.getAnnoSubject().contains("DataOps Manager") ||
+                    item.getAnnoSubject().contains("Data Architect")
+                ) {
+                    item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (item.getAnnoSubject().contains("MLOps Engineer") ||
+                    item.getAnnoSubject().contains("ML Engineer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (item.getAnnoSubject().contains("Information Security Manager") ||
+                    item.getAnnoSubject().contains("CISO") ||
+                    item.getAnnoSubject().contains("Privacy Manager") ||
+                    item.getAnnoSubject().contains("Security Audit Manager")
+                ) {
+                    item.setSubJobCdNm(JobEnums.Security.getTitle());
+                } else if (item.getAnnoSubject().contains("Security Engineer") ||
+                    item.getAnnoSubject().contains("Security Researcher")
+                ) {
+                    item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("Network Engineer") ||
+                    item.getAnnoSubject().contains("System Engineer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.Infra.getTitle());
+                } else if (item.getAnnoSubject().contains("Product Manager")) {
+                    item.setSubJobCdNm(JobEnums.PM.getTitle());
+                } else if (item.getAnnoSubject().contains("Product Owner")) {
+                    item.setSubJobCdNm(JobEnums.PO.getTitle());
+                } else if (item.getAnnoSubject().contains("QA Manager") ||
+                    item.getAnnoSubject().contains("Test Automation Engineer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                } else if (item.getAnnoSubject().contains("Technical Product Manager") ||
+                    item.getAnnoSubject().contains("Technical Account Manager")
+                ) {
+                    item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
+                } else if (item.getAnnoSubject().contains("Platform Designer") ||
+                    item.getAnnoSubject().contains("Product Designer") ||
+                    item.getAnnoSubject().contains("UX Designe") ||
+                    item.getAnnoSubject().contains("UI Design") ||
+                    item.getAnnoSubject().contains("Graphic Designer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
+                } else {
+                    item.setSubJobCdNm(null);
+                }
+            }
+
+            for (Job_mst item : result) {
+                if("Data Engineering".equals(item.getSubJobCdNm())) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
                 }
             }
 
