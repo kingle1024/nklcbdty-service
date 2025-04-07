@@ -126,6 +126,8 @@ public class CrawlerCommonService {
                 job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
             } else if (jobTitle.contains("DBA")) {
                 job.setSubJobCdNm(JobEnums.DBA.getTitle());
+            } else if (jobTitle.contains("인재풀 등록")) {
+                job.setSubJobCdNm(null);
             }
         }
     }
