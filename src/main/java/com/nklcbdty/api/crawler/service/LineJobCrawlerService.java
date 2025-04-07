@@ -84,14 +84,22 @@ public class LineJobCrawlerService implements JobCrawler {
                 if (item.getAnnoSubject().contains("Server Engineer") ||
                     item.getAnnoSubject().contains("Backend Software") ||
                     item.getAnnoSubject().contains("Backend Server") ||
-                    item.getAnnoSubject().contains("Financial System Developer")
+                    item.getAnnoSubject().contains("Financial System Developer") ||
+                    item.getAnnoSubject().contains("Server-side")
                 ) {
                     item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (
                     item.getAnnoSubject().contains("Frontend Engineer") ||
-                    item.getAnnoSubject().contains("Front-End Engineer")
+                    item.getAnnoSubject().contains("FrontEnd Engineer") ||
+                    item.getAnnoSubject().contains("Front-End Engineer") ||
+                    item.getAnnoSubject().contains("Front-end Engineer")
                 ) {
                     item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (
+                    item.getAnnoSubject().contains("HR System Developer") ||
+                    item.getAnnoSubject().contains("사내정보시스템")
+                ) {
+                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
                 } else if (item.getAnnoSubject().contains("Android Engineer")) {
                     item.setSubJobCdNm(JobEnums.Android.getTitle());
                 } else if (item.getAnnoSubject().contains("iOS")) {
@@ -101,24 +109,42 @@ public class LineJobCrawlerService implements JobCrawler {
                     item.getAnnoSubject().contains("MongoDB Engineer")
                 ) {
                     item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
-                } else if (item.getAnnoSubject().contains("ML Engineer")) {
+                } else if (
+                    item.getAnnoSubject().contains("ML Engineer") ||
+                    item.getAnnoSubject().contains("MLOps Engineer")
+                ) {
                     item.setSubJobCdNm(JobEnums.ML.getTitle());
                 } else if (item.getAnnoSubject().contains("Network Security Engineer")) {
                     item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
                 } else if (item.getAnnoSubject().contains("Kubernetes Engineer")) {
                     item.setSubJobCdNm(JobEnums.DevOps.getCode());
-                } else if (item.getAnnoSubject().contains("Technical Account Manager")) {
+                } else if (
+                    item.getAnnoSubject().contains("Technical Account Manager") ||
+                    item.getAnnoSubject().contains("Technical Program Manager") ||
+                    item.getAnnoSubject().contains("Technical Writer") ||
+                    item.getAnnoSubject().contains("테크니컬 라이터")
+                ) {
                     item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
+                } else if (item.getAnnoSubject().contains("QA/SET")) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                } else if (
+                    item.getAnnoSubject().contains("Operations Engineer") ||
+                    item.getAnnoSubject().contains("Reliability Engineer") ||
+                    item.getAnnoSubject().contains("Framework Engineer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.Infra.getTitle());
+                } else if (item.getAnnoSubject().contains("Site Reliability Engineering")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
                 }
             }
 
             for (Job_mst item : result) {
-                if ("Server-side".equals(item.getSubJobCdNm())) {
-                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                } else if ("QA/SET".equals(item.getSubJobCdNm())) {
-                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                if (
+                    item.getSubJobCdNm().contains("Notinuse") ||
+                    item.getSubJobCdNm().contains("notinuse")
+                ) {
+                    item.setSubJobCdNm(null);
                 }
-
                 final String subJobCdNmReplace = item.getSubJobCdNm().replace(" ", "");
                 item.setSubJobCdNm(subJobCdNmReplace);
             }
