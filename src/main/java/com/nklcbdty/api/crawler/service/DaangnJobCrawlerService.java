@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -84,6 +85,51 @@ public class DaangnJobCrawlerService implements JobCrawler{
 				
 				list.add(job_mst);
 			}
+
+            for (Job_mst item : list) {
+                if (item.getAnnoSubject().contains("Software Engineer, Frontend")) {
+                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Software Engineer, Backend")) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Machine Learning")) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
+                } else if (item.getAnnoSubject().contains("Software Engineer, iOS")) {
+                    item.setSubJobCdNm(JobEnums.iOS.getTitle());
+                } else if (item.getAnnoSubject().contains("Test Automation Engineer")) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                } else if (
+                    item.getAnnoSubject().contains("Security Manager") ||
+                    item.getAnnoSubject().contains("Privacy Manager")
+                ) {
+                    item.setSubJobCdNm(JobEnums.Security.getTitle());
+                } else if (item.getAnnoSubject().contains("Security Engineer")) {
+                    item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("Site Reliability Engineer")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                } else if (item.getAnnoSubject().contains("Software Engineer, Data")) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+                } else if (
+                    item.getAnnoSubject().contains("Brand Design") ||
+                    item.getAnnoSubject().contains("Designer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
+                }
+            }
+
+            for (Job_mst item : list) {
+                switch (item.getSysCompanyCdNm()) {
+                    case "KARROT_MARKET": {
+                        item.setSysCompanyCdNm("당근마켓");
+                        break;
+                    }
+
+                    case "KARROT_PAY": {
+                        item.setSysCompanyCdNm("당근페이");
+                        break;
+                    }
+                }
+            }
+
 			crawlerCommonService.saveAll("DAANGN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
