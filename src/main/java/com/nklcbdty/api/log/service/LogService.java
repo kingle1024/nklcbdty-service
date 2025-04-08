@@ -94,6 +94,14 @@ public class LogService {
                 result.setInsert_ip("민재_집2");
                 break;
             }
+            case "175.210.195.224": {
+                result.setInsert_ip("민재_3");
+                break;
+            }
+            case "221.151.13.104": {
+                result.setInsert_ip("청년동");
+                break;
+            }
         }
         return logRepository.save(result);
     }
