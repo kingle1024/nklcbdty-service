@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -102,6 +103,18 @@ public class YanoljaCralwerService implements JobCrawler {
                         item.setSysCompanyCdNm("야놀자");
                     }
                     result.add(item);
+                }
+            }
+
+            for (Job_mst item : result) {
+                if (item.getAnnoSubject().contains("Software Engineer")) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Full-Stack")) {
+                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
+                } else if (item.getAnnoSubject().contains("Data Scientist")) {
+                    item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (item.getAnnoSubject().contains("Researcher")) {
+                    item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
                 }
             }
 
