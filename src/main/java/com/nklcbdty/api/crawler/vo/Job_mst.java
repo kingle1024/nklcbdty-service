@@ -41,4 +41,7 @@ public class Job_mst {
     @Column(nullable = true)
     private String workplace; // 근무지
 
+    @Column(nullable = true)
+    private String endDate;
+
 }

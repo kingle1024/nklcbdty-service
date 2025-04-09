@@ -1,5 +1,7 @@
 package com.nklcbdty.api.crawler.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,7 +55,10 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("모델 플랫폼 개발")
                 ) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                } else if (job.getAnnoSubject().contains("FE/BE")) {
+                } else if (
+                    job.getAnnoSubject().contains("FE/BE") ||
+                    job.getAnnoSubject().contains("플랫폼 개발자")
+                ) {
                     job.setSubJobCdNm(JobEnums.FullStack.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst") ||
                     job.getAnnoSubject().contains("데이터 사이언티스트") ||
@@ -289,6 +294,11 @@ public class KakaoCrawlerService implements JobCrawler {
             lastIdx = paging.getInt("totalPages");
             for (int i = 0; i < jobList.length(); i++) {
                 JSONObject edge = jobList.getJSONObject(i);
+                Object endDate = edge.get("receiveEndDatetime");
+                if(isCloseDate(endDate)) {
+                    continue;
+                }
+
                 String title = edge.getString("recruitNoticeName");
                 long recruitNoticeSn = edge.getLong("recruitNoticeSn");
 
@@ -308,6 +318,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 item.setSubJobCdNm(jobType);
                 item.setSysCompanyCdNm("카카오 뱅크");
                 item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
+                item.setEndDate(String.valueOf(endDate));
                 result.add(item);
             }
             idx++;
@@ -350,6 +361,11 @@ public class KakaoCrawlerService implements JobCrawler {
         for (int i = 0; i < jobList.length(); i++) {
             JSONObject edge = jobList.getJSONObject(i);
             String title = edge.getString("jobOfferTitle");
+            Object endDate = edge.get("endDate");
+            if(isCloseDate(endDate)) {
+                continue;
+            }
+
             long jobOfferId = edge.getLong("jobOfferId");
 
             String employeeTypeName = edge.getString("employeeTypeName");
@@ -377,9 +393,33 @@ public class KakaoCrawlerService implements JobCrawler {
             item.setSysCompanyCdNm(companyNameEn);
             item.setJobDetailLink("https://careers.kakao.com/jobs/" + type + "-" + jobOfferId +"?skillSet=&part=TECHNOLOGY"
                 + "&company="+ companyType +"&keyword=&employeeType=&page=" + idx);
+            if (endDate.equals(null)) {
+                item.setEndDate("영입종료시");
+            } else {
+                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                item.setEndDate(endDateTime.format(outputFormatter));
+            }
             result.add(item);
         }
 
         return true;
+    }
+
+    private boolean isCloseDate(Object endDate) {
+        if (endDate.equals(null)) {
+            return false;
+        }
+
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+        // endDate를 LocalDateTime 객체로 변환
+        LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), formatter);
+
+        // 현재 시간 가져오기
+        LocalDateTime now = LocalDateTime.now();
+
+        // 비교
+        return now.isAfter(endDateTime);
     }
 }
