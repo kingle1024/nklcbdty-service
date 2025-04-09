@@ -90,10 +90,6 @@ public class LogService {
                 result.setInsert_ip("민재_집");
                 break;
             }
-            case "115.21.251.184": {
-                result.setInsert_ip("민재_집2");
-                break;
-            }
             case "175.210.195.224": {
                 result.setInsert_ip("민재_3");
                 break;
@@ -102,6 +98,9 @@ public class LogService {
                 result.setInsert_ip("청년동");
                 break;
             }
+        }
+        if (result.getInsert_ip().contains("115.21.251.")) {
+            result.setInsert_ip("민재_집");
         }
         return logRepository.save(result);
     }
