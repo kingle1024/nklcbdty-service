@@ -13,6 +13,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -70,6 +71,12 @@ public class NaverJobCrawlerService implements JobCrawler {
                         break;
                     }
                }
+            }
+
+            for (Job_mst item : result) {
+                if (item.getAnnoSubject().contains("Kubernetes 서비스 개발")) {
+                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+                }
             }
 
             crawlerCommonService.saveAll("NAVER", result);
