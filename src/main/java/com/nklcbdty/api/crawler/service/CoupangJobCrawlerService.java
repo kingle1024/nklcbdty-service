@@ -161,15 +161,25 @@ public class CoupangJobCrawlerService implements JobCrawler{
         } else if (item.getAnnoSubject().contains("Flutter")) {
             item.setSubJobCdNm(JobEnums.Flutter.getTitle());
         } else if (item.getAnnoSubject().contains("Data Analyst") ||
-            item.getAnnoSubject().contains("Data Science")
+            item.getAnnoSubject().contains("Data Science") ||
+            item.getAnnoSubject().contains("Data Analysis")
         ) {
             item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+        } else if (item.getAnnoSubject().contains("Data Engineer")) {
+            item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
         } else if (item.getAnnoSubject().contains("Network Engineer") ||
             item.getAnnoSubject().contains("Infra Engineer") ||
             item.getAnnoSubject().contains("System Engineer") ||
-            item.getAnnoSubject().contains("Data Center Engineer")
+            item.getAnnoSubject().contains("Data Center Engineer") ||
+            item.getAnnoSubject().contains("Facility Engineer") ||
+            item.getAnnoSubject().contains("Facilities Engineer")
         ) {
             item.setSubJobCdNm(JobEnums.Infra.getTitle());
+        } else if (
+            item.getAnnoSubject().contains("Compliance Monitoring") ||
+            item.getAnnoSubject().contains("Security Architecture")
+        ) {
+            item.setSubJobCdNm(JobEnums.Security.getTitle());
         } else if (item.getAnnoSubject().contains("Security Engineer")) {
             item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
         } else if (item.getAnnoSubject().contains("Product Manager") ||
@@ -178,11 +188,18 @@ public class CoupangJobCrawlerService implements JobCrawler{
             item.setSubJobCdNm(JobEnums.PM.getTitle());
         } else if (item.getAnnoSubject().contains("Product Owner")) {
             item.setSubJobCdNm(JobEnums.PO.getTitle());
-        } else if (item.getAnnoSubject().contains("Product Design")
+        } else if (
+            item.getAnnoSubject().contains("Product Design") ||
+            item.getAnnoSubject().contains("Product design") ||
+            item.getAnnoSubject().contains("Brand Design")
         ) {
             item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
         } else if (item.getAnnoSubject().contains("SAP")) {
             item.setSubJobCdNm(JobEnums.SAP.getTitle());
+        } else if (item.getAnnoSubject().contains("Al Counsel")) {
+            item.setSubJobCdNm(JobEnums.AI.getTitle());
+        } else if (item.getAnnoSubject().contains("Technical Program Manage")) {
+            item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
         }
     }
 
