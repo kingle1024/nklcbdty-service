@@ -56,8 +56,16 @@ public class NaverJobCrawlerService implements JobCrawler {
                 item.setSubJobCdNm(edge.getString("subJobCdNm"));
                 item.setSysCompanyCdNm(edge.getString("sysCompanyCdNm"));
                 item.setJobDetailLink(edge.getString("jobDetailLink"));
-                item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
-                item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
+                if (edge.get("staYmdTime").equals(null)) {
+                    item.setStartDate("영입종료시");
+                } else {
+                    item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
+                }
+                if (edge.get("endYmdTime").equals(null)) {
+                    item.setEndDate("영입종료시");
+                } else {
+                    item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
+                }
                 result.add(item);
             }
 
