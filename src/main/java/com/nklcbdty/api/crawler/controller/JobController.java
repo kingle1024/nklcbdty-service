@@ -1,5 +1,6 @@
 package com.nklcbdty.api.crawler.controller;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,6 +85,18 @@ public class JobController {
             }
             case "yanolja": {
                 return yanoljaCralwerService.crawlJobs();
+            }
+            case "all": {
+                naverJobCrawlerService.crawlJobs();
+                kakaoCrawlerService.crawlJobs();
+                lineJobCrawlerService.crawlJobs();
+                coupangJobCrawlerService.crawlJobs();
+                baeminJobCrawlerService.crawlJobs();
+                daangnJobCrawlerService.crawlJobs();
+                tossJobCrawlerService.crawlJobs();
+                yanoljaCralwerService.crawlJobs();
+                log.info("all crawler sccess");
+                return Collections.emptyList();
             }
             default: {
 
