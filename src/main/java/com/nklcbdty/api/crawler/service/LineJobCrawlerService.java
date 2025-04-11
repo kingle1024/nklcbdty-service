@@ -1,5 +1,7 @@
 package com.nklcbdty.api.crawler.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,7 +44,13 @@ public class LineJobCrawlerService implements JobCrawler {
             // edges 배열을 반복
             for (int i = 0; i < edges.length(); i++) {
                 JSONObject edge = edges.getJSONObject(i);
+
+
                 JSONObject node = edge.getJSONObject("node");
+                Object endDate = node.get("end_date");
+                if (isCloseDate(endDate)) {
+                    continue;
+                }
 
                 // regions 배열 가져오기
                 JSONArray cities = node.getJSONArray("cities");
@@ -75,6 +83,12 @@ public class LineJobCrawlerService implements JobCrawler {
                             item.setEmpTypeCdNm("정규");
                         }
                         item.setJobDetailLink("https://careers.linecorp.com/ko/jobs/" + node.getLong("strapiId"));
+                        item.setStartDate(formattedDate(node.getString("start_date")));
+                        if (endDate.equals(null)) {
+                            item.setEndDate("영입종료시");
+                        } else {
+                            item.setEndDate(formattedDate(endDate.toString()));
+                        }
                         result.add(item);
                     }
                 }
@@ -156,5 +170,28 @@ public class LineJobCrawlerService implements JobCrawler {
         }
 
         return result;
+    }
+
+    private String formattedDate(String dateStr) {
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        LocalDateTime endDateTime = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        return endDateTime.format(outputFormatter);
+    }
+
+    private boolean isCloseDate(Object endDate) {
+        if (endDate.equals(null)) {
+            return false;
+        }
+
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+
+        // endDate를 LocalDateTime 객체로 변환
+        LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), formatter);
+
+        // 현재 시간 가져오기
+        LocalDateTime now = LocalDateTime.now();
+
+        // 비교
+        return now.isAfter(endDateTime);
     }
 }
