@@ -1,6 +1,6 @@
 package com.nklcbdty.api.crawler.service;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +31,7 @@ public class CategoryService {
         // 각 CategoryMst의 categoryDtls를 rank로 정렬
         mstList.forEach(mst -> {
             List<CategoryDtl> sortedDtls = mst.getCategoryDtls().stream()
-                    .sorted((dtl1, dtl2) -> dtl1.getRank().compareTo(dtl2.getRank()))
+                    .sorted(Comparator.comparing(CategoryDtl::getRank))
                     .collect(Collectors.toList());
             mst.getCategoryDtls().clear(); // 기존 리스트를 비우고
             mst.getCategoryDtls().addAll(sortedDtls); // 정렬된 리스트 추가
