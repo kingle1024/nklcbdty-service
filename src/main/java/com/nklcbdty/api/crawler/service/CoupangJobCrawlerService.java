@@ -162,7 +162,8 @@ public class CoupangJobCrawlerService implements JobCrawler{
             item.setSubJobCdNm(JobEnums.Flutter.getTitle());
         } else if (item.getAnnoSubject().contains("Data Analyst") ||
             item.getAnnoSubject().contains("Data Science") ||
-            item.getAnnoSubject().contains("Data Analysis")
+            item.getAnnoSubject().contains("Data Analysis") ||
+            item.getAnnoSubject().contains("Business Analyst")
         ) {
             item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
         } else if (item.getAnnoSubject().contains("Data Engineer")) {
@@ -177,7 +178,8 @@ public class CoupangJobCrawlerService implements JobCrawler{
             item.setSubJobCdNm(JobEnums.Infra.getTitle());
         } else if (
             item.getAnnoSubject().contains("Compliance Monitoring") ||
-            item.getAnnoSubject().contains("Security Architecture")
+            item.getAnnoSubject().contains("Security Architecture") ||
+            item.getAnnoSubject().contains("개인정보보호 컴플라이언스 디렉터")
         ) {
             item.setSubJobCdNm(JobEnums.Security.getTitle());
         } else if (item.getAnnoSubject().contains("Security Engineer")) {
@@ -191,7 +193,9 @@ public class CoupangJobCrawlerService implements JobCrawler{
         } else if (
             item.getAnnoSubject().contains("Product Design") ||
             item.getAnnoSubject().contains("Product design") ||
-            item.getAnnoSubject().contains("Brand Design")
+            item.getAnnoSubject().contains("Product designer") ||
+            item.getAnnoSubject().contains("Brand Design") ||
+            item.getAnnoSubject().contains("Brand Designer")
         ) {
             item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
         } else if (item.getAnnoSubject().contains("SAP")) {
