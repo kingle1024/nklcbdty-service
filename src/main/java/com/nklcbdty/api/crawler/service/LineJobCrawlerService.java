@@ -66,7 +66,6 @@ public class LineJobCrawlerService implements JobCrawler {
                     // 조건 확인
                     if (("Bundang".equals(citiesName) || "Seoul".equals(citiesName)) && "Engineering".equals(jobUnitName)) {
                         // title 값 가져오기
-                        String title = node.getString("title");
                         String companies = node.getJSONArray("companies").getJSONObject(0).getString("name");
                         Job_mst item = new Job_mst();
                         item.setAnnoId(node.getLong("strapiId"));
