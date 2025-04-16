@@ -2,6 +2,7 @@ package com.nklcbdty.api.crawler.service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -410,11 +411,14 @@ public class KakaoCrawlerService implements JobCrawler {
         if (endDate.equals(null)) {
             return false;
         }
+        LocalDateTime endDateTime;
+        String endDateStr = String.valueOf(endDate);
 
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-
-        // endDate를 LocalDateTime 객체로 변환
-        LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), formatter);
+        if (endDateStr.contains("T")) {
+            endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } else {
+            endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        }
 
         // 현재 시간 가져오기
         LocalDateTime now = LocalDateTime.now();
