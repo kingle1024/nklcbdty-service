@@ -58,7 +58,8 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (
                     job.getAnnoSubject().contains("FE/BE") ||
-                    job.getAnnoSubject().contains("플랫폼 개발자")
+                    job.getAnnoSubject().contains("플랫폼 개발자") ||
+                    job.getAnnoSubject().contains("웹 풀스택")
                 ) {
                     job.setSubJobCdNm(JobEnums.FullStack.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst") ||
