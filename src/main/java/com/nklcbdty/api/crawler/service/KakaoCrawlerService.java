@@ -124,6 +124,7 @@ public class KakaoCrawlerService implements JobCrawler {
                         job.getAnnoSubject().contains("FPGA Engineer") ||
                         job.getAnnoSubject().contains("컴퓨팅 서비스") ||
                         job.getAnnoSubject().contains("네트워킹 서비스") ||
+                        job.getAnnoSubject().contains("네트워크 엔지니어") ||
                         job.getAnnoSubject().contains("시스템 엔지니어") ||
                         job.getAnnoSubject().contains("클라우드 Managed 서비스 엔지니어") ||
                         job.getAnnoSubject().contains("클라우드 네트워크 엔지니어") ||
@@ -192,6 +193,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 } else if (item.getAnnoSubject().contains("iOS")) {
                     item.setSubJobCdNm(JobEnums.iOS.getTitle());
                 } else if (item.getAnnoSubject().contains("머신러닝 엔지니어") ||
+                    item.getAnnoSubject().contains("딥러닝 엔지니어") ||
                     item.getAnnoSubject().contains("AI Research Engineer")
                 ) {
                     item.setSubJobCdNm(JobEnums.ML.getTitle());
