@@ -147,6 +147,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
             item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
         } else if (item.getAnnoSubject().contains("Backend") ||
             item.getAnnoSubject().contains("Back-end") ||
+            item.getAnnoSubject().contains("Back-End") ||
             item.getAnnoSubject().contains("Software Engineer")
         ) {
             item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
