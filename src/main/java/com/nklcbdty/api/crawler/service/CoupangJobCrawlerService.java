@@ -148,7 +148,8 @@ public class CoupangJobCrawlerService implements JobCrawler{
         } else if (item.getAnnoSubject().contains("Backend") ||
             item.getAnnoSubject().contains("Back-end") ||
             item.getAnnoSubject().contains("Back-End") ||
-            item.getAnnoSubject().contains("Software Engineer")
+            item.getAnnoSubject().contains("Software Engineer") ||
+            item.getAnnoSubject().contains("Growth Engineering")
         ) {
             item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
         } else if (item.getAnnoSubject().contains("Full-stack") ||
