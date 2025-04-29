@@ -33,4 +33,8 @@ public class JobService {
 
         return items;
     }
+
+    public void deleteAll() {
+        jobRepository.deleteAllInBatch();
+    }
 }
