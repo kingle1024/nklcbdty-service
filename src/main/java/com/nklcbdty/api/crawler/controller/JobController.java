@@ -87,6 +87,7 @@ public class JobController {
                 return yanoljaCralwerService.crawlJobs();
             }
             case "all": {
+                jobService.deleteAll();
                 naverJobCrawlerService.crawlJobs();
                 kakaoCrawlerService.crawlJobs();
                 lineJobCrawlerService.crawlJobs();
