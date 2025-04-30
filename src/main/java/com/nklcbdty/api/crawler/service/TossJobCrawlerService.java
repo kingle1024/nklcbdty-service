@@ -112,7 +112,8 @@ public class TossJobCrawlerService implements JobCrawler {
                 } else if(item.getAnnoSubject().contains("DevOps Engineer")) {
                     item.setSubJobCdNm(JobEnums.DevOps.getTitle());
                 } else if (item.getAnnoSubject().contains("DataOps Manager") ||
-                    item.getAnnoSubject().contains("Data Architect")
+                    item.getAnnoSubject().contains("Data Architect") ||
+                    item.getAnnoSubject().contains("Data Analytics")
                 ) {
                     item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
                 } else if (item.getAnnoSubject().contains("MLOps Engineer") ||
