@@ -51,7 +51,12 @@ public class LogService {
             return null;
         }
 
-        final String requestURI = request.getRequestURI();
+        String requestURI;
+        if (request.getQueryString() == null || request.getQueryString().length() == 0) {
+            requestURI = request.getRequestURI();
+        } else {
+            requestURI = request.getRequestURI() + "?" + request.getQueryString();
+        }
         final String clientIpAddr = getClientIpAddr(request);
 
         final String lastPath = getLastPathFromCookie(request);
