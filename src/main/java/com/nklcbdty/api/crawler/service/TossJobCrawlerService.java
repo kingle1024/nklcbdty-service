@@ -116,6 +116,8 @@ public class TossJobCrawlerService implements JobCrawler {
                     item.getAnnoSubject().contains("Data Analytics")
                 ) {
                     item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (item.getAnnoSubject().contains("Data Engineer")) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
                 } else if (item.getAnnoSubject().contains("MLOps Engineer") ||
                     item.getAnnoSubject().contains("ML Engineer")
                 ) {
@@ -131,7 +133,8 @@ public class TossJobCrawlerService implements JobCrawler {
                 ) {
                     item.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
                 } else if (item.getAnnoSubject().contains("Network Engineer") ||
-                    item.getAnnoSubject().contains("System Engineer")
+                    item.getAnnoSubject().contains("System Engineer") ||
+                    item.getAnnoSubject().contains("IDC Engineer")
                 ) {
                     item.setSubJobCdNm(JobEnums.Infra.getTitle());
                 } else if (item.getAnnoSubject().contains("Product Manager")) {
