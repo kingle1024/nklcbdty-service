@@ -102,6 +102,9 @@ public class YanoljaCralwerService implements JobCrawler {
                     } else {
                         item.setSysCompanyCdNm("야놀자");
                     }
+                    if (commonService.isCloseDate(data.get("dueDate"))) {
+                        item.setEndDate(data.get("dueDate").toString());
+                    }
                     result.add(item);
                 }
             }
