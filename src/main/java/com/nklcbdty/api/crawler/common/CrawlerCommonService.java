@@ -191,4 +191,24 @@ public class CrawlerCommonService {
 
         return formattedDate;
 	}
+
+    public boolean isCloseDate(Object endDate) {
+        if (endDate.equals(null)) {
+            return false;
+        }
+        LocalDateTime endDateTime;
+        String endDateStr = String.valueOf(endDate);
+
+        if (endDateStr.contains("T")) {
+            endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } else {
+            endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        }
+
+        // 현재 시간 가져오기
+        LocalDateTime now = LocalDateTime.now();
+
+        // 비교
+        return now.isAfter(endDateTime);
+    }
 }
