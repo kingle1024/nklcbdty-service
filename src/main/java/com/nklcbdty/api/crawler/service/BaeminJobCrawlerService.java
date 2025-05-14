@@ -60,6 +60,8 @@ public class BaeminJobCrawlerService implements JobCrawler{
 				job_mst.setJobDetailLink("https://career.woowahan.com/recruitment/" + recruitNumber + "/detail?jobCodes=&employmentTypeCodes=&serviceSectionCodes=&careerPeriod=&category=jobGroupCodes%3ABA005001");
 				job_mst.setEmpTypeCdNm(empTypeCdNm);
 				job_mst.setAnnoSubject(annoSubject);
+                job_mst.setStartDate(item.getString("recruitOpenDate"));
+                job_mst.setEndDate(item.getString("recruitCloseDate"));
 				
 				list.add(job_mst);
 			}
