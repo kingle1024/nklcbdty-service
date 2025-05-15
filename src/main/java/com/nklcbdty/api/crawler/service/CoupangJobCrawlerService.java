@@ -165,10 +165,13 @@ public class CoupangJobCrawlerService implements JobCrawler{
         } else if (item.getAnnoSubject().contains("Data Analyst") ||
             item.getAnnoSubject().contains("Data Science") ||
             item.getAnnoSubject().contains("Data Analysis") ||
-            item.getAnnoSubject().contains("Business Analyst")
+            item.getAnnoSubject().contains("Business Analyst") ||
+            item.getAnnoSubject().contains("데이터 분석 담당")
         ) {
             item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
-        } else if (item.getAnnoSubject().contains("Data Engineer")) {
+        } else if (
+            item.getAnnoSubject().contains("Data Engineer")
+        ) {
             item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
         } else if (item.getAnnoSubject().contains("Network Engineer") ||
             item.getAnnoSubject().contains("Infra Engineer") ||
