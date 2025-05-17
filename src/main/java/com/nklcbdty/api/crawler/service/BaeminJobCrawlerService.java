@@ -89,6 +89,8 @@ public class BaeminJobCrawlerService implements JobCrawler{
                     item.setSubJobCdNm(JobEnums.QA.getTitle());
                 } else if (item.getAnnoSubject().contains("보안 시스템 및 솔루션 운영자")) {
                     item.setSubJobCdNm(JobEnums.Security.getTitle());
+                } else if (item.getAnnoSubject().contains("ML엔지니어")) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
                 }
 
                 if (item.getSysCompanyCdNm() == null) {
