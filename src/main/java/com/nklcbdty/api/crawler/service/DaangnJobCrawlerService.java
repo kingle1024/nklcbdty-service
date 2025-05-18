@@ -113,6 +113,8 @@ public class DaangnJobCrawlerService implements JobCrawler{
                     item.getAnnoSubject().contains("Designer")
                 ) {
                     item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
+                } else if (item.getAnnoSubject().contains("Brand Designer")) {
+                    item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
                 }
             }
 
