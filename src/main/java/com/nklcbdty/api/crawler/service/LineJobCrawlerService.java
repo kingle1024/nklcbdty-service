@@ -4,10 +4,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
@@ -29,7 +31,8 @@ public class LineJobCrawlerService implements JobCrawler {
     }
 
     @Override
-    public List<Job_mst> crawlJobs() {
+    @Async
+    public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
             final String apiUrl = "https://careers.linecorp.com/page-data/ko/jobs/page-data.json";
@@ -168,7 +171,7 @@ public class LineJobCrawlerService implements JobCrawler {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return result;
+        return CompletableFuture.completedFuture(result);
     }
 
     private String formattedDate(String dateStr) {
