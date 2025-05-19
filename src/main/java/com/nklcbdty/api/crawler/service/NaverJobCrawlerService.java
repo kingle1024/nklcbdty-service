@@ -3,6 +3,7 @@ package com.nklcbdty.api.crawler.service;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.net.HttpURLConnection;
@@ -10,6 +11,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
@@ -36,7 +38,8 @@ public class NaverJobCrawlerService implements JobCrawler {
     }
 
     @Override
-    public List<Job_mst> crawlJobs() {
+    @Async
+    public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>(Collections.emptyList());
 
         try {
@@ -104,7 +107,7 @@ public class NaverJobCrawlerService implements JobCrawler {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return result;
+        return CompletableFuture.completedFuture(result);
     }
 
     public HttpURLConnection createConnection(URL url) throws Exception {

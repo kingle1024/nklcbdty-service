@@ -2,13 +2,14 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.concurrent.CompletableFuture;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.ApiException;
@@ -37,7 +38,8 @@ public class CoupangJobCrawlerService implements JobCrawler{
     }
 
     @Override
-	public List<Job_mst> crawlJobs() {
+    @Async
+	public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> resList = new ArrayList<>();
 		String formattedDate = crawlerCommonService.formatCurrentTime(); 
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
@@ -67,7 +69,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		}
 
         crawlerCommonService.saveAll("COUPANG", resList);
-		return resList;	
+        return CompletableFuture.completedFuture(resList);
 	}
 		
     /**
