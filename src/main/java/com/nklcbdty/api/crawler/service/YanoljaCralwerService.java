@@ -2,6 +2,7 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,6 +13,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
@@ -33,7 +35,8 @@ public class YanoljaCralwerService implements JobCrawler {
     }
 
     @Override
-    public List<Job_mst> crawlJobs() {
+    @Async
+    public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
 
         try {
@@ -126,6 +129,6 @@ public class YanoljaCralwerService implements JobCrawler {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return result;
+        return CompletableFuture.completedFuture(result);
     }
 }
