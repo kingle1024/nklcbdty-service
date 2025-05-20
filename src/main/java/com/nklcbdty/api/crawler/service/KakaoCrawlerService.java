@@ -47,7 +47,8 @@ public class KakaoCrawlerService implements JobCrawler {
                 ) {
                     job.setSubJobCdNm(JobEnums.DevOps.getTitle());
                 } else if (job.getAnnoSubject().contains("프론트") ||
-                    job.getAnnoSubject().contains("FE 개발자")
+                    job.getAnnoSubject().contains("FE 개발자") ||
+                    job.getAnnoSubject().contains("Frontend Develop")
                 ) {
                     job.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
                 } else if (job.getAnnoSubject().contains("백엔드") ||
@@ -62,7 +63,8 @@ public class KakaoCrawlerService implements JobCrawler {
                 } else if (
                     job.getAnnoSubject().contains("FE/BE") ||
                     job.getAnnoSubject().contains("플랫폼 개발자") ||
-                    job.getAnnoSubject().contains("웹 풀스택")
+                    job.getAnnoSubject().contains("웹 풀스택") ||
+                    job.getAnnoSubject().contains("웹 크롤링")
                 ) {
                     job.setSubJobCdNm(JobEnums.FullStack.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst") ||
@@ -71,7 +73,10 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("데이터 분석 담당자")
                 ) {
                     job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
-                } else if (job.getAnnoSubject().contains("클라이언트 SDK 개발자")) {
+                } else if (
+                    job.getAnnoSubject().contains("클라이언트 SDK 개발자") ||
+                    job.getAnnoSubject().contains("Mobile App Develop")
+                ) {
                     job.setSubJobCdNm(JobEnums.Android.getTitle());
                 } else if (job.getAnnoSubject().contains("macOS 플랫폼 개발자")) {
                     job.setSubJobCdNm(JobEnums.iOS.getTitle());
@@ -90,7 +95,10 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.setSubJobCdNm(JobEnums.ML.getTitle());
                 } else if (job.getAnnoSubject().contains("DB운영")) {
                     job.setSubJobCdNm(JobEnums.DBA.getTitle());
-                } else if (job.getAnnoSubject().contains("AI Safety 엔지니어")) {
+                } else if (
+                    job.getAnnoSubject().contains("AI Safety 엔지니어") ||
+                    job.getAnnoSubject().contains("LLM Research")
+                ) {
                     job.setSubJobCdNm(JobEnums.AI.getTitle());
                 } else if (job.getAnnoSubject().contains("안정성 관리") || job.getAnnoSubject().contains("Technical Writer")
                     || job.getAnnoSubject().contains("기술 문서") || job.getAnnoSubject().contains("기술지원 엔지니어")
@@ -106,14 +114,16 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("보안 담당자") ||
                     job.getAnnoSubject().contains("개인정보보호 시니어") ||
                     job.getAnnoSubject().contains("개인정보보호 주니어") ||
-                    job.getAnnoSubject().contains("개인정보보호 리더")
+                    job.getAnnoSubject().contains("개인정보보호 리더") ||
+                    job.getAnnoSubject().contains("정보보안")
                 ) {
                     job.setSubJobCdNm(JobEnums.Security.getTitle());
                 } else if (
                     job.getAnnoSubject().contains("취약점 분석") ||
                     job.getAnnoSubject().contains("모의해킹") ||
                     job.getAnnoSubject().contains("컴플라이언스 엔지니어") ||
-                    job.getAnnoSubject().contains("정보보안 컴플라이언스 엔지니어")
+                    job.getAnnoSubject().contains("정보보안 컴플라이언스 엔지니어") ||
+                    job.getAnnoSubject().contains("보안 엔지니어")
                 ) {
                     job.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
                 } else if (job.getAnnoSubject().contains("기획 담당자") || job.getAnnoSubject().contains("기획자")) {
