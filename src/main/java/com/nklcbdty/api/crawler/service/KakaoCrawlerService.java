@@ -57,7 +57,8 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("CI/CD 서비스 개발") ||
                     job.getAnnoSubject().contains("데이터 응용 플랫폼 개발") ||
                     job.getAnnoSubject().contains("시스템(ActionBase) 개발") ||
-                    job.getAnnoSubject().contains("모델 플랫폼 개발")
+                    job.getAnnoSubject().contains("모델 플랫폼 개발") ||
+                    job.getAnnoSubject().contains("벡엔드 개발자")
                 ) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (
@@ -83,7 +84,8 @@ public class KakaoCrawlerService implements JobCrawler {
                 } else if (job.getAnnoSubject().contains("Flutter")) {
                     job.setSubJobCdNm(JobEnums.Flutter.getTitle());
                 } else if (job.getAnnoSubject().contains("데이터 엔지니어") ||
-                    job.getAnnoSubject().contains("NoSQL 엔지니어")
+                    job.getAnnoSubject().contains("NoSQL 엔지니어") ||
+                    job.getAnnoSubject().contains("Data Engineer")
                 ) {
                     job.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
                 } else if (
