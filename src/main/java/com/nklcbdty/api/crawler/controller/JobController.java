@@ -14,15 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
-import com.nklcbdty.api.crawler.service.BaeminJobCrawlerService;
-import com.nklcbdty.api.crawler.service.CoupangJobCrawlerService;
-import com.nklcbdty.api.crawler.service.DaangnJobCrawlerService;
 import com.nklcbdty.api.crawler.service.JobService;
-import com.nklcbdty.api.crawler.service.KakaoCrawlerService;
-import com.nklcbdty.api.crawler.service.LineJobCrawlerService;
-import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
-import com.nklcbdty.api.crawler.service.TossJobCrawlerService;
-import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
