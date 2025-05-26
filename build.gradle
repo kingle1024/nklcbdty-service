@@ -34,10 +34,15 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA 지원
 	implementation 'org.springframework.boot:spring-boot-starter-web:2.6.4'
 	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.5' // MariaDB JDBC 드라이버
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	implementation "com.querydsl:querydsl-jpa:${queryDslVersion}"
 	annotationProcessor "com.querydsl:querydsl-apt:${queryDslVersion}"
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
 	implementation 'org.jsoup:jsoup:1.14.3' // Jsoup 크롤링 라이브러리
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -46,6 +51,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'io.lettuce:lettuce-core:6.1.10.RELEASE'
+    implementation 'org.springframework.kafka:spring-kafka'
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
 }
 
