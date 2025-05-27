@@ -5,9 +5,13 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +23,9 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import com.nklcbdty.api.log.entity.VisitorEntity;
 import com.nklcbdty.api.log.repository.VisitorRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class LogService {
 
@@ -35,19 +42,37 @@ public class LogService {
     public VisitorEntity insertLog() {
         HttpServletRequest request =
                 ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+        HttpServletResponse response =
+                ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getResponse();
+
+        log.info("request.getRemoteAddr() : {}", request.getRemoteAddr());
         if("0:0:0:0:0:0:0:1".equals(request.getRemoteAddr()) || "127.0.0.1".equals(request.getRemoteAddr())) {
             // local에서는 히스토리 남기지 않도록 처리
             return null;
         }
 
-        final String requestURI = request.getRequestURI();
+        String requestURI;
+        if (request.getQueryString() == null || request.getQueryString().length() == 0) {
+            requestURI = request.getRequestURI();
+        } else {
+            requestURI = request.getRequestURI() + "?" + request.getQueryString();
+        }
         final String clientIpAddr = getClientIpAddr(request);
+
+        final String lastPath = getLastPathFromCookie(request);
+        if (lastPath != null && lastPath.equals(requestURI)) {
+            // 추후 추가 로직 가능
+            return null; // 로그 기록 생략
+        }
+
+        createCookie(requestURI, Objects.requireNonNull(response));
 
         VisitorEntity result = VisitorEntity.builder()
                 .path(requestURI)
                 .accept_language(request.getHeader("Accept-Language"))
                 .referer(request.getHeader("Referer"))
                 .insert_ip(clientIpAddr)
+                .insert_dts(new Date())
           .build();
 
         Map<String, Object> ipLocation = getCountryInfo(clientIpAddr.trim().split(",")[0]);
@@ -56,7 +81,45 @@ public class LogService {
             result.setRegion_name((String)ipLocation.get("region_name"));
             result.setCity_name((String)ipLocation.get("city_name"));
         }
+
+        switch (result.getInsert_ip()) {
+            case "59.30.128.202" : {
+                result.setInsert_ip("지용_춘천방");
+                break;
+            }
+            case "221.133.55.105": {
+                result.setInsert_ip("지용_사무실");
+                break;
+            }
+            case "210.90.19.117": {
+                result.setInsert_ip("민재_집");
+                break;
+            }
+            case "175.210.195.224": {
+                result.setInsert_ip("민재_3");
+                break;
+            }
+            case "221.151.13.104": {
+                result.setInsert_ip("청년동");
+                break;
+            }
+        }
+        if (result.getInsert_ip().contains("115.21.251.")) {
+            result.setInsert_ip("민재_집");
+        }
         return logRepository.save(result);
+    }
+
+    private String getLastPathFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies(); // 요청에서 쿠키 가져오기
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("lastPath".equals(cookie.getName())) {
+                    return cookie.getValue(); // 쿠키에서 경로 값 반환
+                }
+            }
+        }
+        return null; // 쿠키가 없을 경우 null 반환
     }
 
     private Map<String, Object> getCountryInfo(String ip) {
@@ -131,5 +194,14 @@ public class LogService {
         }
 
         return ip;
+    }
+
+    private void createCookie(String path, HttpServletResponse response) {
+        Cookie cookie = new Cookie("lastPath", path);
+        cookie.setMaxAge(24 * 60 * 60); // 1일
+        cookie.setPath("/"); // 모든 경로에서 접근 가능
+        cookie.setSecure(true); // HTTPS에서만 전송되도록 설정
+        cookie.setHttpOnly(true); // JavaScript에서 접근하지 못하도록 설정
+        response.addCookie(cookie);
     }
 }

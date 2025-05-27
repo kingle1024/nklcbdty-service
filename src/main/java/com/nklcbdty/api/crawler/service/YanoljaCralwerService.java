@@ -2,6 +2,7 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,9 +13,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -32,7 +35,8 @@ public class YanoljaCralwerService implements JobCrawler {
     }
 
     @Override
-    public List<Job_mst> crawlJobs() {
+    @Async
+    public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
 
         try {
@@ -101,7 +105,22 @@ public class YanoljaCralwerService implements JobCrawler {
                     } else {
                         item.setSysCompanyCdNm("야놀자");
                     }
+                    if (commonService.isCloseDate(data.get("dueDate"))) {
+                        item.setEndDate(data.get("dueDate").toString());
+                    }
                     result.add(item);
+                }
+            }
+
+            for (Job_mst item : result) {
+                if (item.getAnnoSubject().contains("Software Engineer")) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("Full-Stack")) {
+                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
+                } else if (item.getAnnoSubject().contains("Data Scientist")) {
+                    item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (item.getAnnoSubject().contains("Researcher")) {
+                    item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
                 }
             }
 
@@ -110,6 +129,6 @@ public class YanoljaCralwerService implements JobCrawler {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return result;
+        return CompletableFuture.completedFuture(result);
     }
 }

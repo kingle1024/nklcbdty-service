@@ -10,6 +10,7 @@ public enum JobEnums implements EnumMapperType {
     iOS("iOS"),
     Android("Android"),
     DevOps("DevOps"),
+    AI("AI"),
     Infra("Infra"),
     DataAnalyst("DataAnalyst"),
     DataEngineering("DataEngineering"),
@@ -17,10 +18,14 @@ public enum JobEnums implements EnumMapperType {
     DBA("DBA"),
     SecurityEngineering("SecurityEngineering"),
     Security("Security"),
+    SAP("SAP"),
     ML("ML"),
     QA("QA"),
     TechnicalSupport("TechnicalSupport"),
     PM("PM"),
+    Flutter("Flutter"),
+    ProductDesigner("ProductDesigner"),
+    PO("PO")
     ;
 
     private final String title;

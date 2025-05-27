@@ -2,13 +2,16 @@ package com.nklcbdty.api.crawler.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
+import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -33,7 +36,8 @@ public class BaeminJobCrawlerService implements JobCrawler{
     
     
 	@Override
-	public List<Job_mst> crawlJobs() {
+    @Async
+	public CompletableFuture<List<Job_mst>> crawlJobs() {
 		List<Job_mst> list = new ArrayList<Job_mst>();
 		try {
 			
@@ -59,14 +63,49 @@ public class BaeminJobCrawlerService implements JobCrawler{
 				job_mst.setJobDetailLink("https://career.woowahan.com/recruitment/" + recruitNumber + "/detail?jobCodes=&employmentTypeCodes=&serviceSectionCodes=&careerPeriod=&category=jobGroupCodes%3ABA005001");
 				job_mst.setEmpTypeCdNm(empTypeCdNm);
 				job_mst.setAnnoSubject(annoSubject);
+                job_mst.setStartDate(item.getString("recruitOpenDate"));
+                job_mst.setEndDate(item.getString("recruitCloseDate"));
 				
 				list.add(job_mst);
 			}
+
+            for (Job_mst item : list) {
+                if (item.getAnnoSubject().contains("프론트엔드 개발자")) {
+                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("백엔드 개발자") ||
+                    item.getAnnoSubject().contains("서버 개발자") ||
+                    item.getAnnoSubject().contains("백엔드 시스템 개발자") ||
+                    item.getAnnoSubject().contains("SRE 개발자")
+                ) {
+                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+                } else if (item.getAnnoSubject().contains("데이터분석가") ||
+                    item.getAnnoSubject().contains("데이터과학자")
+                ) {
+                    item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+                } else if (item.getAnnoSubject().contains("데이터엔지니어") ||
+                    item.getAnnoSubject().contains("데이터베이스엔지니어")
+                ) {
+                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+                } else if (item.getAnnoSubject().contains("QA Engineer") ||
+                    item.getAnnoSubject().contains("Test Engineer")
+                ) {
+                    item.setSubJobCdNm(JobEnums.QA.getTitle());
+                } else if (item.getAnnoSubject().contains("보안 시스템 및 솔루션 운영자")) {
+                    item.setSubJobCdNm(JobEnums.Security.getTitle());
+                } else if (item.getAnnoSubject().contains("ML엔지니어")) {
+                    item.setSubJobCdNm(JobEnums.ML.getTitle());
+                }
+
+                if (item.getSysCompanyCdNm() == null) {
+                    item.setSysCompanyCdNm("배달의민족");
+                }
+            }
+
 			crawlerCommonService.saveAll("BAEMIN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
-		return list;
+        return CompletableFuture.completedFuture(list);
 	}
 	
 	/**
