@@ -11,6 +11,8 @@ public enum AllowedPaths {
     OAUTH2("/oauth2/**"),
     DETAIL("/detail/**"),
     LIST("/api/list"),
+    LIST_ALL("/api/list/**"),
+    CATEGORY_ALL("/api/category/**"),
     EMAIL("/email/send")
     ;
 
