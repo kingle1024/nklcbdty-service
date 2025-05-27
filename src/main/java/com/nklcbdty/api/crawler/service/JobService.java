@@ -1,6 +1,7 @@
 package com.nklcbdty.api.crawler.service;
 
 import java.util.List;
+import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,12 +21,20 @@ public class JobService {
     public List<Job_mst> list(String company) {
         List<Job_mst> items;
         if ("ALL".equals(company)) {
-            items = jobRepository.findAll();
+            items = jobRepository.findAllBySubJobCdNmIsNotNull();
         } else {
-            items = jobRepository.findAllByCompanyCd(company);
+            items = jobRepository.findAllByCompanyCdAndSubJobCdNmIsNotNullOrderByEndDateAsc(company);
         }
 
+        Random random = new Random();
+        for (Job_mst item : items) {
+            item.setId(random.nextLong());
+        }
 
         return items;
+    }
+
+    public void deleteAll() {
+        jobRepository.deleteAllInBatch();
     }
 }
