@@ -1,6 +1,6 @@
 # Ignore application.properties
 application.properties
-
+application-dev.properties
 HELP.md
 .gradle
 build/
