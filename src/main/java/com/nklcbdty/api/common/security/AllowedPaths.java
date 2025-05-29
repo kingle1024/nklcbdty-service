@@ -13,7 +13,8 @@ public enum AllowedPaths {
     LIST("/api/list"),
     LIST_ALL("/api/list/**"),
     CATEGORY_ALL("/api/category/**"),
-    EMAIL("/email/send")
+    EMAIL("/email/send"),
+    CRALWER("/api/crawler")
     ;
 
     private final String path;
