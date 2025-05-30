@@ -141,7 +141,10 @@ public class LineJobCrawlerService implements JobCrawler {
                     item.getAnnoSubject().contains("테크니컬 라이터")
                 ) {
                     item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
-                } else if (item.getAnnoSubject().contains("QA/SET")) {
+                } else if (
+                    item.getAnnoSubject().contains("QA") ||
+                    item.getAnnoSubject().contains("SET")
+                ) {
                     item.setSubJobCdNm(JobEnums.QA.getTitle());
                 } else if (
                     item.getAnnoSubject().contains("Operations Engineer") ||
