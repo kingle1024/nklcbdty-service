@@ -58,14 +58,16 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("데이터 응용 플랫폼 개발") ||
                     job.getAnnoSubject().contains("시스템(ActionBase) 개발") ||
                     job.getAnnoSubject().contains("모델 플랫폼 개발") ||
-                    job.getAnnoSubject().contains("벡엔드 개발자")
+                    job.getAnnoSubject().contains("벡엔드 개발자") ||
+                    job.getAnnoSubject().contains("검색 엔지니어")
                 ) {
                     job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
                 } else if (
                     job.getAnnoSubject().contains("FE/BE") ||
                     job.getAnnoSubject().contains("플랫폼 개발자") ||
                     job.getAnnoSubject().contains("웹 풀스택") ||
-                    job.getAnnoSubject().contains("웹 크롤링")
+                    job.getAnnoSubject().contains("웹 크롤링") ||
+                    job.getAnnoSubject().contains("어드민 개발")
                 ) {
                     job.setSubJobCdNm(JobEnums.FullStack.getTitle());
                 } else if (job.getAnnoSubject().contains("Data Analyst") ||
@@ -117,7 +119,8 @@ public class KakaoCrawlerService implements JobCrawler {
                     job.getAnnoSubject().contains("개인정보보호 시니어") ||
                     job.getAnnoSubject().contains("개인정보보호 주니어") ||
                     job.getAnnoSubject().contains("개인정보보호 리더") ||
-                    job.getAnnoSubject().contains("정보보안")
+                    job.getAnnoSubject().contains("정보보안") ||
+                    job.getAnnoSubject().contains("IT 서비스 안정성")
                 ) {
                     job.setSubJobCdNm(JobEnums.Security.getTitle());
                 } else if (
