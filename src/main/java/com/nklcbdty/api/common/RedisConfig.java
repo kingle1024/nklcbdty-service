@@ -51,7 +51,7 @@ public class RedisConfig {
 
         RedisClusterConfiguration clusterConfig = new RedisClusterConfiguration(
             Arrays.asList(clusterNodes.split(",")));
-        // clusterConfig.setPassword(password); // 비밀번호 설정
+        clusterConfig.setPassword(password); // 비밀번호 설정
 
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
                 .commandTimeout(Duration.ofSeconds(2)) // 연결 타임아웃 설정
