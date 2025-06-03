@@ -1,0 +1,10 @@
+package com.nklcbdty.api.user.repository;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import com.nklcbdty.api.user.vo.UserInterestVo;
+
+public interface UserInterestRepository extends JpaRepository<UserInterestVo, Long> {
+    List<UserInterestVo> findByUserId(String userId);
+}

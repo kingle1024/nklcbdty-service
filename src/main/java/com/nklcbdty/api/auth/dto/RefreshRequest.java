@@ -1,6 +1,6 @@
 package com.nklcbdty.api.auth.dto;
 
-import com.nklcbdty.api.auth.vo.UserVo;
+import com.nklcbdty.api.user.vo.UserVo;
 
 import lombok.Getter;
 import lombok.Setter;
