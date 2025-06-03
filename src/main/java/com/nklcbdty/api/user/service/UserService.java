@@ -1,4 +1,4 @@
-package com.nklcbdty.api.auth.service;
+package com.nklcbdty.api.user.service;
 
 import java.util.ArrayList;
 
@@ -7,8 +7,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.nklcbdty.api.auth.repository.UserRepository;
-import com.nklcbdty.api.auth.vo.UserVo;
+import com.nimbusds.openid.connect.sdk.UserInfoResponse;
+import com.nklcbdty.api.user.dto.UserResponseDto;
+import com.nklcbdty.api.user.repository.UserRepository;
+import com.nklcbdty.api.auth.service.UserDetailService;
+import com.nklcbdty.api.user.vo.UserVo;
 
 @Service
 public class UserService implements UserDetailService {
@@ -41,5 +44,13 @@ public class UserService implements UserDetailService {
         }
 
         return userDetails;
+    }
+
+    public UserResponseDto findByUserId(String userId) {
+        UserVo user = userRepository.findByUserId(userId);
+        return UserResponseDto.builder()
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .build();
     }
 }

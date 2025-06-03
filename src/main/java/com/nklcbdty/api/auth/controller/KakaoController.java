@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import com.nklcbdty.api.auth.service.TokenService;
-import com.nklcbdty.api.auth.service.UserService;
+import com.nklcbdty.api.user.service.UserService;
 import com.nklcbdty.api.common.UtilityNklcb;
 
 @RestController
