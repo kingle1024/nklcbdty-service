@@ -1,5 +1,6 @@
 package com.nklcbdty.api.user.vo;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -16,13 +17,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "user")
-public class UserVo {
+@Table(name = "user_interest")
+public class UserInterestVo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "user_id")
     private String userId;
-    private String username;
-    private String refreshToken;
-    private String email;
+    @Column(name = "item_type")
+    private String itemType;
+    @Column(name = "item_value")
+    private String itemValue;
 }
