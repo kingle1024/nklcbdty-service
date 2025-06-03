@@ -11,10 +11,13 @@ import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.user.dto.UserInterestResponseDto;
+import com.nklcbdty.api.user.dto.UserSettingsRequest;
 import com.nklcbdty.api.user.service.UserInterestService;
 import com.nklcbdty.api.user.service.UserService;
 
@@ -54,5 +57,25 @@ public class UserController {
         result.put("selectedJobRoles", jobs);
 
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/settings")
+    public ResponseEntity<?> setUserSettings(
+        HttpServletRequest request,
+        @RequestBody UserSettingsRequest userSettings
+    ) {
+        final String userId = (String) request.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
+                .body(Map.of("error", "로그인 정보가 없습니다."));
+        }
+
+        try {
+            userInterestService.updateUserSettings(userId, userSettings);
+            return ResponseEntity.ok("ok");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "사용자 설정 업데이트 중 오류가 발생했습니다.", "message", e.getMessage()));
+        }
     }
 }
