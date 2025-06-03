@@ -7,4 +7,6 @@ import com.nklcbdty.api.user.vo.UserInterestVo;
 
 public interface UserInterestRepository extends JpaRepository<UserInterestVo, Long> {
     List<UserInterestVo> findByUserId(String userId);
+    void deleteByUserIdAndItemTypeAndItemValueIn(String userId, String itemType, List<String> itemValues);
+    List<UserInterestVo> findByUserIdAndItemValueIn(String userId, List<String> itemValues);
 }
