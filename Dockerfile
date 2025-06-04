@@ -1,5 +1,5 @@
 # jar 파일 빌드
-FROM eclipse-temurin:11 as builder
+FROM eclipse-temurin:17-jdk as builder
 
 COPY gradlew .
 COPY gradle gradle
@@ -10,7 +10,7 @@ RUN chmod +x ./gradlew
 RUN ./gradlew bootjar
 
 # jar 실행
-FROM eclipse-temurin:11-jre as runtime
+FROM eclipse-temurin:17-jre as runtime
 
 COPY --from=builder build/libs/*.jar app.jar
 
