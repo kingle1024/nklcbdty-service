@@ -1,5 +1,5 @@
 package com.nklcbdty.api.crawler.vo;
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
