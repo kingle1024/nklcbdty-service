@@ -17,7 +17,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
-          java-version: '11'  # JDK 버전 설정
+          java-version: '17'  # JDK 버전 설정
           distribution: 'adopt'  # JDK 배포판
 
       - name: Make gradlew executable
