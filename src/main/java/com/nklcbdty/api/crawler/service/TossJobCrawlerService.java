@@ -96,7 +96,8 @@ public class TossJobCrawlerService implements JobCrawler {
 
             for (Job_mst item : result) {
                 if (item.getAnnoSubject().contains("Frontend Developer") ||
-                    item.getAnnoSubject().contains("Frontend UX")
+                    item.getAnnoSubject().contains("Frontend UX") ||
+                    item.getAnnoSubject().contains("Frontend Ops Developer")
                 ) {
                     item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
                 } else if (item.getAnnoSubject().contains("Server Developer")) {
@@ -112,7 +113,11 @@ public class TossJobCrawlerService implements JobCrawler {
                     item.getAnnoSubject().contains("iOS Platform Engineer (React Native)")
                 ) {
                     item.setSubJobCdNm(JobEnums.iOS.getTitle());
-                } else if(item.getAnnoSubject().contains("DevOps Engineer")) {
+                } else if(
+                    item.getAnnoSubject().contains("DevOps Engineer") ||
+                    item.getAnnoSubject().contains("Site Reliability Engineer") ||
+                    item.getAnnoSubject().contains("SRE")
+                ) {
                     item.setSubJobCdNm(JobEnums.DevOps.getTitle());
                 } else if (item.getAnnoSubject().contains("DataOps Manager") ||
                     item.getAnnoSubject().contains("Data Architect") ||
@@ -122,7 +127,9 @@ public class TossJobCrawlerService implements JobCrawler {
                 } else if (item.getAnnoSubject().contains("Data Engineer")) {
                     item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
                 } else if (item.getAnnoSubject().contains("MLOps Engineer") ||
-                    item.getAnnoSubject().contains("ML Engineer")
+                    item.getAnnoSubject().contains("ML Engineer") ||
+                    item.getAnnoSubject().contains("ML Data") ||
+                    item.getAnnoSubject().contains("ML Manage")
                 ) {
                     item.setSubJobCdNm(JobEnums.ML.getTitle());
                 } else if (item.getAnnoSubject().contains("Information Security Manager") ||
