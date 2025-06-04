@@ -6,9 +6,8 @@ buildscript {
 
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '2.6.4'
-	id 'io.spring.dependency-management' version '1.1.4'
-	id 'com.ewerk.gradle.plugins.querydsl' version '1.0.10'
+	id 'org.springframework.boot' version '3.2.6'
+	id 'io.spring.dependency-management' version '1.1.5' // Spring Boot 3.x에 맞는 버전
 }
 
 group = 'com.nklcbdty'
@@ -16,74 +15,97 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(11)
+		languageVersion = JavaLanguageVersion.of(17) // Java 17 버전
 	}
 }
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
-}
-repositories {
-	mavenCentral()
+    querydslAnnotationProcessor
 }
 
+repositories {
+	mavenCentral() // Maven 중앙 저장소
+    maven { url 'https://repo.spring.io/milestone' }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
+    }
+}
+
+
 dependencies {
-	implementation 'io.jsonwebtoken:jjwt:0.9.1'
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+//    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0'
+
 	implementation 'org.springframework.boot:spring-boot-starter'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA 지원
-	implementation 'org.springframework.boot:spring-boot-starter-web:2.6.4'
-	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.5' // MariaDB JDBC 드라이버
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.2'
+
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
-	implementation "com.querydsl:querydsl-jpa:${queryDslVersion}"
-	annotationProcessor "com.querydsl:querydsl-apt:${queryDslVersion}"
 
+    implementation "com.querydsl:querydsl-jpa:${queryDslVersion}:jakarta"
+    querydslAnnotationProcessor "com.querydsl:querydsl-apt:${queryDslVersion}:jakarta"
+    querydslAnnotationProcessor "jakarta.persistence:jakarta.persistence-api"
+    querydslAnnotationProcessor "jakarta.annotation:jakarta.annotation-api"
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+    // ====================================
 
-	implementation 'org.jsoup:jsoup:1.14.3' // Jsoup 크롤링 라이브러리
+
+	// Jsoup 크롤링 라이브러리
+	implementation 'org.jsoup:jsoup:1.17.2'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation 'javax.persistence:javax.persistence-api:2.2'
+
 	implementation 'org.json:json:20240303'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-	implementation 'io.lettuce:lettuce-core:6.1.10.RELEASE'
     implementation 'org.springframework.kafka:spring-kafka'
-	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+
 }
 
 test {
     useJUnitPlatform()
 }
-def querydslDir = "$buildDir/generated/querydsl"
 
-querydsl {
-	jpa = true
-	querydslSourcesDir = querydslDir
+def generatedQuerydslDir = "$buildDir/generated/querydsl"
+
+// JavaCompile task 설정
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.annotationProcessorPath = configurations.annotationProcessor + configurations.querydslAnnotationProcessor
+    options.generatedSourceOutputDirectory.set(file(generatedQuerydslDir))
 }
 sourceSets {
-	main.java.srcDir querydslDir
+    main {
+        java {
+            srcDirs = ['src/main/java', generatedQuerydslDir]
+        }
+    }
 }
-configurations {
-	querydsl.extendsFrom compileClasspath
+
+clean {
+    delete file(generatedQuerydslDir)
 }
-compileQuerydsl {
-	options.annotationProcessorPath = configurations.querydsl
-}
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-}
-// MANIFEST.MF 설정
+
 bootJar {
     manifest {
         attributes(
             'Manifest-Version': '1.0',
-            'Main-Class': 'org.springframework.boot.loader.JarLauncher', // 메인 클래스 설정
-            'Start-Class': 'com.nklcbdty.api.NklcbdtyApplication', // 시작 클래스 설정
-            'Spring-Boot-Version': '2.6.4' // 스프링 부트 버전 설정
+            'Main-Class': 'org.springframework.boot.loader.launch.JarLauncher', // SB 3.x 런처
+            'Start-Class': 'com.nklcbdty.api.NklcbdtyApplication', // 실제 메인 클래스 경로
         )
     }
 }
