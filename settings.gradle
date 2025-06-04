@@ -1,1 +1,11 @@
+// === pluginManagement 블록의 주석을 해제합니다. ===
+pluginManagement {
+    repositories {
+        // 플러그인 저장소를 여기에 정의합니다.
+        gradlePluginPortal() // Gradle Plugin Portal (필수)
+        mavenCentral()       // Maven Central (선택 사항이지만 일반적으로 추가)
+    }
+}
+
+
 rootProject.name = 'nklcbdty'
