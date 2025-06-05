@@ -3,6 +3,7 @@ package com.nklcbdty.api.crawler.common;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.nklcbdty.api.ai.service.GeminiService;
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 import java.io.BufferedReader;
@@ -16,19 +17,23 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
 public class CrawlerCommonService {
 
     private final CrawlerRepository crawlerRepository;
+    private final GeminiService geminiService;
 
     @Autowired
-    public CrawlerCommonService(CrawlerRepository crawlerRepository) {
+    public CrawlerCommonService(CrawlerRepository crawlerRepository, GeminiService geminiService) {
         this.crawlerRepository = crawlerRepository;
+        this.geminiService = geminiService;
     }
 
     public String fetchApiResponse(String apiUrl) {
@@ -89,6 +94,81 @@ public class CrawlerCommonService {
     }
 
     private void refineJobData(List<Job_mst> result) {
+
+        Mono<Map<String, String>> classificationResultsMono = geminiService.classifyJobTitles(result);
+
+        // // 4. AI 분류 결과 Mono를 구독합니다. 결과가 오면 실행될 로직을 정의합니다.
+        // //    이 로직은 API 응답이 도착하고 결과 파싱이 완료된 후에 실행됩니다.
+        // classificationResultsMono.subscribe(
+        //     // onNext: Mono가 결과를 발행했을 때 실행될 람다 (분류 결과 맵을 인자로 받음)
+        //     classificationMap -> {
+        //         // 5. AI가 분류한 결과를 사용하여 원래 Job_mst 목록을 업데이트하고 DB에 저장합니다.
+        //         System.out.println("----- Gemini 분류 결과 수신 및 DB 업데이트 시작 -----");
+        //         List<String> updatedJobs = new ArrayList<>(); // 변경된 Job_mst 객체들을 담을 리스트
+        //
+        //         for (Job_mst job : result) {
+        //             // 분류 결과 맵에서 해당 제목의 예측 직무 유형을 찾습니다.
+        //             String predictedJobType = classificationMap.get(job.getAnnoSubject());
+        //
+        //             if (predictedJobType != null) {
+        //                  // Job_mst 객체의 예측 직무 유형 필드를 업데이트합니다.
+        //                  // Job_mst 클래스에 String predictedJobType 필드와 setPredictedJobType() 메서드가 필요합니다.
+        //                  updatedJobs.add(job.getAnnoSubject()); // 업데이트된 객체 리스트에 추가
+        //                  System.out.println("제목: \"" + job.getAnnoSubject() + "\" -> 예측: " + predictedJobType);
+        //             } else {
+        //                 // AI 응답 텍스트에서 파싱되지 않았거나 결과에 포함되지 않은 제목
+        //                 System.err.println("Warning: No classification found for title: \"" + job + "\"");
+        //             }
+        //         }
+        //     },
+        //     // onError: Mono 처리 중 오류 발생 시 실행될 람다
+        //     error -> {
+        //         // AI 호출 또는 결과 처리 중 오류 발생 시 로깅
+        //         System.err.println("Error during Gemini classification or processing: " + error.getMessage());
+        //         error.printStackTrace();
+        //     },
+        //     // onComplete: Mono 처리가 성공적으로 완료되었을 때 실행될 람다 (선택 사항)
+        //     () -> {
+        //         System.out.println("Gemini 분류 비동기 작업 완료.");
+        //     }
+        // );
+        try {
+            // Mono를 구독하고 결과가 올 때까지 현재 스레드를 블록합니다.
+            // 결과는 Map<String, String> 타입으로 반환됩니다.
+            Map<String, String> classificationMap = classificationResultsMono.block();
+
+            // classificationMap이 null이 아니고, 정상적으로 결과를 받았다면 처리합니다.
+            if (classificationMap != null) {
+                System.out.println("----- Gemini 분류 결과 수신 및 DB 업데이트 시작 -----");
+
+                for (Job_mst job : result) {
+                    // 분류 결과 맵에서 해당 제목의 예측 직무 유형을 찾습니다.
+                    String predictedJobType = classificationMap.get(job.getAnnoSubject().strip());
+
+                    if (predictedJobType != null) {
+                         // Job_mst 객체의 예측 직무 유형 필드를 업데이트합니다.
+                         // 이 부분은 Job_mst 객체 자체를 수정하도록 변경합니다.
+                         job.setSubJobCdNm(predictedJobType); // Job_mst 클래스에 setPredictedJobType() 메서드가 필요합니다.
+                    } else {
+                        // AI 응답 텍스트에서 파싱되지 않았거나 결과에 포함되지 않은 제목
+                        // 모든 Job_mst 객체에 대해 결과가 있어야 함을 가정하고, 없으면 오류를 처리합니다.
+                        System.err.println("Warning: No classification found for title: \"" + job.getAnnoSubject() + "\"");
+                    }
+                }
+                 System.out.println("Gemini 분류 결과 적용 완료.");
+            } else {
+                 // block() 호출에서 null이 반환된 경우 (Mono가 empty인 경우 등)
+                 System.err.println("Warning: Gemini classification returned no result (Mono was empty).");
+            }
+
+        } catch (Exception e) {
+            // block() 호출 중 오류 발생 시 예외 처리
+            System.err.println("Error during Gemini classification (blocked call): " + e.getMessage());
+            e.printStackTrace();
+        }
+        System.out.println("----- refineJobData 메서드 동기적 처리 완료 -----");
+
+
         for (Job_mst job : result) {
             if (job.getEmpTypeCdNm() == null) {
                 job.setEmpTypeCdNm(JobEnums.REGULAR.getTitle());
