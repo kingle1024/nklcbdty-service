@@ -139,7 +139,9 @@ public class GeminiService {
                 사내 시스템 개발 -> FullStack
                 웹 크롤링(스크래핑) 엔지니어 -> FullStack
                 웹 풀스택 -> FullStack
+                Financial System Develop -> FullStack
                 관리회계 IT 담당자 -> FullStack
+                HR System Develop -> FullStack
                 보안 담당자 -> Security
                 정보보호 담당자 -> Security
                 정보보안 -> Security
@@ -164,6 +166,7 @@ public class GeminiService {
                 컴퓨팅 서비스 개발 -> Infra
                 Database 엔지니어 -> DBA
                 기술지원 담당 -> TechnicalSupport
+                Developer Relations Manage -> TechnicalSupport
                 ---
                 제목 리스트:
                 """);
