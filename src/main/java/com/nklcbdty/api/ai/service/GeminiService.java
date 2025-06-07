@@ -171,6 +171,29 @@ public class GeminiService {
                 Database 엔지니어 -> DBA
                 기술지원 담당 -> TechnicalSupport
                 Developer Relations Manage -> TechnicalSupport
+                변호사 -> Legal&Compliance
+                AML -> Legal&Compliance
+                Compliance Manage -> Legal&Compliance
+                Credit Strategy Manage -> Legal&Compliance
+                광고 전략 오퍼레이션 -> Marketing
+                Brand Marketer -> Marketing
+                Strategy Manage -> Strategy
+                Strategy Development Manager -> Strategy
+                IR Manager -> Strategy
+                Research Assistant -> Strategy
+                Public Affairs Manage -> Communication
+                Communications Manage -> Communication
+                Global Communications Manage -> Communication
+                Payroll Manager -> People
+                Barista -> People
+                Culture Event Manager -> People
+                HR Coordinator -> People
+                Recruiting Business Partner -> People
+                Recruiting Strategy Manage -> People
+                Talent Sourcer -> People
+                Employer Branding Manage -> People
+                HRBP -> People
+                Data Recruiting -> People
                 ---
                 제목 리스트:
                 """);
