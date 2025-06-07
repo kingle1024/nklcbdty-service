@@ -136,7 +136,7 @@ public class GeminiService {
                 서버 개발 -> Backend
                 빌링플랫폼 개발 -> Backend
                 검색 엔지니어 -> Backend
-                Software Engineer -> Backend                
+                Software Engineer -> Backend
                 코어뱅킹(공통) 개발자 -> FullStack
                 종합재무리스크 업무 개발자 -> FullStack
                 사내정보시스템 개발 및 운영 -> FullStack
