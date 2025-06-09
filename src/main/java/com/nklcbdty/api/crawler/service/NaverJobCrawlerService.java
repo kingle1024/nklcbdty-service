@@ -34,7 +34,7 @@ public class NaverJobCrawlerService implements JobCrawler {
     }
 
     private String createApiUrl() {
-        return "https://recruit.navercorp.com/rcrt/loadJobList.do?subJobCdArr=1010004&sysCompanyCdArr=&empTypeCdArr=&entTypeCdArr=&workAreaCdArr=&sw=&subJobCdData=1010004&firstIndex=0";
+        return "https://recruit.navercorp.com/rcrt/loadJobList.do?annoId=&sw=&subJobCdArr=&sysCompanyCdArr=&empTypeCdArr=&entTypeCdArr=&workAreaCdArr=&";
     }
 
     @Override
@@ -43,32 +43,40 @@ public class NaverJobCrawlerService implements JobCrawler {
         List<Job_mst> result = new ArrayList<>(Collections.emptyList());
 
         try {
-            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
 
-            // JSON 파싱 및 변환
-            JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("list");
-            for (int i = 0; i < jobList.length(); i++) {
-                JSONObject edge = jobList.getJSONObject(i);
+            int idx = 0;
+            while (true) {
+                final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl + "firstIndex=" + idx);
+                JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("list");
+                if (jobList.isEmpty()) {
+                    break;
+                }
 
-                Job_mst item = new Job_mst();
-                item.setAnnoId(edge.getLong("annoId"));
-                item.setAnnoSubject(edge.getString("annoSubject"));
-                item.setClassCdNm(edge.getString("classCdNm"));
-                item.setEmpTypeCdNm(edge.getString("empTypeCdNm"));
-                item.setSubJobCdNm(edge.getString("subJobCdNm"));
-                item.setSysCompanyCdNm(edge.getString("sysCompanyCdNm"));
-                item.setJobDetailLink(edge.getString("jobDetailLink"));
-                if (edge.get("staYmdTime").equals(null)) {
-                    item.setStartDate("영입종료시");
-                } else {
-                    item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
+                for (int i = 0; i < jobList.length(); i++) {
+                    JSONObject edge = jobList.getJSONObject(i);
+
+                    Job_mst item = new Job_mst();
+                    item.setAnnoId(edge.getLong("annoId"));
+                    item.setAnnoSubject(edge.getString("annoSubject"));
+                    item.setClassCdNm(edge.getString("classCdNm"));
+                    item.setEmpTypeCdNm(edge.getString("empTypeCdNm"));
+                    item.setSubJobCdNm(edge.getString("subJobCdNm"));
+                    item.setSysCompanyCdNm(edge.getString("sysCompanyCdNm"));
+                    item.setJobDetailLink(edge.getString("jobDetailLink"));
+                    if (edge.get("staYmdTime").equals(null)) {
+                        item.setStartDate("영입종료시");
+                    } else {
+                        item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
+                    }
+                    if (edge.get("endYmdTime").equals(null)) {
+                        item.setEndDate("영입종료시");
+                    } else {
+                        item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
+                    }
+                    result.add(item);
                 }
-                if (edge.get("endYmdTime").equals(null)) {
-                    item.setEndDate("영입종료시");
-                } else {
-                    item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
-                }
-                result.add(item);
+
+                idx += 10;
             }
 
             for (Job_mst item : result) {
