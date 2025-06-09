@@ -129,6 +129,7 @@ public class GeminiService {
                 MLOps 엔지니어 -> ML
                 머신러닝 엔지니어 -> ML
                 ML Manager -> ML
+                Industrial Engineer -> DataAnalyst
                 데이터 분석 -> DataAnalyst
                 Data Manager -> DataAnalyst
                 데이터 엔지니어 -> DataEngineering
@@ -137,6 +138,7 @@ public class GeminiService {
                 빌링플랫폼 개발 -> Backend
                 검색 엔지니어 -> Backend
                 Software Engineer -> Backend
+                개발자 공개 채용 -> FullStack
                 코어뱅킹(공통) 개발자 -> FullStack
                 종합재무리스크 업무 개발자 -> FullStack
                 사내정보시스템 개발 및 운영 -> FullStack
@@ -161,6 +163,8 @@ public class GeminiService {
                 QA -> QA
                 PM -> PM
                 기획 담당자 -> PO
+                기술/기획 담당자 -> PO
+                리서치/서베이 운영 담당자 -> PO
                 iOS -> iOS
                 시스템 엔지니어 -> Infra
                 네트워크 엔지니어 -> Infra
@@ -184,6 +188,7 @@ public class GeminiService {
                 Public Affairs Manage -> Communication
                 Communications Manage -> Communication
                 Global Communications Manage -> Communication
+                성장 및 협력 담당자 -> People
                 Payroll Manager -> People
                 Barista -> People
                 Culture Event Manager -> People
@@ -194,6 +199,10 @@ public class GeminiService {
                 Employer Branding Manage -> People
                 HRBP -> People
                 Data Recruiting -> People
+                노사 전략 및 ER 담당자 -> People
+                구매 계약 담당자 -> Finance
+                Cloud Business Pathfinder -> Business
+                사업개발 및 세일즈 -> Business
                 ---
                 제목 리스트:
                 """);
