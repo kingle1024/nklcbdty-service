@@ -42,6 +42,10 @@ public class KakaoCrawlerService implements JobCrawler {
     public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
+            List<Job_mst> kakaoHealth = new ArrayList<>();
+            addRecruitHealth(kakaoHealth);
+            result.addAll(kakaoHealth);
+
             List<Job_mst> kakaopaySec = new ArrayList<>();
             addRecruitPaySec(kakaopaySec);
             result.addAll(kakaopaySec);
@@ -216,7 +220,7 @@ public class KakaoCrawlerService implements JobCrawler {
                         job.setSysCompanyCdNm("카카오 게임즈");
                         break;
                     }
-                    case "kakaohealthcare": {
+                    case "kakaohealthcare", "카카오 헬스케어": {
                         job.setSysCompanyCdNm("카카오 헬스케어");
                         break;
                     }
@@ -323,9 +327,67 @@ public class KakaoCrawlerService implements JobCrawler {
     private void addRecruitHealth(List<Job_mst> kakaopayHealth) {
         String buildName = "";
         try {
+            Document doc = Jsoup.connect("https://recruit.kakaohealthcare.com/recruit").get();
+            Elements iconLinkTags = doc.select("link[rel=icon], link[rel=shortcut icon]");
 
+            if (!iconLinkTags.isEmpty()) {
+                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
+                String imageUrl = Objects.requireNonNull(iconLinkTags.first()).attr("href");
+
+                // URL에서 "brand/"와 그 다음 "/" 사이의 문자열을 추출하는 정규식
+                String regex = "/homepage/([^/]+)/";
+                Pattern pattern = Pattern.compile(regex);
+                Matcher matcher = pattern.matcher(imageUrl);
+
+                // 정규식에 매칭되는 부분이 있는지 확인
+                if (matcher.find()) {
+                    buildName = matcher.group(1); // 첫 번째 그룹 (UUID 부분) 추출
+                } else {
+                    log.error("No match found in the URL: {}", imageUrl);
+                    return;
+                }
+            }
+
+            final String apiUrl = "https://api.ninehire.com/identity-access/homepage/recruitments?companyId="+buildName+"&page=1&countPerPage=20&externalTitle=&order=created_at_desc";
+            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+
+            // JSON 객체로 변환
+            JSONObject jsonResult = new JSONObject(jsonResponse);
+
+            JSONArray jsonArray = jsonResult.getJSONArray("results");
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                Object endDateObj = jsonObject.get("deadlineValue");
+                if (crawlerCommonService.isCloseDate(endDateObj)) {
+                    continue;
+                }
+
+                Job_mst item = new Job_mst();
+                String endDate;
+                if (!endDateObj.equals(null)) {
+                    endDate = jsonObject.getString("deadlineValue");
+                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    String formattedDate = offsetDateTime.format(formatter);
+                    item.setEndDate(formattedDate);
+                }
+                String title = jsonObject.get("externalTitle").toString();
+                item.setAnnoSubject(title);
+                String empTypeCdNm = jsonObject.getJSONArray("employmentType").getString(0);
+                if("full_time".equals(empTypeCdNm)) {
+                    item.setEmpTypeCdNm("정규");
+                } else {
+                    item.setEmpTypeCdNm("비정규");
+                }
+                if (!jsonObject.get("jobGroup").equals(null)) {
+                    item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
+                }
+                item.setSysCompanyCdNm("카카오 헬스케어");
+                item.setJobDetailLink("https://recruit.kakaohealthcare.com/job_posting/" + jsonObject.get("addressKey"));
+                kakaopayHealth.add(item);
+            }
         } catch (Exception e) {
-
+            log.error("Error occurred while fetching Kakao Health jobs: {}", e.getMessage(), e);
         }
     }
 
