@@ -314,9 +314,9 @@ public class KakaoCrawlerService implements JobCrawler {
 
 
             result.addAll(kakaoBankResult);
-            crawlerCommonService.saveAll("KAKAO", result);
+            crawlerCommonService.getNotSaveJobItem("KAKAO", result);
 
-            crawlerCommonService.saveAll("KAKAO", result);
+            crawlerCommonService.getNotSaveJobItem("KAKAO", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);

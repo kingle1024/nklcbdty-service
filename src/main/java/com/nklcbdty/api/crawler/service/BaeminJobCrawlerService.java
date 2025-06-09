@@ -101,7 +101,7 @@ public class BaeminJobCrawlerService implements JobCrawler{
                 }
             }
 
-			crawlerCommonService.saveAll("BAEMIN", list);
+			crawlerCommonService.getNotSaveJobItem("BAEMIN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
