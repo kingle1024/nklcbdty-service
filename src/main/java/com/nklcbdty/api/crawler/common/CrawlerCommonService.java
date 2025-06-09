@@ -13,6 +13,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -59,13 +60,10 @@ public class CrawlerCommonService {
         }
     }
 
-    public void saveAll(String company, List<Job_mst> result) {
+    public List<Job_mst> getNotSaveJobItem(String company, List<Job_mst> result) {
         List<Long> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
         List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
         List<Job_mst> jobsToSave = new ArrayList<>();
-
-        // DB 저장 시 데이터 정제 처리
-        refineJobData(result);
 
         for (Job_mst job : result) {
             boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
@@ -89,50 +87,13 @@ public class CrawlerCommonService {
             for (Job_mst item : jobsToSave) {
                 item.setCompanyCd(company);
             }
-            crawlerRepository.saveAll(jobsToSave);
         }
+
+        return jobsToSave;
     }
 
-    private void refineJobData(List<Job_mst> result) {
-
-        Mono<Map<String, String>> classificationResultsMono = geminiService.classifyJobTitles(result);
-
-        try {
-            // Mono를 구독하고 결과가 올 때까지 현재 스레드를 블록합니다.
-            // 결과는 Map<String, String> 타입으로 반환됩니다.
-            Map<String, String> classificationMap = classificationResultsMono.block();
-
-            // classificationMap이 null이 아니고, 정상적으로 결과를 받았다면 처리합니다.
-            if (classificationMap != null) {
-                log.info("----- Gemini 분류 결과 수신 및 DB 업데이트 시작 -----");
-
-                for (Job_mst job : result) {
-                    // 분류 결과 맵에서 해당 제목의 예측 직무 유형을 찾습니다.
-                    String predictedJobType = classificationMap.get(job.getAnnoSubject().strip());
-
-                    if (predictedJobType != null) {
-                         // Job_mst 객체의 예측 직무 유형 필드를 업데이트합니다.
-                         // 이 부분은 Job_mst 객체 자체를 수정하도록 변경합니다.
-                         job.setSubJobCdNm(predictedJobType); // Job_mst 클래스에 setPredictedJobType() 메서드가 필요합니다.
-                    } else {
-                        // AI 응답 텍스트에서 파싱되지 않았거나 결과에 포함되지 않은 제목
-                        // 모든 Job_mst 객체에 대해 결과가 있어야 함을 가정하고, 없으면 오류를 처리합니다.
-                        log.error("Warning: No classification found for title: \"{}\"", job.getAnnoSubject());
-                    }
-                }
-                log.info("Gemini 븐류 결과 적용 완료. 총 {}개의 직무가 업데이트되었습니다.", result.size());
-            } else {
-                 // block() 호출에서 null이 반환된 경우 (Mono가 empty인 경우 등)
-                 log.error("Warning: Gemini classification returned no result (Mono was empty).");
-            }
-
-        } catch (Exception e) {
-            // block() 호출 중 오류 발생 시 예외 처리
-            log.error("Error during Gemini classification (blocked call): {}", e.getMessage(), e);
-            e.printStackTrace();
-        }
-        log.info("----- refineJobData 메서드 동기적 처리 완료 -----");
-
+    public void refineJobData(List<Job_mst> result) {
+        refineJobItemBygemini(result);
 
         for (Job_mst job : result) {
             if (job.getEmpTypeCdNm() == null) {
@@ -175,6 +136,37 @@ public class CrawlerCommonService {
                 job.setSubJobCdNm(null);
             }
         }
+    }
+
+    private void refineJobItemBygemini(List<Job_mst> result) {
+        Mono<Map<String, String>> classificationResultsMono = geminiService.classifyJobTitles(result);
+
+        try {
+            Map<String, String> classificationMap = classificationResultsMono.block();
+
+            if (classificationMap != null) {
+                log.info("----- Gemini 분류 결과 수신 및 DB 업데이트 시작 -----");
+
+                for (Job_mst job : result) {
+                    String predictedJobType = classificationMap.get(job.getAnnoSubject().strip());
+
+                    if (predictedJobType != null) {
+                         job.setSubJobCdNm(predictedJobType); // Job_mst 클래스에 setPredictedJobType() 메서드가 필요합니다.
+                    } else {
+                        log.error("Warning: No classification found for title: \"{}\"", job.getAnnoSubject());
+                    }
+                }
+                log.info("Gemini 븐류 결과 적용 완료. 총 {}개의 직무가 업데이트되었습니다.", result.size());
+            } else {
+                 log.error("Warning: Gemini classification returned no result (Mono was empty).");
+            }
+
+        } catch (Exception e) {
+            // block() 호출 중 오류 발생 시 예외 처리
+            log.error("Error during Gemini classification (blocked call): {}", e.getMessage(), e);
+            e.printStackTrace();
+        }
+        log.info("----- refineJobData 메서드 동기적 처리 완료 -----");
     }
 
     /**
@@ -245,7 +237,8 @@ public class CrawlerCommonService {
         String endDateStr = String.valueOf(endDate);
 
         if (endDateStr.contains("T")) {
-            endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDateStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            endDateTime = offsetDateTime.toLocalDateTime();
         } else {
             endDateTime = LocalDateTime.parse(endDateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         }
@@ -255,5 +248,9 @@ public class CrawlerCommonService {
 
         // 비교
         return now.isAfter(endDateTime);
+    }
+
+    public List<Job_mst> getNotSaveJobItem(List<Job_mst> jobsToSave) {
+        return crawlerRepository.saveAll(jobsToSave);
     }
 }

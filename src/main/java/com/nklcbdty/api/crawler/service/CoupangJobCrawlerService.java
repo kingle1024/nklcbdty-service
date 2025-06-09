@@ -68,7 +68,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 		    }
 		}
 
-        crawlerCommonService.saveAll("COUPANG", resList);
+        crawlerCommonService.getNotSaveJobItem("COUPANG", resList);
         return CompletableFuture.completedFuture(resList);
 	}
 		

@@ -135,7 +135,7 @@ public class DaangnJobCrawlerService implements JobCrawler{
                 }
             }
 
-			crawlerCommonService.saveAll("DAANGN", list);
+			crawlerCommonService.getNotSaveJobItem("DAANGN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
