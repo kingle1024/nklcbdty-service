@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
@@ -32,6 +33,7 @@ public class JobController {
     private final JobCrawler coupangJobCrawlerService;
     private final JobCrawler baeminJobCrawlerService;
     private final JobCrawler daangnJobCrawlerService;
+    private final CrawlerCommonService commonService;
 
     @Autowired
     public JobController(
@@ -43,8 +45,7 @@ public class JobController {
         @Qualifier("coupangJobCrawlerService") JobCrawler coupangJobCrawlerService,
         @Qualifier("baeminJobCrawlerService") JobCrawler baeminJobCrawlerService,
         @Qualifier("daangnJobCrawlerService") JobCrawler daangnJobCrawlerService,
-        JobService jobService
-    ) {
+        JobService jobService, CrawlerCommonService commonService) {
 
         this.naverJobCrawlerService = naverJobCrawlerService;
         this.kakaoCrawlerService = kakaoCrawlerService;
@@ -55,6 +56,7 @@ public class JobController {
         this.coupangJobCrawlerService = coupangJobCrawlerService;
         this.baeminJobCrawlerService = baeminJobCrawlerService;
         this.daangnJobCrawlerService = daangnJobCrawlerService;
+        this.commonService = commonService;
     }
 
     @GetMapping("/list")
@@ -68,28 +70,36 @@ public class JobController {
         try {
             switch (company) {
                 case "naver": {
-                    return naverJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = naverJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "kakao": {
-                    return kakaoCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = kakaoCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "line": {
-                    return lineJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = lineJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "coupang": {
-                    return coupangJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = coupangJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "baemin": {
-                    return baeminJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = baeminJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "daangn": {
-                    return daangnJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = daangnJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "toss": {
-                    return tossJobCrawlerService.crawlJobs().get();
+                    List<Job_mst> items = tossJobCrawlerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "yanolja": {
-                    return yanoljaCralwerService.crawlJobs().get();
+                    List<Job_mst> items = yanoljaCralwerService.crawlJobs().get();
+                    return commonService.getNotSaveJobItem(items);
                 }
                 case "all": {
                     jobService.deleteAll();
@@ -122,11 +132,11 @@ public class JobController {
                         combinedResults.addAll(daangnFuture.get());
                         combinedResults.addAll(tossFuture.get());
                         combinedResults.addAll(yanoljaFuture.get());
-
+                        commonService.refineJobData(combinedResults);
                         log.info("Combined results count: {}", combinedResults.size());
 
                         // 모든 비동기 작업이 완료된 후에 결과를 반환합니다.
-                        return combinedResults;
+                        return commonService.getNotSaveJobItem(combinedResults);
 
                     } catch (InterruptedException | ExecutionException e) {
                         log.error("Error during async crawler execution", e);

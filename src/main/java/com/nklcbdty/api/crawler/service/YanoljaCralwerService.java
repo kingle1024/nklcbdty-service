@@ -124,7 +124,7 @@ public class YanoljaCralwerService implements JobCrawler {
                 }
             }
 
-            commonService.saveAll("YANOLJA", result);
+            commonService.getNotSaveJobItem("YANOLJA", result);
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
