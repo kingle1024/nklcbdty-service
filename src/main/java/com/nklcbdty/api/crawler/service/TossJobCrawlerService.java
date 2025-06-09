@@ -177,7 +177,7 @@ public class TossJobCrawlerService implements JobCrawler {
                 }
             }
 
-            commonService.saveAll("TOSS", result);
+            commonService.getNotSaveJobItem("TOSS", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);

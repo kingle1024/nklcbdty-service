@@ -168,7 +168,7 @@ public class LineJobCrawlerService implements JobCrawler {
                 item.setSubJobCdNm(subJobCdNmReplace);
             }
 
-            crawlerCommonService.saveAll("LINE", result);
+            crawlerCommonService.getNotSaveJobItem("LINE", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);

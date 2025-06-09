@@ -109,7 +109,7 @@ public class NaverJobCrawlerService implements JobCrawler {
                 }
             }
 
-            crawlerCommonService.saveAll("NAVER", result);
+            crawlerCommonService.getNotSaveJobItem("NAVER", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
