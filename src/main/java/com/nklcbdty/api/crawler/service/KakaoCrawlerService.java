@@ -1,13 +1,20 @@
 package com.nklcbdty.api.crawler.service;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -35,6 +42,10 @@ public class KakaoCrawlerService implements JobCrawler {
     public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
         try {
+            List<Job_mst> kakaopaySec = new ArrayList<>();
+            addRecruitPaySec(kakaopaySec);
+            result.addAll(kakaopaySec);
+
             addRecruitContent("P", result);
             addRecruitContent("S", result);
 
@@ -209,6 +220,10 @@ public class KakaoCrawlerService implements JobCrawler {
                         job.setSysCompanyCdNm("카카오 헬스케어");
                         break;
                     }
+                    case "카카오 페이증권": {
+                        job.setSysCompanyCdNm("카카오 페이증권");
+                        break;
+                    }
                     default: {
                         job.setSysCompanyCdNm("카카오");
                     }
@@ -293,13 +308,97 @@ public class KakaoCrawlerService implements JobCrawler {
                 }
             }
 
+
             result.addAll(kakaoBankResult);
+            crawlerCommonService.saveAll("KAKAO", result);
+
             crawlerCommonService.saveAll("KAKAO", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
         return CompletableFuture.completedFuture(result);
+    }
+
+    private void addRecruitHealth(List<Job_mst> kakaopayHealth) {
+        String buildName = "";
+        try {
+
+        } catch (Exception e) {
+
+        }
+    }
+
+    private void addRecruitPaySec(List<Job_mst> kakaopaySec) {
+        String buildName = "";
+
+        try {
+            // 웹 페이지에 연결하여 Document 객체 가져오기
+            Document doc = Jsoup.connect("https://career.kakaopaysec.com/job_posting").get();
+
+            // property 속성이 "og:image"인 meta 태그 선택
+            Elements metaTags = doc.select("meta[property=og:image]");
+
+            if (!metaTags.isEmpty()) {
+                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
+                String imageUrl = Objects.requireNonNull(metaTags.first()).attr("content");
+
+                // URL에서 "brand/"와 그 다음 "/" 사이의 문자열을 추출하는 정규식
+                String regex = "/brand/([^/]+)/";
+                Pattern pattern = Pattern.compile(regex);
+                Matcher matcher = pattern.matcher(imageUrl);
+
+                // 정규식에 매칭되는 부분이 있는지 확인
+                if (matcher.find()) {
+                    buildName = matcher.group(1); // 첫 번째 그룹 (UUID 부분) 추출
+                } else {
+                    log.error("No match found in the URL: {}", imageUrl);
+                    return;
+                }
+            }
+
+            final String apiUrl = "https://api.ninehire.com/identity-access/homepage/recruitments?companyId="+buildName+"&page=1&countPerPage=20&externalTitle=&order=created_at_desc";
+            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+
+            // JSON 객체로 변환
+            JSONObject jsonResult = new JSONObject(jsonResponse);
+
+            JSONArray jsonArray = jsonResult.getJSONArray("results");
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                Object endDateObj = jsonObject.get("deadlineValue");
+                if (crawlerCommonService.isCloseDate(endDateObj)) {
+                    continue;
+                }
+
+                Job_mst item = new Job_mst();
+                String endDate;
+                if (!endDateObj.equals(null)) {
+                    endDate = jsonObject.getString("deadlineValue");
+                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    String formattedDate = offsetDateTime.format(formatter);
+                    item.setEndDate(formattedDate);
+                }
+                String title = jsonObject.get("externalTitle").toString();
+                item.setAnnoSubject(title);
+                String empTypeCdNm = jsonObject.getJSONArray("employmentType").getString(0);
+                if("full_time".equals(empTypeCdNm)) {
+                    item.setEmpTypeCdNm("정규");
+                } else {
+                    item.setEmpTypeCdNm("비정규");
+                }
+                if (!jsonObject.get("jobGroup").equals(null)) {
+                    item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
+                }
+                item.setSysCompanyCdNm("카카오 페이증권");
+                item.setJobDetailLink("https://career.kakaopaysec.com/job_posting/" + jsonObject.get("addressKey"));
+                kakaopaySec.add(item);
+            }
+
+        } catch (Exception e) {
+            log.error("Error occurred while fetching Kakao Pay jobs: {}", e.getMessage(), e);
+        }
     }
 
     private void addRecruitKakaoBank(List<Job_mst> result) {
