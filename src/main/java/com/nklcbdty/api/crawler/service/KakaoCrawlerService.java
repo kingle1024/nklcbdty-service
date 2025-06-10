@@ -384,6 +384,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 }
                 item.setSysCompanyCdNm("카카오 헬스케어");
                 item.setJobDetailLink("https://recruit.kakaohealthcare.com/job_posting/" + jsonObject.get("addressKey"));
+                item.setAnnoId(jsonObject.getString("addressKey"));
                 kakaopayHealth.add(item);
             }
         } catch (Exception e) {
@@ -455,6 +456,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 }
                 item.setSysCompanyCdNm("카카오 페이증권");
                 item.setJobDetailLink("https://career.kakaopaysec.com/job_posting/" + jsonObject.get("addressKey"));
+                item.setAnnoId(jsonObject.getString("addressKey"));
                 kakaopaySec.add(item);
             }
 
@@ -500,7 +502,7 @@ public class KakaoCrawlerService implements JobCrawler {
                 String jobType = edge.getString("recruitClassName");
 
                 Job_mst item = new Job_mst();
-                item.setAnnoId(recruitNoticeSn);
+                item.setAnnoId(String.valueOf(recruitNoticeSn));
                 item.setAnnoSubject(title);
                 item.setEmpTypeCdNm(employeeTypeName);
                 item.setClassCdNm("Tech");
@@ -575,7 +577,7 @@ public class KakaoCrawlerService implements JobCrawler {
             String companyNameEn = edge.getString("companyNameEn");
             Job_mst item = new Job_mst();
             item.setAnnoSubject(String.valueOf(title));
-            item.setAnnoId(jobOfferId);
+            item.setAnnoId(String.valueOf(jobOfferId));
             item.setEmpTypeCdNm(employeeTypeName);
             item.setClassCdNm(jobType);
             item.setSubJobCdNm(skillSetType);

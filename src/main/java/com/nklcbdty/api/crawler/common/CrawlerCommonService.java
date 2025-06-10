@@ -61,7 +61,7 @@ public class CrawlerCommonService {
     }
 
     public List<Job_mst> getNotSaveJobItem(String company, List<Job_mst> result) {
-        List<Long> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
+        List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
         List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
         List<Job_mst> jobsToSave = new ArrayList<>();
 
@@ -180,7 +180,7 @@ public class CrawlerCommonService {
             log.info("resList.isEmpty()");
             return resList;
         }
-    	List<Long> annoIds;
+    	List<String> annoIds;
 		List<Job_mst> existingJobs;
 		List<Job_mst> jobsToSave = new ArrayList<>();
 		
