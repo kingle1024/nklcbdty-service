@@ -5,6 +5,7 @@ import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.nklcbdty.api.crawler.repository.JobRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
@@ -32,6 +33,11 @@ public class JobService {
         }
 
         return items;
+    }
+
+    @Transactional
+    public void deleteByCompany(String company_cd) {
+        jobRepository.deleteByCompanyCd(company_cd);
     }
 
     public void deleteAll() {
