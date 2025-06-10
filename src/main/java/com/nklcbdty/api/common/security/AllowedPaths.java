@@ -10,6 +10,7 @@ public enum AllowedPaths {
     KAKAO_LOGIN("/api/kakaoLogin"),
     OAUTH2("/oauth2/**"),
     DETAIL("/detail/**"),
+    LOG("/api/log/**"),
     LIST("/api/list"),
     LIST_ALL("/api/list/**"),
     CATEGORY_ALL("/api/category/**"),
