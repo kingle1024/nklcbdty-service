@@ -17,8 +17,11 @@ public class Job_mst {
     @Column(nullable = true)
     private String companyCd; // 회사구분
 
+    // @Column(nullable = true)
+    // private Long annoId; // 공고 고유 번호
+
     @Column(nullable = true)
-    private Long annoId; // 공고 고유 번호
+    private String annoId; // 공고 고유 번호
 
     @Column(nullable = true)
     private String classCdNm; // Tech, Business, ...

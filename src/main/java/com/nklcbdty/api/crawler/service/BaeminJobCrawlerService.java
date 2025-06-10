@@ -59,7 +59,7 @@ public class BaeminJobCrawlerService implements JobCrawler{
 				JSONObject employmentType = item.getJSONObject("employmentType");
 				String empTypeCdNm = baeminConvertCodeToEmpType(employmentType);
 				
-				job_mst.setAnnoId(Long.parseLong(annoId));
+                job_mst.setAnnoId(annoId);
 				job_mst.setJobDetailLink("https://career.woowahan.com/recruitment/" + recruitNumber + "/detail?jobCodes=&employmentTypeCodes=&serviceSectionCodes=&careerPeriod=&category=jobGroupCodes%3ABA005001");
 				job_mst.setEmpTypeCdNm(empTypeCdNm);
 				job_mst.setAnnoSubject(annoSubject);

@@ -77,7 +77,7 @@ public class YanoljaCralwerService implements JobCrawler {
                 for (int j = 0; j < jsonArray1.length(); j++) {
                     Job_mst item = new Job_mst();
                     JSONObject data = jsonArray1.getJSONObject(j);
-                    item.setAnnoId(data.getLong("openingId"));
+                    item.setAnnoId(data.get("openingId").toString());
                     item.setAnnoSubject(data.getString("title"));
                     if(data.has("job") && !data.isNull("job")) {
                         item.setClassCdNm(data.getString("job"));
