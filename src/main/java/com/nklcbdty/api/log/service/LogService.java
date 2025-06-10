@@ -20,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.nklcbdty.api.log.entity.JobHistoryEntity;
 import com.nklcbdty.api.log.entity.VisitorEntity;
+import com.nklcbdty.api.log.repository.JobHistoryRepository;
 import com.nklcbdty.api.log.repository.VisitorRepository;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,13 +32,15 @@ import lombok.extern.slf4j.Slf4j;
 public class LogService {
 
     private final VisitorRepository logRepository;
+    private final JobHistoryRepository jobHistoryRepository;
 
     @Value("${ip2location.api.key}")  // application.properties에서 API 키를 가져옵니다.
     private String API_KEY;
 
     @Autowired
-    public LogService(VisitorRepository logRepository) {
+    public LogService(VisitorRepository logRepository, JobHistoryRepository jobHistoryRepository) {
         this.logRepository = logRepository;
+        this.jobHistoryRepository = jobHistoryRepository;
     }
 
     public VisitorEntity insertLog() {
@@ -203,5 +207,13 @@ public class LogService {
         cookie.setSecure(true); // HTTPS에서만 전송되도록 설정
         cookie.setHttpOnly(true); // JavaScript에서 접근하지 못하도록 설정
         response.addCookie(cookie);
+    }
+
+    public void insertJobHistory(String annoId, String annoSubject) {
+        JobHistoryEntity jobHistoryEntity = JobHistoryEntity.builder()
+                .annoId(annoId)
+                .annoSubject(annoSubject)
+                .build();
+        jobHistoryRepository.save(jobHistoryEntity);
     }
 }
