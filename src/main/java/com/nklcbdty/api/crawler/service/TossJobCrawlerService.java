@@ -80,7 +80,7 @@ public class TossJobCrawlerService implements JobCrawler {
                             }
                         }
                     }
-                    item.setAnnoId(contentItem.getLong("id"));
+                    item.setAnnoId(contentItem.get("id").toString());
                     item.setAnnoSubject(contentItem.getString("title"));
                     item.setJobDetailLink(contentItem.getString("absolute_url"));
 

@@ -105,7 +105,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
 
         		job_mst.setJobDetailLink("https://www.coupang.jobs".concat(jobDetailLink));
         		job_mst.setAnnoSubject(annoSubject);
-        		job_mst.setAnnoId(annoId);
+                job_mst.setAnnoId(annoId.toString());
         		job_mst.setWorkplace(workplace);
         		tempList.add(job_mst);
         	}
