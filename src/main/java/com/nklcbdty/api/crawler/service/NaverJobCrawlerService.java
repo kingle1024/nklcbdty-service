@@ -56,7 +56,7 @@ public class NaverJobCrawlerService implements JobCrawler {
                     JSONObject edge = jobList.getJSONObject(i);
 
                     Job_mst item = new Job_mst();
-                    item.setAnnoId(edge.getLong("annoId"));
+                    item.setAnnoId(edge.get("annoId").toString());
                     item.setAnnoSubject(edge.getString("annoSubject"));
                     item.setClassCdNm(edge.getString("classCdNm"));
                     item.setEmpTypeCdNm(edge.getString("empTypeCdNm"));

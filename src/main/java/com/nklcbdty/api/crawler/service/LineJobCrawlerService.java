@@ -71,7 +71,7 @@ public class LineJobCrawlerService implements JobCrawler {
                         // title 값 가져오기
                         String companies = node.getJSONArray("companies").getJSONObject(0).getString("name");
                         Job_mst item = new Job_mst();
-                        item.setAnnoId(node.getLong("strapiId"));
+                        item.setAnnoId(node.get("strapiId").toString());
                         item.setClassCdNm(jobUnitName);
                         item.setSysCompanyCdNm(companies);
                         item.setAnnoSubject(node.getString("title"));

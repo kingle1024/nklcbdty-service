@@ -81,7 +81,7 @@ public class DaangnJobCrawlerService implements JobCrawler{
 				}
 				
 				job_mst.setJobDetailLink(jobDetailLink);
-				job_mst.setAnnoId(Long.parseLong(annoId));
+                job_mst.setAnnoId(annoId);
 				job_mst.setAnnoSubject(annoSubject);
 				job_mst.setEmpTypeCdNm(empTypeCdNm);
 				job_mst.setSysCompanyCdNm(sysCompanyCdNm);
