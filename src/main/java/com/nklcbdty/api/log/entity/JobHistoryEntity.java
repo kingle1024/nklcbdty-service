@@ -28,6 +28,7 @@ public class JobHistoryEntity {
     private Long id;
     private String annoId;
     private String annoSubject;
+    private String insertIp;
     @CreationTimestamp
     private LocalDateTime insertDts;
 }

@@ -210,9 +210,13 @@ public class LogService {
     }
 
     public void insertJobHistory(String annoId, String annoSubject) {
+        HttpServletRequest request =
+                        ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+
         JobHistoryEntity jobHistoryEntity = JobHistoryEntity.builder()
                 .annoId(annoId)
                 .annoSubject(annoSubject)
+                .insertIp(getClientIpAddr(request))
                 .build();
         jobHistoryRepository.save(jobHistoryEntity);
     }
