@@ -138,6 +138,9 @@ public class GeminiService {
                 빌링플랫폼 개발 -> Backend
                 검색 엔지니어 -> Backend
                 Software Engineer -> Backend
+                Graphics 엔진 개발 -> Backend
+                SDK 개발 -> Backend
+                Platform Engineer -> Backend
                 개발자 공개 채용 -> FullStack
                 코어뱅킹(공통) 개발자 -> FullStack
                 종합재무리스크 업무 개발자 -> FullStack
@@ -154,6 +157,7 @@ public class GeminiService {
                 정보보호 관리체계 통합 운영 담당자 -> Security
                 IT 서비스 안정성 및 위험관리 전문가 -> Security
                 IT Audit Manager -> Security
+                Privacy Manager -> Security
                 보안 플랫폼 개발 -> SecurityEngineering
                 보안 엔지니어 -> SecurityEngineering
                 DevOps Engineer -> DevOps
@@ -200,6 +204,7 @@ public class GeminiService {
                 HRBP -> People
                 Data Recruiting -> People
                 노사 전략 및 ER 담당자 -> People
+                교육 콘텐츠 기획 및 운영 -> People
                 구매 계약 담당자 -> Finance
                 Cloud Business Pathfinder -> Business
                 사업개발 및 세일즈 -> Business
