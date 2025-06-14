@@ -10,13 +10,10 @@ import java.util.stream.Collectors;
 
 import com.nklcbdty.api.log.dto.VisitorCountDTO;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.DateExpression;
-import com.querydsl.core.types.dsl.DateTemplate;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import static com.nklcbdty.api.log.entity.QVisitorEntity.*;
-import static com.querydsl.core.types.dsl.Expressions.*;
 
 @Repository
 public class VisitorRepositoryImpl implements VisitorRepositoryCustom {
