@@ -169,6 +169,7 @@ public class GeminiService {
                 기획 담당자 -> PO
                 기술/기획 담당자 -> PO
                 리서치/서베이 운영 담당자 -> PO
+                기업뱅킹 고도화 및 운영 담당 -> PO
                 iOS -> iOS
                 시스템 엔지니어 -> Infra
                 네트워크 엔지니어 -> Infra
@@ -205,9 +206,11 @@ public class GeminiService {
                 Data Recruiting -> People
                 노사 전략 및 ER 담당자 -> People
                 교육 콘텐츠 기획 및 운영 -> People
+                RN 담당 -> People
                 구매 계약 담당자 -> Finance
                 Cloud Business Pathfinder -> Business
                 사업개발 및 세일즈 -> Business
+                번역 담당자 -> Business
                 ---
                 제목 리스트:
                 """);
