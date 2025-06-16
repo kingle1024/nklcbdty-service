@@ -14,7 +14,7 @@ public enum AllowedPaths {
     LIST("/api/list"),
     LIST_ALL("/api/list/**"),
     CATEGORY_ALL("/api/category/**"),
-    EMAIL("/email/send"),
+    EMAIL("/api/email/**"),
     CRALWER("/api/crawler"),
     COUNT_BY_DATE("/api/statistics/count-by-date")
     ;
