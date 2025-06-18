@@ -29,9 +29,7 @@ public class UserInterestVo {
     private Long id;
     @Column(name = "user_id")
     private String userId;
-    @Column(name = "item_type")
     private String itemType;
-    @Column(name = "item_value")
     private String itemValue;
     @CreationTimestamp // 엔티티가 처음 저장될 때 현재 시간이 자동 설정됩니다.
     private LocalDateTime insertDts;
