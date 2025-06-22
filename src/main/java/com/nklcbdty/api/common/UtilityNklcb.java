@@ -7,8 +7,10 @@ import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import io.jsonwebtoken.io.Decoders; // Base64 인코딩된 키를 사용하는 경우
+import javax.crypto.SecretKey; // 추가해야 할 import
 
 @Component
 public class UtilityNklcb {
@@ -41,20 +43,23 @@ public class UtilityNklcb {
         } else {
             expiryDate = new Date(now.getTime() + 3_600_000); // 1시간 후 만료
         }
+        SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
 
         return Jwts.builder()
             .setSubject(userId)
             .setIssuedAt(now)
             .setExpiration(expiryDate)
-            .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+            .signWith(secretKey) // deprecated 되지 않은 signWith(SecretKey) 사용
             .compact();
     }
 
     public void validToken(String token) {
-        Claims claims = Jwts.parser()
-            .setSigningKey(SECRET_KEY)
-            .parseClaimsJws(token)
-            .getBody();
+        SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(secretKey) // verifyWith 대신 setSigningKey를 사용해!
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
 
         try {
             if (claims.getExpiration().before(new Date())) {
