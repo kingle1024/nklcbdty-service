@@ -15,7 +15,6 @@ import com.nklcbdty.api.ai.dto.GeminiRequest;
 import com.nklcbdty.api.ai.dto.GeminiResponse;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
-// 여러 제목 처리를 위한 새로운 임포트
 import java.util.HashMap;
 import java.util.Map;
 
@@ -208,6 +207,7 @@ public class GeminiService {
                 교육 콘텐츠 기획 및 운영 -> People
                 RN 담당 -> People
                 구매 계약 담당자 -> Finance
+                세무/내부회계 담당자 -> Finance
                 Cloud Business Pathfinder -> Business
                 사업개발 및 세일즈 -> Business
                 번역 담당자 -> Business
