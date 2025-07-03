@@ -50,4 +50,7 @@ public class Job_mst {
     @Column(nullable = true)
     private String endDate;
 
+    @Column(nullable = true)
+    private long personalHistory;
+
 }

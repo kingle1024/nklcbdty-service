@@ -14,11 +14,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
@@ -45,6 +48,10 @@ public class KakaoCrawlerService implements JobCrawler {
             List<Job_mst> kakaoHealth = new ArrayList<>();
             addRecruitHealth(kakaoHealth);
             result.addAll(kakaoHealth);
+
+            List<Job_mst> kakaoGames = new ArrayList<>();
+            addRecruitGames(kakaoGames);
+            result.addAll(kakaoGames);
 
             List<Job_mst> kakaopaySec = new ArrayList<>();
             addRecruitPaySec(kakaopaySec);
@@ -322,6 +329,101 @@ public class KakaoCrawlerService implements JobCrawler {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
         return CompletableFuture.completedFuture(result);
+    }
+
+    private void addRecruitGames(List<Job_mst> kakaoGames) {
+        String buildName = "";
+        try {
+            Document doc = Jsoup.connect("https://recruit.kakaogames.com/ko/joinjuskr").get();
+            Element scriptElement = doc.getElementById("__NEXT_DATA__");
+
+            if (scriptElement != null) {
+                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
+                String jsonData = scriptElement.html();
+
+                                // JSON 파싱
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(jsonData);
+
+                // buildId 값 추출
+                buildName = jsonNode.get("buildId").asText();
+
+
+                // 정규식에 매칭되는 부분이 있는지 확인
+                if (buildName == null) {
+                    log.error("No match found buildName");
+                    return;
+                }
+            }
+
+            final String apiUrl = "https://recruit.kakaogames.com/_next/data/" + buildName + "/ko/joinjuskr.json?locale=ko&page=joinjuskr";
+            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+
+            // JSON 객체로 변환
+            JSONObject jsonResult = new JSONObject(jsonResponse);
+
+            JSONArray data = jsonResult.getJSONObject("pageProps")
+                .getJSONObject("dehydratedState")
+                .getJSONArray("queries")
+                .getJSONObject(2)
+                .getJSONObject("state")
+                .getJSONArray("data");
+
+            for (int i = 0; i < data.length(); i++) {
+                JSONObject jsonObject = data.getJSONObject(i);
+                Object endDateObj = jsonObject.get("dueDate");
+                if (crawlerCommonService.isCloseDate(endDateObj)) {
+                    continue;
+                }
+
+                Job_mst item = new Job_mst();
+                String endDate;
+                if (!endDateObj.equals(null)) {
+                    endDate = endDateObj.toString();
+                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    String formattedDate = offsetDateTime.format(formatter);
+                    item.setEndDate(formattedDate);
+                }
+                String title = jsonObject.get("title").toString();
+                item.setAnnoSubject(title);
+                item.setSysCompanyCdNm("카카오 게임즈");
+                // jsonObject.getJSONObject("openingJobPosition").getJSONArray("openingJobPositions").getJSONObject(1)
+                JSONArray openingJobPositions = jsonObject.getJSONObject("openingJobPosition")
+                    .getJSONArray("openingJobPositions");
+                item.setEmpTypeCdNm("정규");
+                long minCareerFrom = Long.MAX_VALUE;
+                for (int j = 0; j < openingJobPositions.length(); j++) {
+                    JSONObject openingJobPosition = openingJobPositions.getJSONObject(j);
+                    String employ = null;
+                    if (!openingJobPosition.isNull("jobPositionEmployment") ) {
+                        employ = openingJobPosition.getJSONObject("jobPositionEmployment").getString("employmentType");
+                    }
+                    if (!openingJobPosition.isNull("jobPositionCareer")) {
+                        if (!openingJobPosition.getJSONObject("jobPositionCareer").isNull("careerFrom")) {
+                            final long careerFrom = openingJobPosition.getJSONObject("jobPositionCareer").getLong("careerFrom");
+                            minCareerFrom = Math.min(minCareerFrom, careerFrom);
+                        }
+                    }
+
+                    if ("FULL_TIME_WORKER".equals(employ)) {
+                        item.setEmpTypeCdNm("정규");
+                        break;
+                    } else if ("CONTRACT_WORKER".equals(employ)) {
+                        item.setEmpTypeCdNm("비정규");
+                    }
+                }
+                if (minCareerFrom != Long.MAX_VALUE) {
+                    item.setPersonalHistory(minCareerFrom);
+                }
+                String openingId = String.valueOf(jsonObject.getInt("openingId"));
+                item.setJobDetailLink("https://recruit.kakaogames.com/ko/o/" + openingId);
+                item.setAnnoId(openingId);
+                kakaoGames.add(item);
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while fetching Kakao Games jobs: {}", e.getMessage(), e);
+        }
     }
 
     private void addRecruitHealth(List<Job_mst> kakaopayHealth) {
