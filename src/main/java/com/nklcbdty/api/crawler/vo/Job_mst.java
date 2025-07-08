@@ -53,4 +53,6 @@ public class Job_mst {
     @Column(nullable = true)
     private long personalHistory;
 
+    @Column(nullable = true)
+    private long personalHistoryEnd;
 }
