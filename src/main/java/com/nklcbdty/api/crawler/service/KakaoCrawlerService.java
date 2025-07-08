@@ -323,7 +323,6 @@ public class KakaoCrawlerService implements JobCrawler {
             result.addAll(kakaoBankResult);
             crawlerCommonService.getNotSaveJobItem("KAKAO", result);
 
-            crawlerCommonService.getNotSaveJobItem("KAKAO", result);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
@@ -484,6 +483,8 @@ public class KakaoCrawlerService implements JobCrawler {
                 if (!jsonObject.get("jobGroup").equals(null)) {
                     item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
                 }
+                item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
+                item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
                 item.setSysCompanyCdNm("카카오 헬스케어");
                 item.setJobDetailLink("https://recruit.kakaohealthcare.com/job_posting/" + jsonObject.get("addressKey"));
                 item.setAnnoId(jsonObject.getString("addressKey"));
