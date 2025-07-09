@@ -415,6 +415,14 @@ public class KakaoCrawlerService implements JobCrawler {
                 if (minCareerFrom != Long.MAX_VALUE) {
                     item.setPersonalHistory(minCareerFrom);
                 }
+                Object from = jsonObject.getJSONObject("careerInfo").get("from");
+                if (from instanceof Integer) {
+                    item.setPersonalHistory(((Integer) from).longValue());
+                }
+                Object to = jsonObject.getJSONObject("careerInfo").get("to");
+                if (to instanceof Integer) {
+                    item.setPersonalHistoryEnd(((Integer) to).longValue());
+                }
                 String openingId = String.valueOf(jsonObject.getInt("openingId"));
                 item.setJobDetailLink("https://recruit.kakaogames.com/ko/o/" + openingId);
                 item.setAnnoId(openingId);
