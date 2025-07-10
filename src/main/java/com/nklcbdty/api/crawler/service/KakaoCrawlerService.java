@@ -4,7 +4,10 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -24,6 +27,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -415,6 +419,14 @@ public class KakaoCrawlerService implements JobCrawler {
                 if (minCareerFrom != Long.MAX_VALUE) {
                     item.setPersonalHistory(minCareerFrom);
                 }
+                Object from = jsonObject.getJSONObject("careerInfo").get("from");
+                if (from instanceof Integer) {
+                    item.setPersonalHistory(((Integer) from).longValue());
+                }
+                Object to = jsonObject.getJSONObject("careerInfo").get("to");
+                if (to instanceof Integer) {
+                    item.setPersonalHistoryEnd(((Integer) to).longValue());
+                }
                 String openingId = String.valueOf(jsonObject.getInt("openingId"));
                 item.setJobDetailLink("https://recruit.kakaogames.com/ko/o/" + openingId);
                 item.setAnnoId(openingId);
@@ -603,6 +615,7 @@ public class KakaoCrawlerService implements JobCrawler {
                     employeeTypeName = "정규";
                 }
                 String jobType = edge.getString("recruitClassName");
+                String jobDescription = getJobDescription(String.valueOf(recruitNoticeSn));
 
                 Job_mst item = new Job_mst();
                 item.setAnnoId(String.valueOf(recruitNoticeSn));
@@ -613,11 +626,30 @@ public class KakaoCrawlerService implements JobCrawler {
                 item.setSysCompanyCdNm("카카오 뱅크");
                 item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
                 item.setEndDate(String.valueOf(endDate));
+                PersonalHistoryDto personalHistory = getPersonalHistory(jobDescription);
+                item.setPersonalHistory(personalHistory.getFrom());
+                item.setPersonalHistoryEnd(personalHistory.getTo());
                 result.add(item);
             }
             idx++;
         }
 
+    }
+
+    private String getJobDescription(String recruitNoticeSn) {
+        String apiUrl = "https://recruit.kakaobank.com/api/user/recruit/" + recruitNoticeSn;
+        String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+        if (jsonResponse.isEmpty()) {
+            return null;
+        }
+
+        JSONObject jobDetail = new JSONObject(jsonResponse);
+        String contents = jobDetail.getString("contents");
+        if (contents == null || contents.isEmpty()) {
+            return null;
+        }
+
+        return contents;
     }
 
     private void addRecruitContent(String type, List<Job_mst> result) {
@@ -698,6 +730,53 @@ public class KakaoCrawlerService implements JobCrawler {
         }
 
         return true;
+    }
+
+    private PersonalHistoryDto getPersonalHistory(String qualification) {
+        PersonalHistoryDto result = new PersonalHistoryDto();
+
+        final String regexUp = "(\\d+)년 이상";
+        final String regexDown = "(\\d+)년 이하";
+        Pattern patternUp = Pattern.compile(regexUp);
+        Pattern patternDown = Pattern.compile(regexDown);
+        Matcher matcherUp = patternUp.matcher(qualification);
+        Matcher matcherDown = patternDown.matcher(qualification);
+        List<Long> extractedNumbersFrom = new ArrayList<>();
+        List<Long> extractedNumbersTo = new ArrayList<>();
+
+        while (matcherUp.find()) {
+            String numberStr = matcherUp.group(1);
+            try {
+                long number = Long.parseLong(numberStr);
+                extractedNumbersFrom.add(number);
+            } catch (NumberFormatException e) {
+                log.error("오류: {} 를 long으로 변환할 수 없습니다.", numberStr);
+            }
+        }
+
+        while (matcherDown.find()) {
+            String numberStr = matcherDown.group(1);
+            try {
+                long number = Long.parseLong(numberStr);
+                extractedNumbersTo.add(number);
+            } catch (NumberFormatException e) {
+                log.error("오류: {} 를 long으로 변환할 수 없습니다.", numberStr);
+            }
+        }
+
+        if (extractedNumbersFrom.isEmpty()) {
+            extractedNumbersFrom.add(0L); // 기본값 설정
+        }
+        if (extractedNumbersTo.isEmpty()) {
+            extractedNumbersTo.add(0L); // 기본값 설정
+        }
+
+        Collections.sort(extractedNumbersFrom);
+        Collections.sort(extractedNumbersTo);
+        result.setFrom(extractedNumbersFrom.get(0));
+        result.setTo(extractedNumbersTo.get(0));
+
+        return result; // 가장 낮은 값 반환
     }
 
     private boolean isCloseDate(Object endDate) {
