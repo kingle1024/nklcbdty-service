@@ -58,7 +58,7 @@ public class CoupangJobCrawlerService implements JobCrawler{
             log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
 		    try {
 		    	// 1초에서 2초 사이의 랜덤한 시간(1000ms ~ 2000ms) 동안 대기
-		        int sleepTime = 1000 + (int)(Math.random() * 1000); // 1000ms ~ 2000ms
+		        int sleepTime = (int)(Math.random() * 1000); // 1000ms ~ 2000ms
 		        Thread.sleep(sleepTime);
 		    } catch (InterruptedException e) {
 		    	log.error("크롤링 서버에 요청 중 Interrupted오류가 발생했습니다. {} ", e.getMessage());
