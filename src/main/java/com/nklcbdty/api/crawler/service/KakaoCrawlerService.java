@@ -28,14 +28,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
-import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class KakaoCrawlerService implements JobCrawler {
+public class KakaoCrawlerService {
 
     private final CrawlerCommonService crawlerCommonService;
 
@@ -708,6 +707,7 @@ public class KakaoCrawlerService implements JobCrawler {
             if(edge.has("skillSetList") && !edge.isNull("skillSetList")) {
                 skillSetType = edge.getJSONArray("skillSetList").getJSONObject(0).getString("skillSetType");
             }
+            String qualification = edge.getString("qualification");
 
             String companyNameEn = edge.getString("companyNameEn");
             Job_mst item = new Job_mst();
@@ -726,6 +726,10 @@ public class KakaoCrawlerService implements JobCrawler {
                 LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 item.setEndDate(endDateTime.format(outputFormatter));
             }
+            PersonalHistoryDto personalHistory = getPersonalHistory(qualification);
+            item.setPersonalHistory(personalHistory.getFrom());
+            item.setPersonalHistoryEnd(personalHistory.getTo());
+
             result.add(item);
         }
 
