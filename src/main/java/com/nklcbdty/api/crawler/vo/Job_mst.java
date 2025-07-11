@@ -1,4 +1,9 @@
 package com.nklcbdty.api.crawler.vo;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import jakarta.persistence.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -55,4 +60,10 @@ public class Job_mst {
 
     @Column(nullable = true)
     private long personalHistoryEnd;
+
+    @CreationTimestamp
+    private LocalDateTime insertDts;
+
+    @UpdateTimestamp
+    private LocalDateTime updateDts;
 }
