@@ -28,13 +28,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
+import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class KakaoCrawlerService {
+public class KakaoCrawlerService implements JobCrawler{
 
     private final CrawlerCommonService crawlerCommonService;
 
@@ -567,6 +568,10 @@ public class KakaoCrawlerService {
                 }
                 if (!jsonObject.get("jobGroup").equals(null)) {
                     item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
+                }
+                if (jsonObject.get("career") instanceof JSONObject) {
+                    item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
+                    item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
                 }
                 item.setSysCompanyCdNm("카카오 페이증권");
                 item.setJobDetailLink("https://career.kakaopaysec.com/job_posting/" + jsonObject.get("addressKey"));
