@@ -731,7 +731,13 @@ public class KakaoCrawlerService implements JobCrawler{
                 LocalDateTime endDateTime = LocalDateTime.parse(endDate.toString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 item.setEndDate(endDateTime.format(outputFormatter));
             }
-            PersonalHistoryDto personalHistory = getPersonalHistory(qualification);
+            PersonalHistoryDto personalHistory;
+            if ("-".equals(qualification)) {
+                String introduction = edge.getString("introduction");
+                personalHistory = getPersonalHistory(introduction);
+            } else {
+                personalHistory = getPersonalHistory(qualification);
+            }
             item.setPersonalHistory(personalHistory.getFrom());
             item.setPersonalHistoryEnd(personalHistory.getTo());
 
