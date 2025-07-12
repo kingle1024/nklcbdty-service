@@ -716,7 +716,7 @@ public class KakaoCrawlerService implements JobCrawler{
 
             String companyNameEn = edge.getString("companyNameEn");
             Job_mst item = new Job_mst();
-            item.setAnnoSubject(String.valueOf(title));
+            item.setAnnoSubject(String.valueOf(title).trim());
             item.setAnnoId(String.valueOf(jobOfferId));
             item.setEmpTypeCdNm(employeeTypeName);
             item.setClassCdNm(jobType);
