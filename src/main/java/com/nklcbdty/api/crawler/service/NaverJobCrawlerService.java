@@ -2,16 +2,21 @@ package com.nklcbdty.api.crawler.service;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
@@ -22,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class NaverJobCrawlerService implements JobCrawler {
+public class NaverJobCrawlerService {
 
     private final CrawlerCommonService crawlerCommonService;
     private final String apiUrl;
@@ -37,7 +42,6 @@ public class NaverJobCrawlerService implements JobCrawler {
         return "https://recruit.navercorp.com/rcrt/loadJobList.do?annoId=&sw=&subJobCdArr=&sysCompanyCdArr=&empTypeCdArr=&entTypeCdArr=&workAreaCdArr=&";
     }
 
-    @Override
     @Async
     public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>(Collections.emptyList());
@@ -63,6 +67,8 @@ public class NaverJobCrawlerService implements JobCrawler {
                     item.setSubJobCdNm(edge.getString("subJobCdNm"));
                     item.setSysCompanyCdNm(edge.getString("sysCompanyCdNm"));
                     item.setJobDetailLink(edge.getString("jobDetailLink"));
+                    long jobDetailLink = extractYearsFromJobPage(edge.getString("jobDetailLink"));
+                    item.setPersonalHistory(jobDetailLink);
                     if (edge.get("staYmdTime").equals(null)) {
                         item.setStartDate("영입종료시");
                     } else {
@@ -121,4 +127,34 @@ public class NaverJobCrawlerService implements JobCrawler {
     public HttpURLConnection createConnection(URL url) throws Exception {
         return (HttpURLConnection) url.openConnection();
     }
+
+    public long extractYearsFromJobPage(String url) {
+        List<Long> years = new ArrayList<>();
+        try {
+            Document doc = Jsoup.connect(url).timeout(3000).get();
+            String pageText = doc.body().text();
+            String regex = "(\\d+)년 이상"; // 숫자를 캡처 그룹으로 묶음
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(pageText);
+
+            while (matcher.find()) {
+                String numberStr = matcher.group(1); // 첫 번째 캡처 그룹(숫자) 가져오기
+                try {
+                    long year = Long.parseLong(numberStr); // String을 long으로 변환
+                    years.add(year);
+                } catch (NumberFormatException e) {
+                    System.err.println("오류: '" + numberStr + "'를 long으로 변환할 수 없습니다. " + e.getMessage());
+                }
+            }
+            Collections.sort(years);
+        } catch (IOException e) {
+            log.error("웹 페이지 연결 또는 파싱 중 오류 발생: {}", e.getMessage());
+            return 0;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return years.isEmpty() ? 0 : years.get(0);
+    }
+
 }
