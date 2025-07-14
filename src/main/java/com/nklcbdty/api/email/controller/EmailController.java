@@ -1,6 +1,7 @@
 package com.nklcbdty.api.email.controller;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +52,7 @@ public class EmailController {
             Map<String, List<String>> userCategoryMap = emailService.getUserCategoryMap();
             Map<String, String> ab = emailService.sendEmail(userCategoryMap.get("AB"));
 
-            LocalDate today = LocalDate.now();
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
 
             for (Map.Entry<String, String> entry : ab.entrySet()) {
