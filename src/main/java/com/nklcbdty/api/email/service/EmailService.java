@@ -3,6 +3,7 @@ package com.nklcbdty.api.email.service;
 import static com.nklcbdty.api.user.vo.QUserInterestVo.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -63,7 +64,7 @@ public class EmailService {
 
     public String generateJobPostingEmailHtml(String keyword, List<JobPosting> jobPostings) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        String today = LocalDateTime.now().format(dateFormatter);
+        String today = LocalDateTime.now(ZoneId.of("Asia/Seoul")).format(dateFormatter);
 
         StringBuilder htmlBuilder = new StringBuilder();
 
@@ -97,6 +98,15 @@ public class EmailService {
             String deadline = job.getEndDate();
             if (deadline != null && !deadline.isEmpty()) {
                 htmlBuilder.append(" | ").append(deadline);
+                if (job.getPersonalHistory() == 0 && job.getPersonalHistoryEnd() == 0) {
+                    htmlBuilder.append(" | 경력 무관");
+                } else if (job.getPersonalHistory() > 0 && job.getPersonalHistoryEnd() > 0) {
+                    htmlBuilder.append(" | ").append(job.getPersonalHistory()).append("년 ~ ").append(job.getPersonalHistoryEnd()).append("년");
+                } else if (job.getPersonalHistory() > 0) {
+                    htmlBuilder.append(" | ").append(job.getPersonalHistory()).append("년 이상");
+                } else if (job.getPersonalHistoryEnd() > 0) {
+                    htmlBuilder.append(" | ").append(job.getPersonalHistoryEnd()).append("년 이하");
+                }
             }
 
             htmlBuilder.append("</div>");
@@ -163,6 +173,8 @@ public class EmailService {
                 jobPosting.setJobType(job.getSubJobCdNm());
                 jobPosting.setStartDate(job.getStartDate());
                 jobPosting.setEndDate(job.getEndDate());
+                jobPosting.setPersonalHistory(job.getPersonalHistory());
+                jobPosting.setPersonalHistoryEnd(job.getPersonalHistoryEnd());
                 jobPostings.add(jobPosting);
             }
 
