@@ -52,7 +52,7 @@ public class EmailController {
             Map<String, List<String>> userCategoryMap = emailService.getUserCategoryMap();
             Map<String, String> ab = emailService.sendEmail(userCategoryMap.get("AB"));
 
-            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            LocalDate today = LocalDate.now().plusDays(1);
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
 
             for (Map.Entry<String, String> entry : ab.entrySet()) {
