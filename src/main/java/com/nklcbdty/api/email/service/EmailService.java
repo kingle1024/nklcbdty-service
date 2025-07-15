@@ -64,7 +64,7 @@ public class EmailService {
 
     public String generateJobPostingEmailHtml(String keyword, List<JobPosting> jobPostings) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        String today = LocalDateTime.now(ZoneId.of("Asia/Seoul")).format(dateFormatter);
+        String today = LocalDateTime.now().plusDays(1).format(dateFormatter);
 
         StringBuilder htmlBuilder = new StringBuilder();
 
