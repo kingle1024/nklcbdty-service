@@ -630,7 +630,7 @@ public class KakaoCrawlerService implements JobCrawler{
                 item.setSysCompanyCdNm("카카오 뱅크");
                 item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
                 item.setEndDate(String.valueOf(endDate));
-                PersonalHistoryDto personalHistory = getPersonalHistory(jobDescription);
+                PersonalHistoryDto personalHistory = crawlerCommonService.getPersonalHistory(jobDescription);
                 item.setPersonalHistory(personalHistory.getFrom());
                 item.setPersonalHistoryEnd(personalHistory.getTo());
                 result.add(item);
@@ -734,9 +734,9 @@ public class KakaoCrawlerService implements JobCrawler{
             PersonalHistoryDto personalHistory;
             if ("-".equals(qualification)) {
                 String introduction = edge.getString("introduction");
-                personalHistory = getPersonalHistory(introduction);
+                personalHistory = crawlerCommonService.getPersonalHistory(introduction);
             } else {
-                personalHistory = getPersonalHistory(qualification);
+                personalHistory = crawlerCommonService.getPersonalHistory(qualification);
             }
             item.setPersonalHistory(personalHistory.getFrom());
             item.setPersonalHistoryEnd(personalHistory.getTo());
@@ -745,53 +745,6 @@ public class KakaoCrawlerService implements JobCrawler{
         }
 
         return true;
-    }
-
-    private PersonalHistoryDto getPersonalHistory(String qualification) {
-        PersonalHistoryDto result = new PersonalHistoryDto();
-
-        final String regexUp = "(\\d+)년 이상";
-        final String regexDown = "(\\d+)년 이하";
-        Pattern patternUp = Pattern.compile(regexUp);
-        Pattern patternDown = Pattern.compile(regexDown);
-        Matcher matcherUp = patternUp.matcher(qualification);
-        Matcher matcherDown = patternDown.matcher(qualification);
-        List<Long> extractedNumbersFrom = new ArrayList<>();
-        List<Long> extractedNumbersTo = new ArrayList<>();
-
-        while (matcherUp.find()) {
-            String numberStr = matcherUp.group(1);
-            try {
-                long number = Long.parseLong(numberStr);
-                extractedNumbersFrom.add(number);
-            } catch (NumberFormatException e) {
-                log.error("오류: {} 를 long으로 변환할 수 없습니다.", numberStr);
-            }
-        }
-
-        while (matcherDown.find()) {
-            String numberStr = matcherDown.group(1);
-            try {
-                long number = Long.parseLong(numberStr);
-                extractedNumbersTo.add(number);
-            } catch (NumberFormatException e) {
-                log.error("오류: {} 를 long으로 변환할 수 없습니다.", numberStr);
-            }
-        }
-
-        if (extractedNumbersFrom.isEmpty()) {
-            extractedNumbersFrom.add(0L); // 기본값 설정
-        }
-        if (extractedNumbersTo.isEmpty()) {
-            extractedNumbersTo.add(0L); // 기본값 설정
-        }
-
-        Collections.sort(extractedNumbersFrom);
-        Collections.sort(extractedNumbersTo);
-        result.setFrom(extractedNumbersFrom.get(0));
-        result.setTo(extractedNumbersTo.get(0));
-
-        return result; // 가장 낮은 값 반환
     }
 
     private boolean isCloseDate(Object endDate) {
