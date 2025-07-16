@@ -1,12 +1,16 @@
 package com.nklcbdty.api.crawler.common;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.ai.service.GeminiService;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -17,8 +21,11 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -252,5 +259,91 @@ public class CrawlerCommonService {
 
     public List<Job_mst> getNotSaveJobItem(List<Job_mst> jobsToSave) {
         return crawlerRepository.saveAll(jobsToSave);
+    }
+
+    public PersonalHistoryDto extractPersonalHistoryFromJobPage(String url) {
+        try {
+            Document doc = Jsoup.connect(url).timeout(3000).get();
+            String pageText = doc.body().text(); // 웹 페이지 전체 텍스트 가져오기
+            return getPersonalHistory(pageText); // getPersonalHistory 메서드 호출
+        } catch (IOException e) {
+            log.error("웹 페이지 연결 또는 파싱 중 오류 발생: {}", e.getMessage());
+            return new PersonalHistoryDto(); // 오류 발생 시 기본 DTO 반환
+        } catch (Exception e) {
+            log.error("예상치 못한 오류 발생: {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public PersonalHistoryDto getPersonalHistory(String qualification) {
+        PersonalHistoryDto result = new PersonalHistoryDto();
+
+        final String regexUp = "(\\d+)년 이상";
+        final String regexDown = "(\\d+)년 이하";
+        final String regexRange = "(\\d+)년[\\s~-]*(\\d+)년"; // "X년 ~ Y년", "X년-Y년", "X년 Y년" 등
+
+        Pattern patternUp = Pattern.compile(regexUp);
+        Pattern patternDown = Pattern.compile(regexDown);
+        Pattern patternRange = Pattern.compile(regexRange);
+
+        long minYears = 0;
+        long maxYears = 0;
+
+        // "X년 이상" 패턴 찾기
+        Matcher matcherUp = patternUp.matcher(qualification);
+        List<Long> extractedFromYears = new ArrayList<>();
+        while (matcherUp.find()) {
+            String numberStr = matcherUp.group(1);
+            try {
+                extractedFromYears.add(Long.parseLong(numberStr));
+            } catch (NumberFormatException e) {
+                log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (이상)", numberStr);
+            }
+        }
+        if (!extractedFromYears.isEmpty()) {
+            minYears = Collections.min(extractedFromYears); // "이상" 중 가장 작은 값
+        }
+
+        // "X년 이하" 패턴 찾기
+        Matcher matcherDown = patternDown.matcher(qualification);
+        List<Long> extractedToYears = new ArrayList<>();
+        while (matcherDown.find()) {
+            String numberStr = matcherDown.group(1);
+            try {
+                extractedToYears.add(Long.parseLong(numberStr));
+            } catch (NumberFormatException e) {
+                log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (이하)", numberStr);
+            }
+        }
+        if (!extractedToYears.isEmpty()) {
+            maxYears = Collections.min(extractedToYears); // "이하" 중 가장 작은 값
+        }
+
+        // "X년 ~ Y년" 또는 "X년 Y년" 같은 범위 패턴 찾기 (추가)
+        Matcher matcherRange = patternRange.matcher(qualification);
+        if (matcherRange.find()) {
+            try {
+                long rangeFrom = Long.parseLong(matcherRange.group(1));
+                long rangeTo = Long.parseLong(matcherRange.group(2));
+
+                // 범위가 발견되면 from과 to 값을 업데이트
+                // 기존 minYears보다 작으면 업데이트, 기존 maxYears보다 크면 업데이트
+                if (minYears == 0 || rangeFrom < minYears) {
+                    minYears = rangeFrom;
+                }
+                if (maxYears == 0 || rangeTo > maxYears) { // '이하'가 없거나, 범위의 to가 더 크면 업데이트
+                    maxYears = rangeTo;
+                }
+            } catch (NumberFormatException e) {
+                log.error("오류: 경력 범위 '{}' '{}' 를 long으로 변환할 수 없습니다.", matcherRange.group(1), matcherRange.group(2));
+            }
+        }
+
+
+        // 최종 결과 설정
+        result.setFrom(minYears);
+        result.setTo(maxYears);
+
+        return result;
     }
 }
