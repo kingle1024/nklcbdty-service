@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
+import com.nklcbdty.api.crawler.service.DaangnJobCrawlerService;
 import com.nklcbdty.api.crawler.service.JobService;
+import com.nklcbdty.api.crawler.service.KakaoCrawlerService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
 import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
@@ -27,26 +29,26 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api")
 public class JobController {
     private final NaverJobCrawlerService naverJobCrawlerService;
-    private final JobCrawler kakaoCrawlerService;
+    private final KakaoCrawlerService kakaoCrawlerService;
     private final JobCrawler lineJobCrawlerService;
     private final JobCrawler tossJobCrawlerService;
     private final YanoljaCralwerService yanoljaCralwerService;
     private final JobService jobService;
     private final JobCrawler coupangJobCrawlerService;
     private final JobCrawler baeminJobCrawlerService;
-    private final JobCrawler daangnJobCrawlerService;
+    private final DaangnJobCrawlerService daangnJobCrawlerService;
     private final CrawlerCommonService commonService;
 
     @Autowired
     public JobController(
         NaverJobCrawlerService naverJobCrawlerService,
-        @Qualifier("kakaoCrawlerService") JobCrawler kakaoCrawlerService,
+        KakaoCrawlerService kakaoCrawlerService,
         @Qualifier("lineJobCrawlerService") JobCrawler lineJobCrawlerService,
         @Qualifier("tossJobCrawlerService") JobCrawler tossJobCrawlerService,
         YanoljaCralwerService yanoljaCralwerService,
         @Qualifier("coupangJobCrawlerService") JobCrawler coupangJobCrawlerService,
         @Qualifier("baeminJobCrawlerService") JobCrawler baeminJobCrawlerService,
-        @Qualifier("daangnJobCrawlerService") JobCrawler daangnJobCrawlerService,
+        DaangnJobCrawlerService daangnJobCrawlerService,
         JobService jobService, CrawlerCommonService commonService) {
 
         this.naverJobCrawlerService = naverJobCrawlerService;
