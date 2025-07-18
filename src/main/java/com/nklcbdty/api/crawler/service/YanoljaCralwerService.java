@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class YanoljaCralwerService implements JobCrawler {
+public class YanoljaCralwerService {
 
     private final CrawlerCommonService commonService;
 
@@ -34,7 +34,6 @@ public class YanoljaCralwerService implements JobCrawler {
         this.commonService = commonService;
     }
 
-    @Override
     @Async
     public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
