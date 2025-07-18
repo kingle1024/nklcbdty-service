@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
+import com.nklcbdty.api.crawler.service.DaangnJobCrawlerService;
 import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
 import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
@@ -34,7 +35,7 @@ public class JobController {
     private final JobService jobService;
     private final JobCrawler coupangJobCrawlerService;
     private final JobCrawler baeminJobCrawlerService;
-    private final JobCrawler daangnJobCrawlerService;
+    private final DaangnJobCrawlerService daangnJobCrawlerService;
     private final CrawlerCommonService commonService;
 
     @Autowired
@@ -46,7 +47,7 @@ public class JobController {
         YanoljaCralwerService yanoljaCralwerService,
         @Qualifier("coupangJobCrawlerService") JobCrawler coupangJobCrawlerService,
         @Qualifier("baeminJobCrawlerService") JobCrawler baeminJobCrawlerService,
-        @Qualifier("daangnJobCrawlerService") JobCrawler daangnJobCrawlerService,
+        DaangnJobCrawlerService daangnJobCrawlerService,
         JobService jobService, CrawlerCommonService commonService) {
 
         this.naverJobCrawlerService = naverJobCrawlerService;
