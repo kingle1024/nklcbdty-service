@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -84,7 +85,11 @@ public class LineJobCrawlerService implements JobCrawler {
                         if("Full-time".equals(employment_type)) {
                             item.setEmpTypeCdNm("정규");
                         }
-                        item.setJobDetailLink("https://careers.linecorp.com/ko/jobs/" + node.getLong("strapiId"));
+                        final String detailLink = "https://careers.linecorp.com/ko/jobs/" + node.getLong("strapiId");
+                        item.setJobDetailLink(detailLink);
+                        PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(detailLink);
+                        item.setPersonalHistory(personalHistoryDto.getFrom());
+                        item.setPersonalHistoryEnd(personalHistoryDto.getTo());
                         item.setStartDate(formattedDate(node.getString("start_date")));
                         if (endDate.equals(null)) {
                             item.setEndDate("영입종료시");
