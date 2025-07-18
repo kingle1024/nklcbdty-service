@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class KakaoCrawlerService implements JobCrawler{
+public class KakaoCrawlerService {
 
     private final CrawlerCommonService crawlerCommonService;
 
@@ -44,7 +44,6 @@ public class KakaoCrawlerService implements JobCrawler{
         this.crawlerCommonService = crawlerCommonService;
     }
 
-    @Override
     @Async
     public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> result = new ArrayList<>();
