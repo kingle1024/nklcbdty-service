@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
@@ -19,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class DaangnJobCrawlerService implements JobCrawler{
+public class DaangnJobCrawlerService {
 	
 	private final CrawlerCommonService crawlerCommonService;
     private String apiUrl;
@@ -34,7 +35,6 @@ public class DaangnJobCrawlerService implements JobCrawler{
     	return "https://about.daangn.com/page-data/jobs/page-data.json";
     }
 	
-	@Override
     @Async
 	public CompletableFuture<List<Job_mst>> crawlJobs() {
 		List<Job_mst> list = new ArrayList<>();
@@ -51,8 +51,8 @@ public class DaangnJobCrawlerService implements JobCrawler{
 			for(int i = 0; i < allDepartmentFilteredJobPostNodes.length(); i++) {
 				Job_mst job_mst = new Job_mst();
 				JSONObject item = allDepartmentFilteredJobPostNodes.getJSONObject(i);
-				String classCdNm = "";
-				String subJobCdNm = "";
+				String classCdNm;
+				String subJobCdNm;
 				
 				String jobDetailLink = item.get("absoluteUrl").toString(); 
 				String annoId = item.get("ghId").toString();
@@ -81,6 +81,9 @@ public class DaangnJobCrawlerService implements JobCrawler{
 				}
 				
 				job_mst.setJobDetailLink(jobDetailLink);
+                PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(jobDetailLink);
+                job_mst.setPersonalHistory(personalHistoryDto.getFrom());
+                job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
                 job_mst.setAnnoId(annoId);
 				job_mst.setAnnoSubject(annoSubject);
 				job_mst.setEmpTypeCdNm(empTypeCdNm);
