@@ -17,6 +17,7 @@ import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
+import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ public class JobController {
     private final JobCrawler kakaoCrawlerService;
     private final JobCrawler lineJobCrawlerService;
     private final JobCrawler tossJobCrawlerService;
-    private final JobCrawler yanoljaCralwerService;
+    private final YanoljaCralwerService yanoljaCralwerService;
     private final JobService jobService;
     private final JobCrawler coupangJobCrawlerService;
     private final JobCrawler baeminJobCrawlerService;
@@ -42,7 +43,7 @@ public class JobController {
         @Qualifier("kakaoCrawlerService") JobCrawler kakaoCrawlerService,
         @Qualifier("lineJobCrawlerService") JobCrawler lineJobCrawlerService,
         @Qualifier("tossJobCrawlerService") JobCrawler tossJobCrawlerService,
-        @Qualifier("yanoljaCralwerService") JobCrawler yanoljaCralwerService,
+        YanoljaCralwerService yanoljaCralwerService,
         @Qualifier("coupangJobCrawlerService") JobCrawler coupangJobCrawlerService,
         @Qualifier("baeminJobCrawlerService") JobCrawler baeminJobCrawlerService,
         @Qualifier("daangnJobCrawlerService") JobCrawler daangnJobCrawlerService,
