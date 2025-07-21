@@ -65,7 +65,22 @@ public class BaeminJobCrawlerService implements JobCrawler{
 				job_mst.setAnnoSubject(annoSubject);
                 job_mst.setStartDate(item.getString("recruitOpenDate"));
                 job_mst.setEndDate(item.getString("recruitCloseDate"));
-				
+                Object from = item.get("careerRestrictionMinYears");
+                if (from instanceof Integer) {
+                    long fromLong = ((Integer)from).longValue();
+                    if (fromLong == -1) {
+                        fromLong = 0; // -1은 경력제한 없음으로 간주
+                    }
+                    job_mst.setPersonalHistory(fromLong);
+                }
+                Object to = item.get("careerRestrictionMaxYears");
+                if (to instanceof Integer) {
+                    long endLong = ((Integer)to).longValue();
+                    if (endLong == -1) {
+                        endLong = 0; // -1은 경력제한 없음으로 간주
+                    }
+                    job_mst.setPersonalHistoryEnd(endLong);
+                }
 				list.add(job_mst);
 			}
 
