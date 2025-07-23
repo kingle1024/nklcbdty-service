@@ -26,8 +26,8 @@ public class RedisConfig {
 
     // 개발 환경 설정
     @Bean
-    @Profile("dev")
-    // @Profile("prod")
+    // @Profile("dev")
+    @Profile("prod")
     public RedisConnectionFactory redisStandaloneConnectionFactory (
         @Value("${spring.redis.host}") String host,
         @Value("${spring.redis.port}") int port) {
@@ -44,8 +44,8 @@ public class RedisConfig {
 
     // 운영 환경 설정
     @Bean
-    @Profile("prod")
-    // @Profile("dev")
+    // @Profile("prod")
+    @Profile("dev")
     public RedisConnectionFactory redisClusterConnectionFactory (
         @Value("${spring.redis.cluster.nodes}") String clusterNodes) {
 
