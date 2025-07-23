@@ -20,6 +20,7 @@ public class TokenService {
     public void saveRefreshToken(String userId, String refreshToken) {
         try {
             redisTemplate.opsForValue().set(userId + ":refreshToken", refreshToken);
+            log.info("token create {}, {} ", userId + ":refreshToken", refreshToken);
         } catch (RedisConnectionException e) {
             log.info("error {}", e.getMessage());
         } catch (Exception e) {
