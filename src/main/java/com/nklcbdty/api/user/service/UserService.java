@@ -29,20 +29,23 @@ public class UserService implements UserDetailService {
         UsernameNotFoundException {
         UserVo user = userRepository.findByUserId(userId);
         UserDetails userDetails;
+        String paramUserName;
+
         if(user == null) {
             userRepository.save(UserVo.builder()
                 .userId(userId)
                 .username(username)
-                .refreshToken(refreshToken)
                 .build());
-            userDetails = new org.springframework.security.core.userdetails.User(
-                username, "user.getPassword()", new ArrayList<>()
-            );
-
+            paramUserName = username;
         } else {
-            userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(), "user.getPassword()", new ArrayList<>());
+            paramUserName = user.getUsername();
         }
+
+        userDetails = new org.springframework.security.core.userdetails.User(
+            paramUserName,
+            "user.getPassword()",
+            new ArrayList<>()
+        );
 
         return userDetails;
     }
