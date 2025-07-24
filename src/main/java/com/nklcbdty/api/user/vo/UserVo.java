@@ -23,6 +23,5 @@ public class UserVo {
     private Long id;
     private String userId;
     private String username;
-    private String refreshToken;
     private String email;
 }
