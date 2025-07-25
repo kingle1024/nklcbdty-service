@@ -3,6 +3,8 @@ package com.nklcbdty.api.common;
 import java.time.Duration;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,10 +19,14 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
 @EnableRedisRepositories
+@Slf4j
 public class RedisConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
     @Value("${spring.redis.password}")
     private String password;
 
@@ -32,6 +38,7 @@ public class RedisConfig {
         @Value("${spring.redis.host}") String host,
         @Value("${spring.redis.port}") int port) {
 
+        log.info("Redis Standalone Configuration: host={}, port={}", host, port);
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(host, port);
         config.setPassword(password);
 
@@ -49,6 +56,7 @@ public class RedisConfig {
     public RedisConnectionFactory redisClusterConnectionFactory (
         @Value("${spring.redis.cluster.nodes}") String clusterNodes) {
 
+        log.info("Redis Cluster Configuration: nodes={}", clusterNodes);
         RedisClusterConfiguration clusterConfig = new RedisClusterConfiguration(
             Arrays.asList(clusterNodes.split(",")));
         clusterConfig.setPassword(password); // 비밀번호 설정
