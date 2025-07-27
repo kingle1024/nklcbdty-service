@@ -15,14 +15,14 @@ import org.springframework.stereotype.Service;
 import com.nklcbdty.api.crawler.common.ApiException;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
-import com.nklcbdty.api.crawler.interfaces.JobCrawler;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class CoupangJobCrawlerService implements JobCrawler{
+public class CoupangJobCrawlerService {
 	
     private final CrawlerCommonService crawlerCommonService;
     private String apiUrl;
@@ -37,7 +37,6 @@ public class CoupangJobCrawlerService implements JobCrawler{
     	return "https://www.coupang.jobs/kr/jobs/?orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
     }
 
-    @Override
     @Async
 	public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> resList = new ArrayList<>();
@@ -100,14 +99,14 @@ public class CoupangJobCrawlerService implements JobCrawler{
         		// 공고명
         		String annoSubject = cardJobRoot.select("a.stretched-link.js-view-job").text();
         		String rowAnnoId = cardJobRoot.select(".card-job-actions.js-job").attr("data-id");
-        		// 공고번호
-        		Long annoId = Long.parseLong(rowAnnoId);
-
         		job_mst.setJobDetailLink("https://www.coupang.jobs".concat(jobDetailLink));
         		job_mst.setAnnoSubject(annoSubject);
-                job_mst.setAnnoId(annoId.toString());
+                job_mst.setAnnoId(rowAnnoId);
         		job_mst.setWorkplace(workplace);
-        		tempList.add(job_mst);
+                PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage("https://www.coupang.jobs".concat(jobDetailLink));
+                job_mst.setPersonalHistory(personalHistoryDto.getFrom());
+                job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
+                tempList.add(job_mst);
         	}
 
             for (Job_mst item : tempList) {
