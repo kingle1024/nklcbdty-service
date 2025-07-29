@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.nklcbdty.api.log.dto.JobHistoryLog;
 import com.nklcbdty.api.log.entity.JobHistoryEntity;
 import com.nklcbdty.api.log.entity.VisitorEntity;
 import com.nklcbdty.api.log.repository.JobHistoryRepository;
@@ -209,14 +210,12 @@ public class LogService {
         response.addCookie(cookie);
     }
 
-    public void insertJobHistory(String annoId, String annoSubject) {
-        HttpServletRequest request =
-                        ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+    public void insertJobHistory(JobHistoryLog logEntry) {
 
         JobHistoryEntity jobHistoryEntity = JobHistoryEntity.builder()
-                .annoId(annoId)
-                .annoSubject(annoSubject)
-                .insertIp(getClientIpAddr(request))
+                .annoId(logEntry.getAnnoId())
+                .annoSubject(logEntry.getAnnoSubject())
+                .insertIp(logEntry.getInsertIp())
                 .build();
         jobHistoryRepository.save(jobHistoryEntity);
     }
