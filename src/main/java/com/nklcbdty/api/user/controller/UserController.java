@@ -52,7 +52,17 @@ public class UserController {
             .filter(o -> "job".equals(o.getItemType()))
             .map(UserInterestResponseDto::getItemValue)
             .collect(Collectors.toList());
+        List<Integer> careerYears = interestItems.stream()
+            .filter(o -> "career_year".equals(o.getItemType()))
+            .map(UserInterestResponseDto::getItemValue)
+            .map(Integer::valueOf)
+            .toList();
 
+        if (careerYears.isEmpty()) {
+            result.put("careerYear", 0);
+        } else {
+            result.put("careerYear", careerYears.get(careerYears.size() - 1));
+        }
         result.put("subscribedServices", companys);
         result.put("selectedJobRoles", jobs);
 
