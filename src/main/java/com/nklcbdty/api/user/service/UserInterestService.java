@@ -58,6 +58,9 @@ public class UserInterestService {
         // 5. 데이터베이스 삽입 처리 (processInsertions 사용)
         processInsertions(userId, "company", companyDelta.getToInsert());
         processInsertions(userId, "job", jobDelta.getToInsert());
+        List<String> career_year = new ArrayList<>();
+        career_year.add(userSettings.getSelectedCareerYears());
+        processInsertions(userId, "career_year", career_year);
 
         // 6. 변경 없이 유지된 항목 식별
         Set<String> companysRetained = originCompanys.stream()

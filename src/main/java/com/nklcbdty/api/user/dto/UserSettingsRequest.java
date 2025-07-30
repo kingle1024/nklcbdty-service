@@ -11,4 +11,5 @@ public class UserSettingsRequest {
     private String email;
     private List<String> subscribedServices;
     private List<String> selectedJobRoles;
+    private String selectedCareerYears;
 }
