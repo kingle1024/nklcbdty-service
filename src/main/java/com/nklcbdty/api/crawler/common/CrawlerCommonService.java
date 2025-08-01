@@ -264,7 +264,18 @@ public class CrawlerCommonService {
 
     public PersonalHistoryDto extractPersonalHistoryFromJobPage(String url) {
         try {
-            Document doc = Jsoup.connect(url).timeout(3000).get();
+            Document doc;
+            if (url.contains("coupang.jobs")) {
+                doc = Jsoup.connect(url)
+                    .header("Cookie", "ph_cookiePref=NFAT; _fbp=fb.1.1740312267141.693781373128074153; __Host-vId=1a4db879-6e82-447f-97f5-25d0e8268655; _gcl_au=1.1.1800247100.1748611754; UMB_SESSION=CfDJ8NqBX9onXMZHpSTh77lB%2FQkhxkL5DSas%2FYeafOa0WLLboYk4tHDwNQUtr19MsQu%2B1WtnCLGEevabF%2Bndnc5%2FEByVX6NDoZSEFam5z5YwKtTu3SqldIKc4h1jAWlEkvjLx%2FCBjTV0EPrjLDPJe9FhRQn7OhkCHcdYxj8XSkBrIo0d; _clck=tp51lh%7C2%7Cfxy%7C0%7C1880; _gid=GA1.2.80406493.1753579741; _ga=GA1.1.1363205650.1740312267; _ga_WN9DBP9Q8X=GS2.1.s1753579741$o30$g1$t1753580115$j49$l0$h0; _clsk=1ifku0s%7C1753580747196%7C5%7C1%7Ca.clarity.ms%2Fcollect")
+                    .timeout(3000)
+                    .get();
+            } else {
+                doc = Jsoup.connect(url)
+                    .timeout(3000)
+                    .get();
+            }
+
             String pageText = doc.body().text(); // 웹 페이지 전체 텍스트 가져오기
             return getPersonalHistory(pageText); // getPersonalHistory 메서드 호출
         } catch (IOException e) {
