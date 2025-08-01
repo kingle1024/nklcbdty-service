@@ -569,8 +569,10 @@ public class KakaoCrawlerService {
                     item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
                 }
                 if (jsonObject.get("career") instanceof JSONObject) {
-                    item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
-                    item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
+                    if (jsonObject.getJSONObject("career").get("range") instanceof JSONObject) {
+                        item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
+                        item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
+                    }
                 }
                 item.setSysCompanyCdNm("카카오 페이증권");
                 item.setJobDetailLink("https://career.kakaopaysec.com/job_posting/" + jsonObject.get("addressKey"));
