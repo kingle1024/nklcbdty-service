@@ -75,44 +75,44 @@ public class JobController {
         try {
             switch (company) {
                 case "naver": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = naverJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("NAVER", items);
                 }
                 case "kakao": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = kakaoCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("KAKAO", items);
                 }
                 case "line": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = lineJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("LINE", items);
                 }
                 case "coupang": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = coupangJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("COUPANG", items);
                 }
                 case "baemin": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = baeminJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("BAEMIN", items);
                 }
                 case "daangn": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = daangnJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("DAANGN", items);
                 }
                 case "toss": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = tossJobCrawlerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("TOSS", items);
                 }
                 case "yanolja": {
-                    jobService.deleteByCompany(company);
                     List<Job_mst> items = yanoljaCralwerService.crawlJobs().get();
-                    return commonService.getNotSaveJobItem(items);
+                    commonService.refineJobItemBygemini(items);
+                    return commonService.getNotSaveJobItem("YANOLJA", items);
                 }
                 case "all": {
                     jobService.deleteAll();
