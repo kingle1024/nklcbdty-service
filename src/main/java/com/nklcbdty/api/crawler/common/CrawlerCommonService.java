@@ -145,7 +145,7 @@ public class CrawlerCommonService {
         }
     }
 
-    private void refineJobItemBygemini(List<Job_mst> result) {
+    public void refineJobItemBygemini(List<Job_mst> result) {
         log.info("----- Gemini 호출중... -----");
         Mono<Map<String, String>> classificationResultsMono = geminiService.classifyJobTitles(result);
 
@@ -178,7 +178,7 @@ public class CrawlerCommonService {
     }
 
     /**
-     * <p> 크롤러 사이트 서버 통신 후, JSON or HTML데이터를 파싱한 List<\Job_mst\> 데이터를 
+     * <p> 크롤러 사이트 서버 통신 후, JSON or HTML데이터를 파싱한 List<\Job_mst\> 데이터를
      * 	   annoId 중복여부를 판별하고, Repository에 데이터를 삽입한다.
      * </p>
      * @return void
@@ -191,10 +191,10 @@ public class CrawlerCommonService {
     	List<String> annoIds;
 		List<Job_mst> existingJobs;
 		List<Job_mst> jobsToSave = new ArrayList<>();
-		
+
 		annoIds = resList.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
 		existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
-		
+
 		for (Job_mst jobItem : resList) {
 			boolean exists = existingJobs.stream().anyMatch(item -> item.getAnnoId().equals(jobItem.getAnnoId()));
 			if (exists) {
@@ -210,7 +210,7 @@ public class CrawlerCommonService {
 				jobsToSave.add(jobItem);
 			}
 		}
-		
+
 		if (!jobsToSave.isEmpty()) {
 			for (Job_mst jobItem : jobsToSave) {
 				jobItem.setCompanyCd("COUPANG");
@@ -219,14 +219,14 @@ public class CrawlerCommonService {
 
         return jobsToSave;
     }
-    
+
     /**
 	 * <p>밀리세컨드로 된 데이터를 yyyy-MM-dd HH:mm:ss format String으로 변환한다. </p>
 	 * @author David Lee
 	 * */
 	public String formatCurrentTime() {
 		long currentTimeMillis = System.currentTimeMillis();
-		
+
         // 밀리초를 LocalDateTime으로 변환
         LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTimeMillis), ZoneId.systemDefault());
 
@@ -258,7 +258,28 @@ public class CrawlerCommonService {
         return now.isAfter(endDateTime);
     }
 
-    public List<Job_mst> getNotSaveJobItem(List<Job_mst> jobsToSave) {
+    public List<Job_mst> getNotSaveJobItem(List<Job_mst> result) {
+        List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
+        List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
+        List<Job_mst> jobsToSave = new ArrayList<>();
+
+        for (Job_mst job : result) {
+            boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
+
+            if (exists) {
+                Job_mst existingJob = existingJobs.stream()
+                    .filter(e -> e.getAnnoId().equals(job.getAnnoId()))
+                    .findFirst()
+                    .orElse(null);
+                if (existingJob != null && !existingJob.getAnnoSubject().equals(job.getAnnoSubject())) {
+                    // annoSubject가 다를 경우에만 저장
+                    jobsToSave.add(job);
+                }
+            } else {
+                jobsToSave.add(job);
+            }
+        }
+
         return crawlerRepository.saveAll(jobsToSave);
     }
 
