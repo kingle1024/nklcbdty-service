@@ -44,8 +44,6 @@ public class CoupangJobCrawlerService {
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
 		
 		int totalCnt = getCoupangTotalListCnt(apiUrl);
-		resList.addAll(coupangParseHtmlData(apiUrl));
-
         int pagesize = 20;
         double totalLoopCnt = totalCnt % pagesize
             == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
@@ -55,16 +53,6 @@ public class CoupangJobCrawlerService {
 			apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"&orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
 			resList.addAll(coupangParseHtmlData(apiUrl));
             log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
-		    try {
-		    	// 1초에서 2초 사이의 랜덤한 시간(1000ms ~ 2000ms) 동안 대기
-		        int sleepTime = (int)(Math.random() * 1000); // 1000ms ~ 2000ms
-		        Thread.sleep(sleepTime);
-		    } catch (InterruptedException e) {
-		    	log.error("크롤링 서버에 요청 중 Interrupted오류가 발생했습니다. {} ", e.getMessage());
-		        Thread.currentThread().interrupt(); // InterruptedException 발생 시 스레드 상태 복원
-		        // 예외 처리 로직 추가 가능
-		        throw new ApiException(e.getMessage(), e);
-		    }
 		}
 
         crawlerCommonService.getNotSaveJobItem("COUPANG", resList);
