@@ -4,10 +4,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -28,7 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
-import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
