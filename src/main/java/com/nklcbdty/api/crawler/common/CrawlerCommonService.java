@@ -314,8 +314,8 @@ public class CrawlerCommonService {
         final String regexUp = "(\\d+)년\\s*이상";
         final String regexPlusYears = "(\\d+)\\+\\s*years"; // "X+ years"
         final String regexMinYears = "Minimum\\s*(\\d+)\\s*years"; // "Minimum X years"
-        final String regexDown = "(\\d+)년 이하";
-        final String regexRange = "(\\d+)년[\\s~-]*(\\d+)년"; // "X년 ~ Y년", "X년-Y년", "X년 Y년" 등
+        final String regexDown = "(\\d+)년\\s*이하";
+        final String regexRange = "(\\d+)년\\s*[~-]*\\s*(\\d+)년"; // "X년 ~ Y년", "X년-Y년", "X년 Y년" 등
 
         Pattern patternUp = Pattern.compile(regexUp);
         Pattern patternDown = Pattern.compile(regexDown);
