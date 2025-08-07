@@ -77,42 +77,42 @@ public class JobController {
                 case "naver": {
                     List<Job_mst> items = naverJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("NAVER", items);
+                    return commonService.saveAll(items);
                 }
                 case "kakao": {
                     List<Job_mst> items = kakaoCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("KAKAO", items);
+                    return commonService.saveAll(items);
                 }
                 case "line": {
                     List<Job_mst> items = lineJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("LINE", items);
+                    return commonService.saveAll(items);
                 }
                 case "coupang": {
                     List<Job_mst> items = coupangJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("COUPANG", items);
+                    return commonService.saveAll(items);
                 }
                 case "baemin": {
                     List<Job_mst> items = baeminJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("BAEMIN", items);
+                    return commonService.saveAll(items);
                 }
                 case "daangn": {
                     List<Job_mst> items = daangnJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("DAANGN", items);
+                    return commonService.saveAll(items);
                 }
                 case "toss": {
                     List<Job_mst> items = tossJobCrawlerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("TOSS", items);
+                    return commonService.saveAll(items);
                 }
                 case "yanolja": {
                     List<Job_mst> items = yanoljaCralwerService.crawlJobs().get();
                     commonService.refineJobItemBygemini(items);
-                    return commonService.getNotSaveJobItem("YANOLJA", items);
+                    return commonService.saveAll(items);
                 }
                 case "all": {
                     jobService.deleteAll();
@@ -149,7 +149,7 @@ public class JobController {
                         log.info("Combined results count: {}", combinedResults.size());
 
                         // 모든 비동기 작업이 완료된 후에 결과를 반환합니다.
-                        return commonService.getNotSaveJobItem(combinedResults);
+                        return commonService.saveAll(combinedResults);
 
                     } catch (InterruptedException | ExecutionException e) {
                         log.error("Error during async crawler execution", e);
