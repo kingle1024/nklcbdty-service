@@ -258,29 +258,8 @@ public class CrawlerCommonService {
         return now.isAfter(endDateTime);
     }
 
-    public List<Job_mst> getNotSaveJobItem(List<Job_mst> result) {
-        List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
-        List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
-        List<Job_mst> jobsToSave = new ArrayList<>();
-
-        for (Job_mst job : result) {
-            boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
-
-            if (exists) {
-                Job_mst existingJob = existingJobs.stream()
-                    .filter(e -> e.getAnnoId().equals(job.getAnnoId()))
-                    .findFirst()
-                    .orElse(null);
-                if (existingJob != null && !existingJob.getAnnoSubject().equals(job.getAnnoSubject())) {
-                    // annoSubject가 다를 경우에만 저장
-                    jobsToSave.add(job);
-                }
-            } else {
-                jobsToSave.add(job);
-            }
-        }
-
-        return crawlerRepository.saveAll(jobsToSave);
+    public List<Job_mst> saveAll(List<Job_mst> result) {
+        return crawlerRepository.saveAll(result);
     }
 
     public PersonalHistoryDto extractPersonalHistoryFromJobPage(String url) {
