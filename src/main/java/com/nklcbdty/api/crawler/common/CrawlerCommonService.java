@@ -311,13 +311,17 @@ public class CrawlerCommonService {
     public PersonalHistoryDto getPersonalHistory(String qualification) {
         PersonalHistoryDto result = new PersonalHistoryDto();
 
-        final String regexUp = "(\\d+)년 이상";
+        final String regexUp = "(\\d+)년\\s*이상";
+        final String regexPlusYears = "(\\d+)\\+\\s*years"; // "X+ years"
+        final String regexMinYears = "Minimum\\s*(\\d+)\\s*years"; // "Minimum X years"
         final String regexDown = "(\\d+)년 이하";
         final String regexRange = "(\\d+)년[\\s~-]*(\\d+)년"; // "X년 ~ Y년", "X년-Y년", "X년 Y년" 등
 
         Pattern patternUp = Pattern.compile(regexUp);
         Pattern patternDown = Pattern.compile(regexDown);
         Pattern patternRange = Pattern.compile(regexRange);
+        Pattern patternPlusYears = Pattern.compile(regexPlusYears);
+        Pattern patternMinYears = Pattern.compile(regexMinYears);
 
         long minYears = 0;
         long maxYears = 0;
@@ -335,6 +339,29 @@ public class CrawlerCommonService {
         }
         if (!extractedFromYears.isEmpty()) {
             minYears = Collections.min(extractedFromYears); // "이상" 중 가장 작은 값
+        }
+        if (minYears == 0) {
+            // "%+ years" 찾기
+            Matcher matcherPlusYears = patternPlusYears.matcher(qualification);
+            if (matcherPlusYears.find()) {
+                try {
+                    minYears = Long.parseLong(matcherPlusYears.group(1));
+                } catch (NumberFormatException e) {
+                    log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (+ years)", matcherPlusYears.group(1));
+                }
+            }
+
+            // "%+ years"도 없었다면 "Minimum % years" 찾기
+            if (minYears == 0) {
+                Matcher matcherMinYears = patternMinYears.matcher(qualification);
+                if (matcherMinYears.find()) {
+                    try {
+                        minYears = Long.parseLong(matcherMinYears.group(1));
+                    } catch (NumberFormatException e) {
+                        log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (Minimum years)", matcherMinYears.group(1));
+                    }
+                }
+            }
         }
 
         // "X년 이하" 패턴 찾기
