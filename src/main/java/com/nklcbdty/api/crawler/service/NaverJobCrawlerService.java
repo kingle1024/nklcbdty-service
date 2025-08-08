@@ -117,13 +117,11 @@ public class NaverJobCrawlerService {
                 }
             }
 
-            crawlerCommonService.getNotSaveJobItem("NAVER", result);
-
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return CompletableFuture.completedFuture(result);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("NAVER", result));
     }
 
     public HttpURLConnection createConnection(URL url) throws Exception {
