@@ -150,6 +150,7 @@ public class GeminiService {
                 Financial System Develop -> FullStack
                 관리회계 IT 담당자 -> FullStack
                 HR System Develop -> FullStack
+                Firmware Engineer -> EmbeddedSW
                 보안 담당자 -> Security
                 정보보호 담당자 -> Security
                 정보보안 -> Security
