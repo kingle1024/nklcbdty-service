@@ -177,12 +177,10 @@ public class TossJobCrawlerService implements JobCrawler {
                 }
             }
 
-            commonService.getNotSaveJobItem("TOSS", result);
-
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return CompletableFuture.completedFuture(result);
+        return CompletableFuture.completedFuture(commonService.getNotSaveJobItem("TOSS", result));
     }
 }
