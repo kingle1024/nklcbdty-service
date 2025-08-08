@@ -55,8 +55,7 @@ public class CoupangJobCrawlerService {
             log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
 		}
 
-        crawlerCommonService.getNotSaveJobItem("COUPANG", resList);
-        return CompletableFuture.completedFuture(resList);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("COUPANG", resList));
 	}
 		
     /**

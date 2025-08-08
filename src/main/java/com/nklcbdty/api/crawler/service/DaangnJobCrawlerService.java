@@ -138,12 +138,11 @@ public class DaangnJobCrawlerService {
                 }
             }
 
-			crawlerCommonService.getNotSaveJobItem("DAANGN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return CompletableFuture.completedFuture(list);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("DAANGN", list));
 	}
 	
 	/**
