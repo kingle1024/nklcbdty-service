@@ -318,15 +318,12 @@ public class KakaoCrawlerService {
                 }
             }
 
-
             result.addAll(kakaoBankResult);
-            crawlerCommonService.getNotSaveJobItem("KAKAO", result);
-
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
-        return CompletableFuture.completedFuture(result);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("KAKAO", result));
     }
 
     private void addRecruitGames(List<Job_mst> kakaoGames) {

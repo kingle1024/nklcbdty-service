@@ -116,11 +116,10 @@ public class BaeminJobCrawlerService implements JobCrawler{
                 }
             }
 
-			crawlerCommonService.getNotSaveJobItem("BAEMIN", list);
 		} catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
-        return CompletableFuture.completedFuture(list);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("BAEMIN", list));
 	}
 	
 	/**

@@ -173,13 +173,11 @@ public class LineJobCrawlerService implements JobCrawler {
                 item.setSubJobCdNm(subJobCdNmReplace);
             }
 
-            crawlerCommonService.getNotSaveJobItem("LINE", result);
-
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
-        return CompletableFuture.completedFuture(result);
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("LINE", result));
     }
 
     private String formattedDate(String dateStr) {
