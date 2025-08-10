@@ -292,6 +292,7 @@ public class CrawlerCommonService {
 
         final String regexUp = "(\\d+)년\\s*이상";
         final String regexPlusYears = "(\\d+)\\+\\s*years"; // "X+ years"
+        final String regexOverYears = "Over\\s*(\\d+)\\s*years";
         final String regexMinYears = "Minimum\\s*(\\d+)\\s*years"; // "Minimum X years"
         final String regexDown = "(\\d+)년\\s*이하";
         final String regexRange = "(\\d+)년\\s*[~-]*\\s*(\\d+)년"; // "X년 ~ Y년", "X년-Y년", "X년 Y년" 등
@@ -300,6 +301,7 @@ public class CrawlerCommonService {
         Pattern patternDown = Pattern.compile(regexDown);
         Pattern patternRange = Pattern.compile(regexRange);
         Pattern patternPlusYears = Pattern.compile(regexPlusYears);
+        Pattern patternOverYears = Pattern.compile(regexOverYears);
         Pattern patternMinYears = Pattern.compile(regexMinYears);
 
         long minYears = 0;
@@ -329,6 +331,18 @@ public class CrawlerCommonService {
                     log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (+ years)", matcherPlusYears.group(1));
                 }
             }
+
+            if (minYears == 0) { // 위에 찾은 것이 없을 경우에만 시도
+                Matcher matcherOverYears = patternOverYears.matcher(qualification);
+                if (matcherOverYears.find()) {
+                    try {
+                        minYears = Long.parseLong(matcherOverYears.group(1));
+                    } catch (NumberFormatException e) {
+                        log.error("오류: '{}' 를 long으로 변환할 수 없습니다. (Over years)", matcherOverYears.group(1));
+                    }
+                }
+            }
+
 
             // "%+ years"도 없었다면 "Minimum % years" 찾기
             if (minYears == 0) {
