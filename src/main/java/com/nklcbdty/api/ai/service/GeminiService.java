@@ -140,6 +140,8 @@ public class GeminiService {
                 Graphics 엔진 개발 -> Backend
                 SDK 개발 -> Backend
                 Platform Engineer -> Backend
+                Python Developer -> Backend
+                Node.js 개발 -> Backend
                 개발자 공개 채용 -> FullStack
                 코어뱅킹(공통) 개발자 -> FullStack
                 종합재무리스크 업무 개발자 -> FullStack
