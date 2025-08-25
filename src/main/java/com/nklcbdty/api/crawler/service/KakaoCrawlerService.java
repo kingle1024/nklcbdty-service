@@ -59,264 +59,11 @@ public class KakaoCrawlerService {
             addRecruitContent("P", result);
             addRecruitContent("S", result);
 
-            for (Job_mst job : result) {
-                if (job.getAnnoSubject().contains("DevOps") ||
-                    job.getAnnoSubject().contains("Kubernetes Engine 개발자") ||
-                    job.getAnnoSubject().contains("DKOS(Kubernetes as a Service) 개발자") ||
-                    job.getAnnoSubject().contains("SRE(Site Reliability Engineer) 엔지니어") ||
-                    job.getAnnoSubject().contains("MLOps Engineer")
-                ) {
-                    job.setSubJobCdNm(JobEnums.DevOps.getTitle());
-                } else if (job.getAnnoSubject().contains("프론트") ||
-                    job.getAnnoSubject().contains("FE 개발자") ||
-                    job.getAnnoSubject().contains("Frontend Develop")
-                ) {
-                    job.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
-                } else if (job.getAnnoSubject().contains("백엔드") ||
-                    job.getAnnoSubject().contains("서버 개발자") ||
-                    job.getAnnoSubject().contains("Back-End") ||
-                    job.getAnnoSubject().contains("CI/CD 서비스 개발") ||
-                    job.getAnnoSubject().contains("데이터 응용 플랫폼 개발") ||
-                    job.getAnnoSubject().contains("시스템(ActionBase) 개발") ||
-                    job.getAnnoSubject().contains("모델 플랫폼 개발") ||
-                    job.getAnnoSubject().contains("벡엔드 개발자") ||
-                    job.getAnnoSubject().contains("검색 엔지니어")
-                ) {
-                    job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("FE/BE") ||
-                    job.getAnnoSubject().contains("플랫폼 개발자") ||
-                    job.getAnnoSubject().contains("웹 풀스택") ||
-                    job.getAnnoSubject().contains("웹 크롤링") ||
-                    job.getAnnoSubject().contains("어드민 개발")
-                ) {
-                    job.setSubJobCdNm(JobEnums.FullStack.getTitle());
-                } else if (job.getAnnoSubject().contains("Data Analyst") ||
-                    job.getAnnoSubject().contains("데이터 사이언티스트") ||
-                    job.getAnnoSubject().contains("데이터 분석가") ||
-                    job.getAnnoSubject().contains("데이터 분석 담당자")
-                ) {
-                    job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("클라이언트 SDK 개발자") ||
-                    job.getAnnoSubject().contains("Mobile App Develop")
-                ) {
-                    job.setSubJobCdNm(JobEnums.Android.getTitle());
-                } else if (job.getAnnoSubject().contains("macOS 플랫폼 개발자")) {
-                    job.setSubJobCdNm(JobEnums.iOS.getTitle());
-                } else if (job.getAnnoSubject().contains("Flutter")) {
-                    job.setSubJobCdNm(JobEnums.Flutter.getTitle());
-                } else if (job.getAnnoSubject().contains("데이터 엔지니어") ||
-                    job.getAnnoSubject().contains("NoSQL 엔지니어") ||
-                    job.getAnnoSubject().contains("Data Engineer")
-                ) {
-                    job.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("머신러닝 엔지니어") ||
-                    job.getAnnoSubject().contains("ML 엔지니어") ||
-                    job.getAnnoSubject().contains("머신러닝 research scientist") ||
-                    job.getAnnoSubject().contains("데이터플랫폼 엔지니어")
-                ) {
-                    job.setSubJobCdNm(JobEnums.ML.getTitle());
-                } else if (job.getAnnoSubject().contains("DB운영")) {
-                    job.setSubJobCdNm(JobEnums.DBA.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("AI Safety 엔지니어") ||
-                    job.getAnnoSubject().contains("LLM Research")
-                ) {
-                    job.setSubJobCdNm(JobEnums.AI.getTitle());
-                } else if (job.getAnnoSubject().contains("안정성 관리") || job.getAnnoSubject().contains("Technical Writer")
-                    || job.getAnnoSubject().contains("기술 문서") || job.getAnnoSubject().contains("기술지원 엔지니어")
-                    || job.getAnnoSubject().contains("Developer Relations")
-                    || job.getAnnoSubject().contains("모니터링 담당자")
-                ) {
-                    job.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
-                } else if (job.getAnnoSubject().contains("PM")) {
-                    job.setSubJobCdNm(JobEnums.PM.getTitle());
-                } else if (job.getAnnoSubject().contains("QA")) {
-                    job.setSubJobCdNm(JobEnums.QA.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("보안 담당자") ||
-                    job.getAnnoSubject().contains("개인정보보호 시니어") ||
-                    job.getAnnoSubject().contains("개인정보보호 주니어") ||
-                    job.getAnnoSubject().contains("개인정보보호 리더") ||
-                    job.getAnnoSubject().contains("정보보안") ||
-                    job.getAnnoSubject().contains("IT 서비스 안정성")
-                ) {
-                    job.setSubJobCdNm(JobEnums.Security.getTitle());
-                } else if (
-                    job.getAnnoSubject().contains("취약점 분석") ||
-                    job.getAnnoSubject().contains("모의해킹") ||
-                    job.getAnnoSubject().contains("컴플라이언스 엔지니어") ||
-                    job.getAnnoSubject().contains("정보보안 컴플라이언스 엔지니어") ||
-                    job.getAnnoSubject().contains("보안 엔지니어")
-                ) {
-                    job.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
-                } else if (job.getAnnoSubject().contains("기획 담당자") || job.getAnnoSubject().contains("기획자")) {
-                    job.setSubJobCdNm(JobEnums.PO.getTitle());
-                } else if (job.getAnnoSubject().contains("프로덕트 디자이너")) {
-                    job.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
-                } else if (job.getAnnoSubject().contains("시스템 엔지니어") ||
-                    job.getAnnoSubject().contains("네트워크 드라이버 개발") ||
-                    job.getAnnoSubject().contains("FPGA Engineer") ||
-                    job.getAnnoSubject().contains("컴퓨팅 서비스 개발") ||
-                    job.getAnnoSubject().contains("네트워킹 서비스 개발") ||
-                    job.getAnnoSubject().contains("스토리지 플랫폼 개발") ||
-                    job.getAnnoSubject().contains("네트워크 엔지니어") ||
-                    job.getAnnoSubject().contains("클라우드 Managed 서비스 엔지니어")
-                ) {
-                    job.setSubJobCdNm(JobEnums.Infra.getTitle());
-                } else {
-                    job.setSubJobCdNm(null);
-                }
-
-                if ("etc".equals(job.getSubJobCdNm())) {
-                    if (job.getAnnoSubject().contains("네트워크 드라이버") ||
-                        job.getAnnoSubject().contains("FPGA Engineer") ||
-                        job.getAnnoSubject().contains("컴퓨팅 서비스") ||
-                        job.getAnnoSubject().contains("네트워킹 서비스") ||
-                        job.getAnnoSubject().contains("네트워크 엔지니어") ||
-                        job.getAnnoSubject().contains("시스템 엔지니어") ||
-                        job.getAnnoSubject().contains("클라우드 Managed 서비스 엔지니어") ||
-                        job.getAnnoSubject().contains("클라우드 네트워크 엔지니어") ||
-                        job.getAnnoSubject().contains("스토리지 플랫폼 개발자")
-                    ) {
-                        job.setSubJobCdNm(JobEnums.Infra.getTitle());
-                    }
-                }
-            }
-
-            for (Job_mst job : result) {
-                String replaeTitle = job.getAnnoSubject().replaceAll("\\[.*?]\\s*", "");
-                job.setAnnoSubject(replaeTitle);
-                if ("Server".equals(job.getSubJobCdNm())) {
-                    job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                }
-                if (job.getAnnoSubject().contains("카카오페이")) {
-                    String replaceTitle = job.getAnnoSubject().replace("카카오페이", "");
-                    job.setAnnoSubject(replaceTitle);
-                } else if (job.getAnnoSubject().contains("카카오모빌리티")) {
-                    String replaceTitle = job.getAnnoSubject().replace("카카오모빌리티", "");
-                    job.setAnnoSubject(replaceTitle);
-                } else if (job.getAnnoSubject().contains("카카오엔터프라이즈")) {
-                    String replaceTitle = job.getAnnoSubject().replace("카카오엔터프라이즈", "");
-                    job.setAnnoSubject(replaceTitle);
-                } else if (job.getAnnoSubject().contains("카카오게임즈")) {
-                    String replaceTitle = job.getAnnoSubject().replace("카카오게임즈", "");
-                    job.setAnnoSubject(replaceTitle);
-                } else if (job.getAnnoSubject().contains("카카오헬스케어")) {
-                    String replaceTitle = job.getAnnoSubject().replace("카카오헬스케어", "");
-                    job.setAnnoSubject(replaceTitle);
-                }
-
-                switch (job.getSysCompanyCdNm()) {
-                    case "kakao mobility": {
-                        job.setSysCompanyCdNm("카카오 모빌리티");
-                        break;
-                    }
-                    case "Kakao Pay Corp.": {
-                        job.setSysCompanyCdNm("카카오 페이");
-                        break;
-                    }
-                    case "Kakao Enterprise": {
-                        job.setSysCompanyCdNm("카카오 엔터프라이즈");
-                        break;
-                    }
-                    case "KakaoGames": {
-                        job.setSysCompanyCdNm("카카오 게임즈");
-                        break;
-                    }
-                    case "kakaohealthcare", "카카오 헬스케어": {
-                        job.setSysCompanyCdNm("카카오 헬스케어");
-                        break;
-                    }
-                    case "카카오 페이증권": {
-                        job.setSysCompanyCdNm("카카오 페이증권");
-                        break;
-                    }
-                    default: {
-                        job.setSysCompanyCdNm("카카오");
-                    }
-                }
-            }
+            refineResult(result);
 
             List<Job_mst> kakaoBankResult = new ArrayList<>();
             addRecruitKakaoBank(kakaoBankResult);
-            for (Job_mst item : kakaoBankResult) {
-                if (item.getAnnoSubject().contains("QA")) {
-                    item.setSubJobCdNm(JobEnums.QA.getTitle());
-                } else if (item.getAnnoSubject().contains("iOS")) {
-                    item.setSubJobCdNm(JobEnums.iOS.getTitle());
-                } else if (item.getAnnoSubject().contains("머신러닝 엔지니어") ||
-                    item.getAnnoSubject().contains("딥러닝 엔지니어") ||
-                    item.getAnnoSubject().contains("AI Research Engineer")
-                ) {
-                    item.setSubJobCdNm(JobEnums.ML.getTitle());
-                } else if (
-                    item.getAnnoSubject().contains("데이터 분석 담당자") ||
-                    item.getAnnoSubject().contains("데이터 분석가")
-                ) {
-                    item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
-                } else if (item.getAnnoSubject().contains("데이터 엔지니어") ||
-                    item.getAnnoSubject().contains("데이터 플랫폼 엔지니어") ||
-                    item.getAnnoSubject().contains("데이터 마트 개발 담당자")
-                ) {
-                    item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
-                } else if (item.getAnnoSubject().contains("데이터베이스 관리자")) {
-                    item.setSubJobCdNm(JobEnums.DBA.getTitle());
-                } else if (item.getAnnoSubject().contains("AI Search Engineer")) {
-                    item.setSubJobCdNm(JobEnums.AI.getTitle());
-                } else if (
-                    item.getAnnoSubject().contains("시스템 엔지니어") ||
-                    item.getAnnoSubject().contains("시스템 아키텍트/엔지니어") ||
-                    item.getAnnoSubject().contains("네트워크 아키텍트")
-                ) {
-                    item.setSubJobCdNm(JobEnums.Infra.getTitle());
-                } else if (item.getAnnoSubject().contains("기획자") || item.getAnnoSubject().contains("기획 담당자")
-                    || item.getAnnoSubject().contains("기획 및 운영 담당자") || item.getAnnoSubject().contains("신사업 전략 담당자")
-                    || item.getAnnoSubject().contains("업무 담당자") || item.getAnnoSubject().contains("전략 담당자")
-                    || item.getAnnoSubject().contains("운영 담당자") || item.getAnnoSubject().contains("심사 담당자")
-                    || item.getAnnoSubject().contains("서비스 담당자") || item.getAnnoSubject().contains("Fraud 담당자")
-                    || item.getAnnoSubject().contains("시스템 담당자") || item.getAnnoSubject().contains("세일즈 담당자")
-                    || item.getAnnoSubject().contains("외환 상품/서비스 담당자") || item.getAnnoSubject()
-                    .contains("여신 Anti-Fraud 담당자") || item.getAnnoSubject().contains("FDS 시스템 담당자")) {
-                    item.setSubJobCdNm(JobEnums.PO.getTitle());
-                } else if (
-                    item.getAnnoSubject().contains("네트워크 아키텍트") ||
-                    item.getAnnoSubject().contains("네트워크 엔지니어")
-                ) {
-                    item.setSubJobCdNm(JobEnums.Infra.getTitle());
-                } else if (item.getAnnoSubject().contains("PM")) {
-                    item.setSubJobCdNm(JobEnums.PM.getTitle());
-                } else if (item.getAnnoSubject().contains("프론트엔드 개발자") || item.getAnnoSubject().contains("React")) {
-                    item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
-                } else if (item.getAnnoSubject().contains("서버 개발자") || item.getAnnoSubject().contains("백엔드 개발자")
-                    || item.getAnnoSubject().contains("DKOS(Kubernetes as a Service) 개발자")) {
-                    item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
-                } else if (item.getAnnoSubject().contains("상담업무 시스템 개발자") || item.getAnnoSubject().contains("업무 개발자")
-                    || item.getAnnoSubject().contains("서비스 개발자") || item.getAnnoSubject().contains("개발 담당자")) {
-                    item.setSubJobCdNm(JobEnums.FullStack.getTitle());
-                } else if (item.getAnnoSubject().contains("DevOps") || item.getAnnoSubject()
-                    .contains("Kubernetes Engineer") || item.getAnnoSubject().contains("서비스 아키텍트")
-                    || item.getAnnoSubject().contains("뱅킹 아키텍트")) {
-                    item.setSubJobCdNm(JobEnums.DevOps.getTitle());
-                } else if (item.getAnnoSubject().contains("브랜드 디자") || item.getAnnoSubject().contains("프로덕트 디자이너")
-                    || item.getAnnoSubject().contains("UX/UI 디자이너")) {
-                    item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
-                } else if (
-                    item.getAnnoSubject().contains("시스템보안 담당자") ||
-                    item.getAnnoSubject().contains("보안담당자") ||
-                    item.getAnnoSubject().contains("보안 담당자") ||
-                    item.getAnnoSubject().contains("인증라이선스 담당자")
-                ) {
-                    item.setSubJobCdNm(JobEnums.Security.getTitle());
-                } else if (item.getAnnoSubject().contains("Developer Relations") || item.getAnnoSubject()
-                    .contains("모니터링 담당자")) {
-                    item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
-                } else {
-                    item.setSubJobCdNm(null);
-                }
-            }
+            refineBankResult(kakaoBankResult);
 
             result.addAll(kakaoBankResult);
 
@@ -324,6 +71,267 @@ public class KakaoCrawlerService {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
         return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("KAKAO", result));
+    }
+
+    private void refineBankResult(List<Job_mst> kakaoBankResult) {
+        for (Job_mst item : kakaoBankResult) {
+            if (item.getAnnoSubject().contains("QA")) {
+                item.setSubJobCdNm(JobEnums.QA.getTitle());
+            } else if (item.getAnnoSubject().contains("iOS")) {
+                item.setSubJobCdNm(JobEnums.iOS.getTitle());
+            } else if (item.getAnnoSubject().contains("머신러닝 엔지니어") ||
+                item.getAnnoSubject().contains("딥러닝 엔지니어") ||
+                item.getAnnoSubject().contains("AI Research Engineer")
+            ) {
+                item.setSubJobCdNm(JobEnums.ML.getTitle());
+            } else if (
+                item.getAnnoSubject().contains("데이터 분석 담당자") ||
+                item.getAnnoSubject().contains("데이터 분석가")
+            ) {
+                item.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+            } else if (item.getAnnoSubject().contains("데이터 엔지니어") ||
+                item.getAnnoSubject().contains("데이터 플랫폼 엔지니어") ||
+                item.getAnnoSubject().contains("데이터 마트 개발 담당자")
+            ) {
+                item.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+            } else if (item.getAnnoSubject().contains("데이터베이스 관리자")) {
+                item.setSubJobCdNm(JobEnums.DBA.getTitle());
+            } else if (item.getAnnoSubject().contains("AI Search Engineer")) {
+                item.setSubJobCdNm(JobEnums.AI.getTitle());
+            } else if (
+                item.getAnnoSubject().contains("시스템 엔지니어") ||
+                item.getAnnoSubject().contains("시스템 아키텍트/엔지니어") ||
+                item.getAnnoSubject().contains("네트워크 아키텍트")
+            ) {
+                item.setSubJobCdNm(JobEnums.Infra.getTitle());
+            } else if (item.getAnnoSubject().contains("기획자") || item.getAnnoSubject().contains("기획 담당자")
+                || item.getAnnoSubject().contains("기획 및 운영 담당자") || item.getAnnoSubject().contains("신사업 전략 담당자")
+                || item.getAnnoSubject().contains("업무 담당자") || item.getAnnoSubject().contains("전략 담당자")
+                || item.getAnnoSubject().contains("운영 담당자") || item.getAnnoSubject().contains("심사 담당자")
+                || item.getAnnoSubject().contains("서비스 담당자") || item.getAnnoSubject().contains("Fraud 담당자")
+                || item.getAnnoSubject().contains("시스템 담당자") || item.getAnnoSubject().contains("세일즈 담당자")
+                || item.getAnnoSubject().contains("외환 상품/서비스 담당자") || item.getAnnoSubject()
+                .contains("여신 Anti-Fraud 담당자") || item.getAnnoSubject().contains("FDS 시스템 담당자")) {
+                item.setSubJobCdNm(JobEnums.PO.getTitle());
+            } else if (
+                item.getAnnoSubject().contains("네트워크 아키텍트") ||
+                item.getAnnoSubject().contains("네트워크 엔지니어")
+            ) {
+                item.setSubJobCdNm(JobEnums.Infra.getTitle());
+            } else if (item.getAnnoSubject().contains("PM")) {
+                item.setSubJobCdNm(JobEnums.PM.getTitle());
+            } else if (item.getAnnoSubject().contains("프론트엔드 개발자") || item.getAnnoSubject().contains("React")) {
+                item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+            } else if (item.getAnnoSubject().contains("서버 개발자") || item.getAnnoSubject().contains("백엔드 개발자")
+                || item.getAnnoSubject().contains("DKOS(Kubernetes as a Service) 개발자")) {
+                item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+            } else if (item.getAnnoSubject().contains("상담업무 시스템 개발자") || item.getAnnoSubject().contains("업무 개발자")
+                || item.getAnnoSubject().contains("서비스 개발자") || item.getAnnoSubject().contains("개발 담당자")) {
+                item.setSubJobCdNm(JobEnums.FullStack.getTitle());
+            } else if (item.getAnnoSubject().contains("DevOps") || item.getAnnoSubject()
+                .contains("Kubernetes Engineer") || item.getAnnoSubject().contains("서비스 아키텍트")
+                || item.getAnnoSubject().contains("뱅킹 아키텍트")) {
+                item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+            } else if (item.getAnnoSubject().contains("브랜드 디자") || item.getAnnoSubject().contains("프로덕트 디자이너")
+                || item.getAnnoSubject().contains("UX/UI 디자이너")) {
+                item.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
+            } else if (
+                item.getAnnoSubject().contains("시스템보안 담당자") ||
+                item.getAnnoSubject().contains("보안담당자") ||
+                item.getAnnoSubject().contains("보안 담당자") ||
+                item.getAnnoSubject().contains("인증라이선스 담당자")
+            ) {
+                item.setSubJobCdNm(JobEnums.Security.getTitle());
+            } else if (item.getAnnoSubject().contains("Developer Relations") || item.getAnnoSubject()
+                .contains("모니터링 담당자")) {
+                item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
+            } else {
+                item.setSubJobCdNm(null);
+            }
+        }
+    }
+
+    private void refineResult(List<Job_mst> result) {
+        for (Job_mst job : result) {
+            if (job.getAnnoSubject().contains("DevOps") ||
+                job.getAnnoSubject().contains("Kubernetes Engine 개발자") ||
+                job.getAnnoSubject().contains("DKOS(Kubernetes as a Service) 개발자") ||
+                job.getAnnoSubject().contains("SRE(Site Reliability Engineer) 엔지니어") ||
+                job.getAnnoSubject().contains("MLOps Engineer")
+            ) {
+                job.setSubJobCdNm(JobEnums.DevOps.getTitle());
+            } else if (job.getAnnoSubject().contains("프론트") ||
+                job.getAnnoSubject().contains("FE 개발자") ||
+                job.getAnnoSubject().contains("Frontend Develop")
+            ) {
+                job.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+            } else if (job.getAnnoSubject().contains("백엔드") ||
+                job.getAnnoSubject().contains("서버 개발자") ||
+                job.getAnnoSubject().contains("Back-End") ||
+                job.getAnnoSubject().contains("CI/CD 서비스 개발") ||
+                job.getAnnoSubject().contains("데이터 응용 플랫폼 개발") ||
+                job.getAnnoSubject().contains("시스템(ActionBase) 개발") ||
+                job.getAnnoSubject().contains("모델 플랫폼 개발") ||
+                job.getAnnoSubject().contains("벡엔드 개발자") ||
+                job.getAnnoSubject().contains("검색 엔지니어")
+            ) {
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("FE/BE") ||
+                job.getAnnoSubject().contains("플랫폼 개발자") ||
+                job.getAnnoSubject().contains("웹 풀스택") ||
+                job.getAnnoSubject().contains("웹 크롤링") ||
+                job.getAnnoSubject().contains("어드민 개발")
+            ) {
+                job.setSubJobCdNm(JobEnums.FullStack.getTitle());
+            } else if (job.getAnnoSubject().contains("Data Analyst") ||
+                job.getAnnoSubject().contains("데이터 사이언티스트") ||
+                job.getAnnoSubject().contains("데이터 분석가") ||
+                job.getAnnoSubject().contains("데이터 분석 담당자")
+            ) {
+                job.setSubJobCdNm(JobEnums.DataAnalyst.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("클라이언트 SDK 개발자") ||
+                job.getAnnoSubject().contains("Mobile App Develop")
+            ) {
+                job.setSubJobCdNm(JobEnums.Android.getTitle());
+            } else if (job.getAnnoSubject().contains("macOS 플랫폼 개발자")) {
+                job.setSubJobCdNm(JobEnums.iOS.getTitle());
+            } else if (job.getAnnoSubject().contains("Flutter")) {
+                job.setSubJobCdNm(JobEnums.Flutter.getTitle());
+            } else if (job.getAnnoSubject().contains("데이터 엔지니어") ||
+                job.getAnnoSubject().contains("NoSQL 엔지니어") ||
+                job.getAnnoSubject().contains("Data Engineer")
+            ) {
+                job.setSubJobCdNm(JobEnums.DataEngineering.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("머신러닝 엔지니어") ||
+                job.getAnnoSubject().contains("ML 엔지니어") ||
+                job.getAnnoSubject().contains("머신러닝 research scientist") ||
+                job.getAnnoSubject().contains("데이터플랫폼 엔지니어")
+            ) {
+                job.setSubJobCdNm(JobEnums.ML.getTitle());
+            } else if (job.getAnnoSubject().contains("DB운영")) {
+                job.setSubJobCdNm(JobEnums.DBA.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("AI Safety 엔지니어") ||
+                job.getAnnoSubject().contains("LLM Research")
+            ) {
+                job.setSubJobCdNm(JobEnums.AI.getTitle());
+            } else if (job.getAnnoSubject().contains("안정성 관리") || job.getAnnoSubject().contains("Technical Writer")
+                || job.getAnnoSubject().contains("기술 문서") || job.getAnnoSubject().contains("기술지원 엔지니어")
+                || job.getAnnoSubject().contains("Developer Relations")
+                || job.getAnnoSubject().contains("모니터링 담당자")
+            ) {
+                job.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
+            } else if (job.getAnnoSubject().contains("PM")) {
+                job.setSubJobCdNm(JobEnums.PM.getTitle());
+            } else if (job.getAnnoSubject().contains("QA")) {
+                job.setSubJobCdNm(JobEnums.QA.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("보안 담당자") ||
+                job.getAnnoSubject().contains("개인정보보호 시니어") ||
+                job.getAnnoSubject().contains("개인정보보호 주니어") ||
+                job.getAnnoSubject().contains("개인정보보호 리더") ||
+                job.getAnnoSubject().contains("정보보안") ||
+                job.getAnnoSubject().contains("IT 서비스 안정성")
+            ) {
+                job.setSubJobCdNm(JobEnums.Security.getTitle());
+            } else if (
+                job.getAnnoSubject().contains("취약점 분석") ||
+                job.getAnnoSubject().contains("모의해킹") ||
+                job.getAnnoSubject().contains("컴플라이언스 엔지니어") ||
+                job.getAnnoSubject().contains("정보보안 컴플라이언스 엔지니어") ||
+                job.getAnnoSubject().contains("보안 엔지니어")
+            ) {
+                job.setSubJobCdNm(JobEnums.SecurityEngineering.getTitle());
+            } else if (job.getAnnoSubject().contains("기획 담당자") || job.getAnnoSubject().contains("기획자")) {
+                job.setSubJobCdNm(JobEnums.PO.getTitle());
+            } else if (job.getAnnoSubject().contains("프로덕트 디자이너")) {
+                job.setSubJobCdNm(JobEnums.ProductDesigner.getTitle());
+            } else if (job.getAnnoSubject().contains("시스템 엔지니어") ||
+                job.getAnnoSubject().contains("네트워크 드라이버 개발") ||
+                job.getAnnoSubject().contains("FPGA Engineer") ||
+                job.getAnnoSubject().contains("컴퓨팅 서비스 개발") ||
+                job.getAnnoSubject().contains("네트워킹 서비스 개발") ||
+                job.getAnnoSubject().contains("스토리지 플랫폼 개발") ||
+                job.getAnnoSubject().contains("네트워크 엔지니어") ||
+                job.getAnnoSubject().contains("클라우드 Managed 서비스 엔지니어")
+            ) {
+                job.setSubJobCdNm(JobEnums.Infra.getTitle());
+            } else {
+                job.setSubJobCdNm(null);
+            }
+
+            if ("etc".equals(job.getSubJobCdNm())) {
+                if (job.getAnnoSubject().contains("네트워크 드라이버") ||
+                    job.getAnnoSubject().contains("FPGA Engineer") ||
+                    job.getAnnoSubject().contains("컴퓨팅 서비스") ||
+                    job.getAnnoSubject().contains("네트워킹 서비스") ||
+                    job.getAnnoSubject().contains("네트워크 엔지니어") ||
+                    job.getAnnoSubject().contains("시스템 엔지니어") ||
+                    job.getAnnoSubject().contains("클라우드 Managed 서비스 엔지니어") ||
+                    job.getAnnoSubject().contains("클라우드 네트워크 엔지니어") ||
+                    job.getAnnoSubject().contains("스토리지 플랫폼 개발자")
+                ) {
+                    job.setSubJobCdNm(JobEnums.Infra.getTitle());
+                }
+            }
+        }
+
+        for (Job_mst job : result) {
+            String replaeTitle = job.getAnnoSubject().replaceAll("\\[.*?]\\s*", "");
+            job.setAnnoSubject(replaeTitle);
+            if ("Server".equals(job.getSubJobCdNm())) {
+                job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+            }
+            if (job.getAnnoSubject().contains("카카오페이")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오페이", "");
+                job.setAnnoSubject(replaceTitle);
+            } else if (job.getAnnoSubject().contains("카카오모빌리티")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오모빌리티", "");
+                job.setAnnoSubject(replaceTitle);
+            } else if (job.getAnnoSubject().contains("카카오엔터프라이즈")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오엔터프라이즈", "");
+                job.setAnnoSubject(replaceTitle);
+            } else if (job.getAnnoSubject().contains("카카오게임즈")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오게임즈", "");
+                job.setAnnoSubject(replaceTitle);
+            } else if (job.getAnnoSubject().contains("카카오헬스케어")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오헬스케어", "");
+                job.setAnnoSubject(replaceTitle);
+            }
+
+            switch (job.getSysCompanyCdNm()) {
+                case "kakao mobility": {
+                    job.setSysCompanyCdNm("카카오 모빌리티");
+                    break;
+                }
+                case "Kakao Pay Corp.": {
+                    job.setSysCompanyCdNm("카카오 페이");
+                    break;
+                }
+                case "Kakao Enterprise": {
+                    job.setSysCompanyCdNm("카카오 엔터프라이즈");
+                    break;
+                }
+                case "KakaoGames": {
+                    job.setSysCompanyCdNm("카카오 게임즈");
+                    break;
+                }
+                case "kakaohealthcare", "카카오 헬스케어": {
+                    job.setSysCompanyCdNm("카카오 헬스케어");
+                    break;
+                }
+                case "카카오 페이증권": {
+                    job.setSysCompanyCdNm("카카오 페이증권");
+                    break;
+                }
+                default: {
+                    job.setSysCompanyCdNm("카카오");
+                }
+            }
+        }
     }
 
     private void addRecruitGames(List<Job_mst> kakaoGames) {
