@@ -75,16 +75,7 @@ public class CrawlerCommonService {
         for (Job_mst job : result) {
             boolean exists = existingJobs.stream().anyMatch(e -> e.getAnnoId().equals(job.getAnnoId()));
 
-            if (exists) {
-                Job_mst existingJob = existingJobs.stream()
-                    .filter(e -> e.getAnnoId().equals(job.getAnnoId()))
-                    .findFirst()
-                    .orElse(null);
-                if (existingJob != null && !existingJob.getAnnoSubject().equals(job.getAnnoSubject())) {
-                    // annoSubject가 다를 경우에만 저장
-                    jobsToSave.add(job);
-                }
-            } else {
+            if (!exists) {
                 jobsToSave.add(job);
             }
         }
