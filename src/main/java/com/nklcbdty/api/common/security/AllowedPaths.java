@@ -16,7 +16,9 @@ public enum AllowedPaths {
     CATEGORY_ALL("/api/category/**"),
     EMAIL("/api/email/**"),
     CRALWER("/api/crawler"),
-    COUNT_BY_DATE("/api/statistics/count-by-date")
+    COUNT_BY_DATE("/api/statistics/count-by-date"),
+    TEST("/api/test"),
+    SEARCH("/api/job/**"),
     ;
 
     private final String path;
