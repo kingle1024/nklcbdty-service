@@ -1,5 +1,8 @@
 package com.nklcbdty.api.crawler.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -28,11 +31,32 @@ public class JobService {
         }
 
         Random random = new Random();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Job_mst> result = new ArrayList<>();
         for (Job_mst item : items) {
-            item.setId(random.nextLong());
+            String endDateStr = item.getEndDate();
+            boolean shouldAdd = false;
+
+            if (endDateStr == null) {
+                shouldAdd = true;
+            } else if ("영입종료시".equals(endDateStr)) {
+                shouldAdd = true;
+            } else {
+                LocalDateTime endDate = LocalDateTime.parse(endDateStr, formatter);
+                if (endDate.isAfter(now)) {
+                    shouldAdd = true;
+                }
+            }
+
+            if (shouldAdd) {
+                item.setId(random.nextLong());
+                result.add(item);
+            }
         }
 
-        return items;
+        return result;
     }
 
     @Transactional
