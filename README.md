@@ -57,5 +57,6 @@ Emoji Type(#issue-num): subject
 ┣ ┣ 📦types ->
 ┣ 📦stores -> Zustand Store
 ┗ 📦utils -> 유틸함수
-https://somoon.ai/report/group/green-naver
+
+nklcb.netlify.app
 ```
