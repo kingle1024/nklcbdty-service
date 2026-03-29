@@ -540,6 +540,7 @@ public class KakaoCrawlerService {
             }
 
             final String apiUrl = "https://api.ninehire.com/identity-access/homepage/recruitments?companyId="+buildName+"&page=1&countPerPage=20&externalTitle=&order=created_at_desc";
+            log.info("카카오페이증권 buildName {}", buildName);
             final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
 
             // JSON 객체로 변환
@@ -564,7 +565,7 @@ public class KakaoCrawlerService {
                 }
                 String title = jsonObject.get("externalTitle").toString();
                 item.setAnnoSubject(title);
-                String empTypeCdNm = jsonObject.getJSONArray("employmentType").getString(0);
+                String empTypeCdNm = jsonObject.getJSONArray("employmentType").isEmpty() ? "" : jsonObject.getJSONArray("employmentType").getString(0);
                 if("full_time".equals(empTypeCdNm)) {
                     item.setEmpTypeCdNm("정규");
                 } else {
