@@ -365,12 +365,19 @@ public class KakaoCrawlerService {
             // JSON 객체로 변환
             JSONObject jsonResult = new JSONObject(jsonResponse);
 
+            jsonResult.getJSONObject("pageProps")
+                            .getJSONObject("dehydratedState")
+                            .getJSONArray("queries");
             JSONArray data = jsonResult.getJSONObject("pageProps")
                 .getJSONObject("dehydratedState")
                 .getJSONArray("queries")
                 .getJSONObject(2)
                 .getJSONObject("state")
-                .getJSONArray("data");
+                .optJSONArray("data");
+            if (data == null) {
+                log.error("카카오게임즈 채용공고 data 미존재");
+                return;
+            }
 
             for (int i = 0; i < data.length(); i++) {
                 JSONObject jsonObject = data.getJSONObject(i);
