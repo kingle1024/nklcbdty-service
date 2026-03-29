@@ -365,9 +365,6 @@ public class KakaoCrawlerService {
             // JSON 객체로 변환
             JSONObject jsonResult = new JSONObject(jsonResponse);
 
-            jsonResult.getJSONObject("pageProps")
-                            .getJSONObject("dehydratedState")
-                            .getJSONArray("queries");
             JSONArray data = jsonResult.getJSONObject("pageProps")
                 .getJSONObject("dehydratedState")
                 .getJSONArray("queries")
