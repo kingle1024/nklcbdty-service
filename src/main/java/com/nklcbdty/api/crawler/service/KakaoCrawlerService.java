@@ -370,7 +370,11 @@ public class KakaoCrawlerService {
                 .getJSONArray("queries")
                 .getJSONObject(2)
                 .getJSONObject("state")
-                .getJSONArray("data");
+                .optJSONArray("data");
+            if (data == null) {
+                log.error("카카오게임즈 채용공고 data 미존재");
+                return;
+            }
 
             for (int i = 0; i < data.length(); i++) {
                 JSONObject jsonObject = data.getJSONObject(i);
