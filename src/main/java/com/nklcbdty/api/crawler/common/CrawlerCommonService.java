@@ -137,6 +137,10 @@ public class CrawlerCommonService {
     }
 
     public void refineJobItemBygemini(List<Job_mst> result) {
+        if (result.isEmpty()) {
+            log.info("result가 비어 있어서 Gemini 호출하지 않음");
+            return;
+        }
         log.info("----- Gemini 호출중... -----");
         Mono<Map<String, String>> classificationResultsMono = geminiService.classifyJobTitles(result);
 
