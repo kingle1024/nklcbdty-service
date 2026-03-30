@@ -678,6 +678,9 @@ public class KakaoCrawlerService {
                 break;
             }
             idx++;
+            if (idx > 500) {
+                break;
+            }
         }
     }
 
@@ -751,7 +754,13 @@ public class KakaoCrawlerService {
             result.add(item);
         }
 
-        return true;
+        try {
+            JSONObject response = new JSONObject(jsonResponse);
+            final int totalPage = response.getInt("totalPage");
+            return idx != totalPage;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isCloseDate(Object endDate) {
