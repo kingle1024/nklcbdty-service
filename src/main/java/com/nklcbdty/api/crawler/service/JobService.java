@@ -3,6 +3,7 @@ package com.nklcbdty.api.crawler.service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -13,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.nklcbdty.api.crawler.repository.JobRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class JobService {
     private final JobRepository jobRepository;
@@ -44,7 +48,7 @@ public class JobService {
             } else if ("영입종료시".equals(endDateStr)) {
                 shouldAdd = true;
             } else {
-                LocalDateTime endDate = LocalDateTime.parse(endDateStr, formatter);
+                LocalDateTime endDate = parseDateTime(endDateStr);
                 if (endDate.isAfter(now)) {
                     shouldAdd = true;
                 }
@@ -66,5 +70,21 @@ public class JobService {
 
     public void deleteAll() {
         jobRepository.deleteAllInBatch();
+    }
+
+    private final List<DateTimeFormatter> FORMATTERS = Arrays.asList(
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    );
+
+    private LocalDateTime parseDateTime(String dateTimeStr) {
+        for (DateTimeFormatter formatter : FORMATTERS) {
+            try {
+                return LocalDateTime.parse(dateTimeStr, formatter);
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            }
+        }
+        return null;
     }
 }
