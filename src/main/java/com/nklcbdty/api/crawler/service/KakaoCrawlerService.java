@@ -62,7 +62,7 @@ public class KakaoCrawlerService {
             refineResult(result);
 
             List<Job_mst> kakaoBankResult = new ArrayList<>();
-            addRecruitKakaoBank(kakaoBankResult);
+            // addRecruitKakaoBank(kakaoBankResult);
             refineBankResult(kakaoBankResult);
 
             result.addAll(kakaoBankResult);
