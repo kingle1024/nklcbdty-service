@@ -5,14 +5,15 @@ import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.nklcbdty.api.ai.nlp.PersonalHistoryEnsemble;
 import com.nklcbdty.api.ai.service.GeminiService;
-import com.nklcbdty.api.ai.service.PersonalHistoryExtractor;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.vo.Job_mst;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -35,15 +36,15 @@ public class CrawlerCommonService {
 
     private final CrawlerRepository crawlerRepository;
     private final GeminiService geminiService;
-    private final PersonalHistoryExtractor personalHistoryExtractor;
+    private final PersonalHistoryEnsemble personalHistoryEnsemble;
 
     @Autowired
     public CrawlerCommonService(CrawlerRepository crawlerRepository,
                                 GeminiService geminiService,
-                                PersonalHistoryExtractor personalHistoryExtractor) {
+                                PersonalHistoryEnsemble personalHistoryEnsemble) {
         this.crawlerRepository = crawlerRepository;
         this.geminiService = geminiService;
-        this.personalHistoryExtractor = personalHistoryExtractor;
+        this.personalHistoryEnsemble = personalHistoryEnsemble;
     }
 
     public String fetchApiResponse(String apiUrl) {
@@ -66,6 +67,36 @@ public class CrawlerCommonService {
         } catch (Exception e) {
             log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
             throw new ApiException("Failed to fetch API response");  // 커스텀 예외 던지기
+        }
+    }
+
+    public String fetchApiResponsePost(String apiUrl, String body) {
+        try {
+            URL url = new URL(apiUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setDoOutput(true);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = body.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+            }
+
+            return response.toString();
+        } catch (Exception e) {
+            log.error("Error occurred while fetching API response (POST): {}", e.getMessage(), e);
+            throw new ApiException("Failed to fetch API response");
         }
     }
 
@@ -285,6 +316,6 @@ public class CrawlerCommonService {
     }
 
     public PersonalHistoryDto getPersonalHistory(String qualification) {
-        return personalHistoryExtractor.extract(qualification);
+        return personalHistoryEnsemble.extract(qualification);
     }
 }
