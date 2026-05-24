@@ -66,6 +66,9 @@ dependencies {
 
 	// Jsoup 크롤링 라이브러리
 	implementation 'org.jsoup:jsoup:1.17.2'
+
+	// Apache OpenNLP — 자체 NER(개체명 인식) 모델 학습/추론용
+	implementation 'org.apache.opennlp:opennlp-tools:2.3.3'
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
     implementation 'org.springframework.data:spring-data-elasticsearch'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

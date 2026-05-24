@@ -1,0 +1,58 @@
+경력 <START:min> 3년 이상 <END>
+경력 <START:min> 5년 이상 <END> 의 백엔드 개발자
+<START:min> 7년 이상 <END> 의 경력자 모집
+<START:min> 10년 이상 <END> 의 소프트웨어 개발 경험
+백엔드 개발 <START:min> 5년 이상 <END>
+프론트엔드 개발 <START:min> 3년 이상 <END> 경험
+관리 경험 <START:min> 2년 이상 <END>
+서비스 운영 <START:min> 4년 이상 <END> 경험자
+경력 <START:min> 3년차 이상 <END>
+<START:min> 1년차 이상 <END> 의 주니어 개발자
+<START:min> 5년차 이상 <END> 시니어 개발자
+최소 <START:min> 3년 <END> 의 경력
+최소 <START:min> 5년 <END> 의 백엔드 경험
+경력 <START:max> 5년 이하 <END>
+경력 <START:max> 3년 이하 <END> 의 주니어
+<START:max> 5년 미만 <END> 의 경력자
+<START:max> 3년 미만 <END>
+경력 <START:min> 3년 <END> ~ <START:max> 7년 <END>
+<START:min> 1년 <END> ~ <START:max> 5년 <END>
+<START:min> 3년차 <END> ~ <START:max> 7년차 <END>
+<START:min> 2년 <END> - <START:max> 5년 <END>
+<START:min> 1년 이상 <END> <START:max> 5년 이하 <END>
+경력 <START:min> 3년 <END> 에서 <START:max> 7년 <END> 사이
+경력 사항 무관
+신입 모집
+신입 사원 채용
+신입 환영
+경력 무관
+신입 / 경력 모두 환영
+인턴 모집
+무경험 가능
+<START:min> 5+ years <END> of experience
+<START:min> 3+ years <END> of backend experience
+<START:min> 7+ yrs <END> hands-on
+Over <START:min> 7 years <END> of relevant experience
+More than <START:min> 5 years <END> of experience
+At least <START:min> 3 years <END> in backend
+At least <START:min> 4 years <END> of development experience
+Minimum <START:min> 5 years <END> required
+Minimum of <START:min> 3 years <END> in cloud
+Min. <START:min> 4 yrs <END> experience
+<START:min> 3 years <END> or more
+<START:min> 5 years <END> or above
+<START:max> Less than 3 years <END> of experience
+<START:max> Under 5 years <END>
+Up to <START:max> 5 years <END>
+Maximum <START:max> 4 years <END>
+Maximum of <START:max> 7 years <END> in management
+<START:min> 3 <END> to <START:max> 5 years <END> of experience
+<START:min> 2 <END> to <START:max> 7 years <END> in software engineering
+<START:min> 3 <END> - <START:max> 5 years <END>
+Between <START:min> 2 <END> and <START:max> 7 years <END>
+Entry-level developer position
+Entry level engineer
+No experience required
+Junior level position
+Senior engineer <START:min> 10+ years <END>
+Lead developer with <START:min> 8+ years <END> experience
