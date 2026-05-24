@@ -62,7 +62,7 @@ public class KakaoCrawlerService {
             refineResult(result);
 
             List<Job_mst> kakaoBankResult = new ArrayList<>();
-            // addRecruitKakaoBank(kakaoBankResult);
+            addRecruitKakaoBank(kakaoBankResult);
             refineBankResult(kakaoBankResult);
 
             result.addAll(kakaoBankResult);
@@ -591,28 +591,30 @@ public class KakaoCrawlerService {
         }
     }
 
-    private void addRecruitKakaoBank(List<Job_mst> result) {
+    public void addRecruitKakaoBank(List<Job_mst> result) {
 
         int idx = 1;
         int lastIdx = 999;
         while (true) {
-            if(idx > lastIdx) {
+            if (idx > lastIdx) {
                 break;
             }
 
-            String apiUrl = "https://recruit.kakaobank.com/api/user/recruit?pageNumber=" + idx + "&pageSize=20";
-            String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+            String apiUrl = "https://recruit.kakaobank.com/api/recruits";
+            String body = "{\"pageNumber\":" + idx + ",\"pageSize\":20}";
+            String jsonResponse = crawlerCommonService.fetchApiResponsePost(apiUrl, body);
             if (jsonResponse.isEmpty()) {
                 break;
             }
 
-            JSONArray jobList = new JSONObject(jsonResponse).getJSONArray("list");
-            JSONObject paging = new JSONObject(jsonResponse).getJSONObject("paging");
+            JSONObject root = new JSONObject(jsonResponse);
+            JSONArray jobList = root.getJSONArray("list");
+            JSONObject paging = root.getJSONObject("paging");
             lastIdx = paging.getInt("totalPages");
             for (int i = 0; i < jobList.length(); i++) {
                 JSONObject edge = jobList.getJSONObject(i);
                 Object endDate = edge.get("receiveEndDatetime");
-                if(isCloseDate(endDate)) {
+                if (isCloseDate(endDate)) {
                     continue;
                 }
 
@@ -625,7 +627,7 @@ public class KakaoCrawlerService {
                 } else {
                     employeeTypeName = "정규";
                 }
-                String jobType = edge.getString("recruitClassName");
+                String jobType = edge.optString("recruitClassName", "");
                 String jobDescription = getJobDescription(String.valueOf(recruitNoticeSn));
 
                 Job_mst item = new Job_mst();
@@ -635,7 +637,15 @@ public class KakaoCrawlerService {
                 item.setClassCdNm("Tech");
                 item.setSubJobCdNm(jobType);
                 item.setSysCompanyCdNm("카카오 뱅크");
-                item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
+                String recruitNoticeUrl = edge.optString("recruitNoticeUrl", "");
+                if (!recruitNoticeUrl.isEmpty()) {
+                    if (!recruitNoticeUrl.startsWith("http")) {
+                        recruitNoticeUrl = "https://" + recruitNoticeUrl;
+                    }
+                    item.setJobDetailLink(recruitNoticeUrl);
+                } else {
+                    item.setJobDetailLink("https://recruit.kakaobank.com/jobs/" + recruitNoticeSn);
+                }
                 item.setEndDate(String.valueOf(endDate));
                 PersonalHistoryDto personalHistory = crawlerCommonService.getPersonalHistory(jobDescription);
                 item.setPersonalHistory(personalHistory.getFrom());
@@ -648,19 +658,24 @@ public class KakaoCrawlerService {
     }
 
     private String getJobDescription(String recruitNoticeSn) {
-        String apiUrl = "https://recruit.kakaobank.com/api/user/recruit/" + recruitNoticeSn;
-        String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
-        if (jsonResponse.isEmpty()) {
-            return null;
-        }
+        try {
+            String apiUrl = "https://recruit.kakaobank.com/api/user/recruit/" + recruitNoticeSn;
+            String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+            if (jsonResponse.isEmpty()) {
+                return "";
+            }
 
-        JSONObject jobDetail = new JSONObject(jsonResponse);
-        String contents = jobDetail.getString("contents");
-        if (contents == null || contents.isEmpty()) {
-            return null;
-        }
+            JSONObject jobDetail = new JSONObject(jsonResponse);
+            String contents = jobDetail.optString("contents", "");
+            if (contents.isEmpty()) {
+                return "";
+            }
 
-        return contents;
+            return contents;
+        } catch (Exception e) {
+            log.warn("카카오뱅크 채용 상세 조회 실패 (sn={}): {}", recruitNoticeSn, e.getMessage());
+            return "";
+        }
     }
 
     private void addRecruitContent(String type, List<Job_mst> result) {
