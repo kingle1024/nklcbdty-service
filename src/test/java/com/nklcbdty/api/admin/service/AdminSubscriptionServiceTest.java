@@ -14,10 +14,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import com.nklcbdty.api.admin.dto.AdminSubscriptionDetailDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionPageResponse;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionRowDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionStatsDto;
+import com.nklcbdty.api.email.service.EmailService;
 import com.nklcbdty.api.user.dto.UserSettingsRequest;
 import com.nklcbdty.api.user.repository.UserInterestRepository;
 import com.nklcbdty.api.user.repository.UserRepository;
@@ -30,6 +33,7 @@ class AdminSubscriptionServiceTest {
     private UserInterestRepository userInterestRepository;
     private UserRepository userRepository;
     private UserInterestService userInterestService;
+    private EmailService emailService;
     private AdminSubscriptionService service;
 
     @BeforeEach
@@ -37,8 +41,9 @@ class AdminSubscriptionServiceTest {
         userInterestRepository = mock(UserInterestRepository.class);
         userRepository = mock(UserRepository.class);
         userInterestService = mock(UserInterestService.class);
+        emailService = mock(EmailService.class);
         service = new AdminSubscriptionService(
-            userInterestRepository, userRepository, userInterestService
+            userInterestRepository, userRepository, userInterestService, emailService
         );
     }
 
@@ -187,6 +192,28 @@ class AdminSubscriptionServiceTest {
         assertThat(result.getUserId()).isEqualTo("kakao@1");
         assertThat(result.getItems()).extracting("itemValue")
             .contains("naver", "toss", "Backend", "5");
+    }
+
+    @Test
+    @DisplayName("sendJobEmail: 발송 대상 이메일이 있으면 EmailService.sendEmail로 본문을 발송한다")
+    void sendJobEmail_dispatchesMail() {
+        when(emailService.sendEmail(eq(List.of("kakao@1"))))
+            .thenReturn(Map.of("user@test.com", "<html>본문</html>"));
+
+        service.sendJobEmail("kakao@1");
+
+        verify(emailService).sendEmail(eq("user@test.com"), any(String.class), eq("<html>본문</html>"));
+    }
+
+    @Test
+    @DisplayName("sendJobEmail: 발송할 컨텐츠가 없으면 EmailService.sendEmail(to,...)을 호출하지 않는다")
+    void sendJobEmail_skipsWhenEmpty() {
+        when(emailService.sendEmail(eq(List.of("kakao@1")))).thenReturn(Map.of());
+
+        service.sendJobEmail("kakao@1");
+
+        verify(emailService, org.mockito.Mockito.never())
+            .sendEmail(any(String.class), any(String.class), any(String.class));
     }
 
     @Test

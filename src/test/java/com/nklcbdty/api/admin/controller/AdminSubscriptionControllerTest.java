@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -131,6 +132,17 @@ class AdminSubscriptionControllerTest {
             .andExpect(jsonPath("$.id").value(42));
 
         verify(service).deleteItem(eq(42L));
+    }
+
+    @Test
+    @DisplayName("POST /api/admin/subscriptions/{userId}/send-email: 즉시 202 queued 응답을 반환한다")
+    void sendJobEmail_acceptsAndQueues() throws Exception {
+        mockMvc.perform(post("/api/admin/subscriptions/kakao@1/send-email"))
+            .andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.status").value("queued"))
+            .andExpect(jsonPath("$.userId").value("kakao@1"));
+
+        verify(service).sendJobEmail(eq("kakao@1"));
     }
 
     @Test
