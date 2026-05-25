@@ -1,6 +1,8 @@
 package com.nklcbdty.api.admin.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -14,14 +16,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.extern.slf4j.Slf4j;
 
 import com.nklcbdty.api.admin.dto.AdminSubscriptionDetailDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionItemDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionPageResponse;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionRowDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionStatsDto;
+import com.nklcbdty.api.email.service.EmailService;
 import com.nklcbdty.api.user.dto.UserSettingsRequest;
 import com.nklcbdty.api.user.repository.UserInterestRepository;
 import com.nklcbdty.api.user.repository.UserRepository;
@@ -29,6 +35,7 @@ import com.nklcbdty.api.user.service.UserInterestService;
 import com.nklcbdty.api.user.vo.UserInterestVo;
 import com.nklcbdty.api.user.vo.UserVo;
 
+@Slf4j
 @Service
 public class AdminSubscriptionService {
 
@@ -39,14 +46,17 @@ public class AdminSubscriptionService {
     private final UserInterestRepository userInterestRepository;
     private final UserRepository userRepository;
     private final UserInterestService userInterestService;
+    private final EmailService emailService;
 
     @Autowired
     public AdminSubscriptionService(UserInterestRepository userInterestRepository,
                                     UserRepository userRepository,
-                                    UserInterestService userInterestService) {
+                                    UserInterestService userInterestService,
+                                    EmailService emailService) {
         this.userInterestRepository = userInterestRepository;
         this.userRepository = userRepository;
         this.userInterestService = userInterestService;
+        this.emailService = emailService;
     }
 
     public AdminSubscriptionPageResponse list(int page, int size, String keyword) {
@@ -109,6 +119,29 @@ public class AdminSubscriptionService {
     public AdminSubscriptionDetailDto updateSubscriptions(String userId, UserSettingsRequest request) {
         userInterestService.updateUserSettings(userId, request);
         return detail(userId);
+    }
+
+    @Async
+    public void sendJobEmail(String userId) {
+        try {
+            Map<String, String> mailMap = emailService.sendEmail(List.of(userId));
+            if (mailMap.isEmpty()) {
+                log.info("[admin] 메일 발송 건너뜀 (대상 없음): userId={}", userId);
+                return;
+            }
+            LocalDate target = LocalDate.now().plusDays(1);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
+            String title = "[네카라쿠배] " + target.format(formatter) + " 맞춤 채용 공고가 도착했어요!";
+
+            for (Map.Entry<String, String> entry : mailMap.entrySet()) {
+                String email = entry.getKey();
+                String content = entry.getValue();
+                emailService.sendEmail(email, title, content);
+                log.info("[admin] 메일 발송 완료: userId={}, email={}", userId, email);
+            }
+        } catch (Exception e) {
+            log.error("[admin] 메일 발송 실패: userId={}, error={}", userId, e.getMessage(), e);
+        }
     }
 
     public AdminSubscriptionStatsDto stats() {

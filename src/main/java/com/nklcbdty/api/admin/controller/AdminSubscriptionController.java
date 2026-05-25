@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,5 +60,11 @@ public class AdminSubscriptionController {
         @RequestBody UserSettingsRequest request
     ) {
         return ResponseEntity.ok(adminSubscriptionService.updateSubscriptions(userId, request));
+    }
+
+    @PostMapping("/{userId}/send-email")
+    public ResponseEntity<?> sendJobEmail(@PathVariable String userId) {
+        adminSubscriptionService.sendJobEmail(userId);
+        return ResponseEntity.accepted().body(Map.of("status", "queued", "userId", userId));
     }
 }
