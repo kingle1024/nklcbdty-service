@@ -36,6 +36,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(AllowedPaths.getAllowedPaths()).permitAll() // AllowedPaths에 해당하는 경로는 모두 허용
                 .requestMatchers("/mypage/**").authenticated() // /mypage/** 경로는 인증된 사용자만 접근 허용
+                // TODO: 관리자 로그인 도입 시 .authenticated() / .hasRole("ADMIN") 으로 전환
+                .requestMatchers("/api/admin/**").permitAll()
                 .anyRequest().permitAll() // 위에서 명시적으로 처리되지 않은 나머지 모든 요청은 허용 (주의: /mypage** rule이 먼저 오므로 /mypage는 authenticated 적용)
             )
             // .and() 제거
