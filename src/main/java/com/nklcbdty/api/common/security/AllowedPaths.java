@@ -19,6 +19,8 @@ public enum AllowedPaths {
     COUNT_BY_DATE("/api/statistics/count-by-date"),
     TEST("/api/test"),
     SEARCH("/api/job/**"),
+    // TODO: 관리자 로그인 도입 후 제거하고 AuthFilter에서 ADMIN 역할 검사로 전환
+    ADMIN("/api/admin/**"),
     ;
 
     private final String path;
