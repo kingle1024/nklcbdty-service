@@ -2,6 +2,7 @@ package com.nklcbdty.api.email.service;
 
 import static com.nklcbdty.api.user.vo.QUserInterestVo.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -136,6 +137,40 @@ public class EmailService {
         return userCategoryMap;
     }
 
+    /**
+     * 정렬된 공고 리스트에서 종료일이 현재 시점 + 1년을 넘는 항목은 뒤로 보낸다.
+     * 1년 이내 그룹은 원본 정렬(endDate DESC)을 유지하고, 초과 그룹도 자체 정렬을 유지한다.
+     * 종료일 파싱이 실패하는 값(예: "영입종료시")은 1년 이내 그룹으로 둔다.
+     */
+    List<Job_mst> pushFarFutureEndDateToBottom(List<Job_mst> jobs) {
+        LocalDate threshold = LocalDate.now().plusYears(1);
+        List<Job_mst> within = new ArrayList<>();
+        List<Job_mst> beyond = new ArrayList<>();
+        for (Job_mst job : jobs) {
+            LocalDate endDate = parseEndDate(job.getEndDate());
+            if (endDate != null && endDate.isAfter(threshold)) {
+                beyond.add(job);
+            } else {
+                within.add(job);
+            }
+        }
+        List<Job_mst> ordered = new ArrayList<>(within.size() + beyond.size());
+        ordered.addAll(within);
+        ordered.addAll(beyond);
+        return ordered;
+    }
+
+    private LocalDate parseEndDate(String endDate) {
+        if (endDate == null || endDate.length() < 10) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(endDate.substring(0, 10));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public Map<String, String> sendEmail(List<String> userIds) {
         List<UserIdAndEmailDto> userEmailItems = userService.findByUserIdIn(userIds);
         Map<String, String> userEmailMap = new HashMap<>();
@@ -163,6 +198,8 @@ public class EmailService {
             }
             List<Job_mst> allByCompanyCdInAndSubJobCdNmIn
                 = jobRepository.findAllByCompanyCdInAndSubJobCdNmInOrderByEndDateDesc(companysStr, jobStr);
+            // 종료일이 현재 시점 기준 1년 초과인 공고(예: 2999-12-31 등 사실상 무기한)는 뒤로 밀어 노이즈를 줄임
+            allByCompanyCdInAndSubJobCdNmIn = pushFarFutureEndDateToBottom(allByCompanyCdInAndSubJobCdNmIn);
             log.info("userId: {}, companys: {}, jobs: {}, allByCompanyCdInAndSubJobCdNmIn: {}", userId, companys, jobs, allByCompanyCdInAndSubJobCdNmIn.size());
             List<JobPosting> jobPostings = new ArrayList<>();
             for (Job_mst job : allByCompanyCdInAndSubJobCdNmIn) {
