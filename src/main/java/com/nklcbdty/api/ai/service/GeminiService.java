@@ -1,12 +1,16 @@
 package com.nklcbdty.api.ai.service;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.util.retry.Retry;
 
 import com.nklcbdty.api.ai.dto.GeminiCandidate;
 import com.nklcbdty.api.ai.dto.GeminiContent;
@@ -22,6 +26,11 @@ import reactor.core.publisher.Mono; // 비동기 처리를 위한 Mono 사용
 
 @Service
 public class GeminiService {
+
+    // 무료 티어 gemini-2.0-flash: 15 RPM. 4.5s 간격 ≈ 13 RPM 으로 여유 있게 throttle.
+    private static final long MIN_INTERVAL_MS = 4500L;
+    private final Object rateLimitLock = new Object();
+    private long lastCallEpochMillis = 0L;
 
     // WebClient 주입 (WebClient Bean 설정은 별도로 필요합니다)
     private final WebClient geminiWebClient;
@@ -50,28 +59,50 @@ public class GeminiService {
             return Mono.just(Collections.emptyMap()); // 빈 리스트인 경우 빈 맵 반환
         }
 
-        // 1. 여러 제목을 포함하는 하나의 프롬프트 구성
-        String combinedPrompt = buildCombinedPrompt(jobTitles);
+        // 모든 호출자가 동일 인스턴스를 공유하므로 throttle 로 RPM 제한 준수.
+        // 호출자가 .block() 하는 구조라 fromRunnable 안에서 Thread.sleep 으로 직렬화.
+        return Mono.<Void>fromRunnable(this::awaitRateLimitSlot)
+                .then(Mono.defer(() -> doClassify(jobTitles)));
+    }
 
-        // 2. buildGeminiRequestBody를 사용하여 요청 본문 DTO 생성
+    private Mono<Map<String, String>> doClassify(List<Job_mst> jobTitles) {
+        String combinedPrompt = buildCombinedPrompt(jobTitles);
         Object requestBody = buildGeminiRequestBody(combinedPrompt);
 
-        // 3. WebClient를 사용하여 Google Gemini API에 POST 요청 전송 및 응답 처리
         return geminiWebClient.post()
                 .uri(uriBuilder -> uriBuilder
-                        // WebClientConfig에서 baseUrl이 설정되었다고 가정
-                        // 실제 Gemini API 엔드포인트 경로를 여기에 지정해야 합니다.
-                        // 예: uriBuilder.path("/v1/models/gemini-pro:generateContent")
                         .queryParam("key", apiKey)
                         .build())
                 .bodyValue(requestBody)
                 .retrieve()
-                // API 응답 본문을 String (JSON 문자열)으로 변환
                 .bodyToMono(String.class)
-                // 수신한 JSON 문자열을 파싱하여 모델이 생성한 텍스트(여러 분류 결과 포함)를 추출
+                .retryWhen(rateLimitRetrySpec())
                 .map(this::parseGeminiResponse)
-                // 추출된 텍스트에서 각 제목별 분류 결과 파싱
                 .map(this::parseClassificationsFromText);
+    }
+
+    private void awaitRateLimitSlot() {
+        synchronized (rateLimitLock) {
+            long sinceLast = System.currentTimeMillis() - lastCallEpochMillis;
+            if (sinceLast < MIN_INTERVAL_MS) {
+                try {
+                    Thread.sleep(MIN_INTERVAL_MS - sinceLast);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Gemini rate-limit wait interrupted", e);
+                }
+            }
+            lastCallEpochMillis = System.currentTimeMillis();
+        }
+    }
+
+    private Retry rateLimitRetrySpec() {
+        return Retry.backoff(3, Duration.ofSeconds(2))
+                .maxBackoff(Duration.ofSeconds(20))
+                .filter(throwable -> throwable instanceof WebClientResponseException
+                        && ((WebClientResponseException) throwable).getStatusCode() == HttpStatus.TOO_MANY_REQUESTS)
+                .doBeforeRetry(signal -> System.err.println(
+                        "Gemini 429 rate-limited. retrying... attempt=" + (signal.totalRetries() + 1)));
     }
 
     /**
