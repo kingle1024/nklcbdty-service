@@ -171,6 +171,20 @@ public class EmailService {
         }
     }
 
+    // null/"영입종료시"/파싱불가 → 살아있음. 파싱 가능한 과거 날짜만 종료.
+    // reconciliation 으로 종료된 공고는 endDate=어제 가 박혀 여기서 걸러진다.
+    private boolean isLive(Job_mst job, LocalDate today) {
+        String endDateStr = job.getEndDate();
+        if (endDateStr == null || "영입종료시".equals(endDateStr)) {
+            return true;
+        }
+        LocalDate endDate = parseEndDate(endDateStr);
+        if (endDate == null) {
+            return true;
+        }
+        return !endDate.isBefore(today);
+    }
+
     public Map<String, String> sendEmail(List<String> userIds) {
         List<UserIdAndEmailDto> userEmailItems = userService.findByUserIdIn(userIds);
         Map<String, String> userEmailMap = new HashMap<>();
@@ -198,6 +212,10 @@ public class EmailService {
             }
             List<Job_mst> allByCompanyCdInAndSubJobCdNmIn
                 = jobRepository.findAllByCompanyCdInAndSubJobCdNmInOrderByEndDateDesc(companysStr, jobStr);
+            LocalDate today = LocalDate.now();
+            allByCompanyCdInAndSubJobCdNmIn = allByCompanyCdInAndSubJobCdNmIn.stream()
+                .filter(job -> isLive(job, today))
+                .collect(java.util.stream.Collectors.toList());
             // 종료일이 현재 시점 기준 1년 초과인 공고(예: 2999-12-31 등 사실상 무기한)는 뒤로 밀어 노이즈를 줄임
             allByCompanyCdInAndSubJobCdNmIn = pushFarFutureEndDateToBottom(allByCompanyCdInAndSubJobCdNmIn);
             log.info("userId: {}, companys: {}, jobs: {}, allByCompanyCdInAndSubJobCdNmIn: {}", userId, companys, jobs, allByCompanyCdInAndSubJobCdNmIn.size());
