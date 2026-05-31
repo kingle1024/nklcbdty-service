@@ -1,3 +1,21 @@
-/gradlew text eol=lf
+# 모든 텍스트 파일은 repo 안에서 LF, checkout 시 OS 에 맞게 정규화.
+* text=auto eol=lf
+
+# Windows 전용 스크립트는 CRLF 유지.
 *.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Unix 셸 스크립트는 LF 고정.
+/gradlew text eol=lf
+*.sh text eol=lf
+
+# 바이너리.
 *.jar binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.class binary
