@@ -1,6 +1,6 @@
 package com.nklcbdty.api.crawler.service;
 
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;

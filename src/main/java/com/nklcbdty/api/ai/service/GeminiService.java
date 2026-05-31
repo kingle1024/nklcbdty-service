@@ -17,7 +17,7 @@ import com.nklcbdty.api.ai.dto.GeminiContent;
 import com.nklcbdty.api.ai.dto.GeminiPart;
 import com.nklcbdty.api.ai.dto.GeminiRequest;
 import com.nklcbdty.api.ai.dto.GeminiResponse;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 import java.util.HashMap;
 import java.util.Map;

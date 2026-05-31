@@ -18,7 +18,7 @@ import org.mockito.ArgumentCaptor;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 class KakaoCrawlerServiceTest {
 
