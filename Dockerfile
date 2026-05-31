@@ -1,5 +1,11 @@
 # jar 파일 빌드
-FROM eclipse-temurin:17-jdk as builder
+FROM eclipse-temurin:17-jdk AS builder
+
+# GitHub Packages (nklcbdty-common) 다운로드용 인증. multi-stage 라 runtime 에는 남지 않음.
+ARG GITHUB_ACTOR
+ARG GITHUB_TOKEN
+ENV GITHUB_ACTOR=${GITHUB_ACTOR}
+ENV GITHUB_TOKEN=${GITHUB_TOKEN}
 
 COPY gradlew .
 COPY gradle gradle
