@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.nklcbdty.common.user.dto.UserResponseDto;
 import com.nklcbdty.common.user.dto.UserIdAndEmailDto;
-import com.nklcbdty.api.user.repository.UserRepository;
+import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.api.auth.service.UserDetailService;
 import com.nklcbdty.common.vo.UserVo;
 
