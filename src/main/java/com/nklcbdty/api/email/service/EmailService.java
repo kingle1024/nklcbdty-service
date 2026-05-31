@@ -15,7 +15,7 @@ import com.nklcbdty.api.crawler.repository.JobRepository;
 import com.nklcbdty.common.vo.Job_mst;
 import com.nklcbdty.common.dto.JobPosting;
 import com.nklcbdty.common.email.JobEmailContentBuilder;
-import com.nklcbdty.api.user.repository.UserIdAndEmailDto;
+import com.nklcbdty.common.user.dto.UserIdAndEmailDto;
 import com.nklcbdty.api.user.repository.UserInterestRepository;
 import com.nklcbdty.api.user.repository.UserInterestRepositoryImpl;
 import com.nklcbdty.api.user.service.UserService;
