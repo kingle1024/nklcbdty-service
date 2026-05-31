@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.nklcbdty.api.crawler.common.ApiException;
+import com.nklcbdty.common.exception.ApiException;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;

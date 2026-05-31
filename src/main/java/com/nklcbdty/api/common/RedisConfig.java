@@ -3,8 +3,6 @@ package com.nklcbdty.api.common;
 import java.time.Duration;
 import java.util.Arrays;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RedisConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
     @Value("${spring.redis.password}")
     private String password;
 

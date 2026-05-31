@@ -8,11 +8,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.nklcbdty.api.user.dto.UserResponseDto;
-import com.nklcbdty.api.user.repository.UserIdAndEmailDto;
+import com.nklcbdty.common.user.dto.UserResponseDto;
+import com.nklcbdty.common.user.dto.UserIdAndEmailDto;
 import com.nklcbdty.api.user.repository.UserRepository;
 import com.nklcbdty.api.auth.service.UserDetailService;
-import com.nklcbdty.api.user.vo.UserVo;
+import com.nklcbdty.common.vo.UserVo;
 
 @Service
 public class UserService implements UserDetailService {
