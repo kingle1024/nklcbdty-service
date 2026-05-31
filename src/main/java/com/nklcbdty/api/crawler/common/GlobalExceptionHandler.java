@@ -5,6 +5,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import com.nklcbdty.common.exception.ApiException;
+import com.nklcbdty.common.exception.ErrorResponse;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
