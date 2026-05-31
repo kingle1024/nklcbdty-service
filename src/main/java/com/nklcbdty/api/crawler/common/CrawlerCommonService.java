@@ -22,9 +22,14 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +106,8 @@ public class CrawlerCommonService {
     }
 
     public List<Job_mst> getNotSaveJobItem(String company, List<Job_mst> result) {
+        reconcileEndedJobs(company, result);
+
         List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
         List<Job_mst> existingJobs = crawlerRepository.findAllByAnnoIdIn(annoIds);
         List<Job_mst> jobsToSave = new ArrayList<>();
@@ -288,6 +295,56 @@ public class CrawlerCommonService {
 
     public List<Job_mst> saveAll(List<Job_mst> result) {
         return crawlerRepository.saveAll(result);
+    }
+
+    private static final List<DateTimeFormatter> END_DATE_FORMATTERS = Arrays.asList(
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    );
+
+    // 크롤 결과에 없는 기존 row 는 사이트에서 내려간 것으로 보고 endDate=어제 로 마킹.
+    // 빈 결과는 네트워크 실패일 수 있어 건너뜀.
+    void reconcileEndedJobs(String companyCd, List<Job_mst> currentlyCrawled) {
+        if (companyCd == null || currentlyCrawled == null || currentlyCrawled.isEmpty()) {
+            log.warn("reconcileEndedJobs 스킵: companyCd={}, crawledSize={}",
+                companyCd, currentlyCrawled == null ? 0 : currentlyCrawled.size());
+            return;
+        }
+        Set<String> crawledAnnoIds = currentlyCrawled.stream()
+            .map(Job_mst::getAnnoId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(HashSet::new));
+
+        List<Job_mst> dbRows = crawlerRepository.findAllByCompanyCd(companyCd);
+        LocalDateTime now = LocalDateTime.now();
+        String endedDateStr = now.minusDays(1).format(END_DATE_FORMATTERS.get(0));
+
+        List<Job_mst> toMark = new ArrayList<>();
+        for (Job_mst row : dbRows) {
+            if (row.getAnnoId() == null) continue;
+            if (crawledAnnoIds.contains(row.getAnnoId())) continue;
+            if (!isCurrentlyLive(row.getEndDate(), now)) continue;
+            row.setEndDate(endedDateStr);
+            toMark.add(row);
+        }
+
+        if (!toMark.isEmpty()) {
+            crawlerRepository.saveAll(toMark);
+            log.info("reconcileEndedJobs: companyCd={} 종료 처리 {}건", companyCd, toMark.size());
+        }
+    }
+
+    private boolean isCurrentlyLive(String endDateStr, LocalDateTime now) {
+        if (endDateStr == null || "영입종료시".equals(endDateStr)) {
+            return true;
+        }
+        for (DateTimeFormatter formatter : END_DATE_FORMATTERS) {
+            try {
+                return LocalDateTime.parse(endDateStr, formatter).isAfter(now);
+            } catch (DateTimeParseException ignored) { }
+        }
+        // 파싱 불가는 보수적으로 살아있는 것으로 간주 (reconciliation 대상 제외)
+        return true;
     }
 
     public PersonalHistoryDto extractPersonalHistoryFromJobPage(String url) {
