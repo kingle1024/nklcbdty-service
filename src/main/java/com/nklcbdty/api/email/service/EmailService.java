@@ -1,6 +1,6 @@
 package com.nklcbdty.api.email.service;
 
-import static com.nklcbdty.api.user.vo.QUserInterestVo.*;
+import static com.nklcbdty.common.vo.QUserInterestVo.*;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import com.nklcbdty.api.user.repository.UserIdAndEmailDto;
 import com.nklcbdty.api.user.repository.UserInterestRepository;
 import com.nklcbdty.api.user.repository.UserInterestRepositoryImpl;
 import com.nklcbdty.api.user.service.UserService;
-import com.nklcbdty.api.user.vo.UserInterestVo;
+import com.nklcbdty.common.vo.UserInterestVo;
 import com.querydsl.core.Tuple;
 
 import jakarta.mail.AuthenticationFailedException;

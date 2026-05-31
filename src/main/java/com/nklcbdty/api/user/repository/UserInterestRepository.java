@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.nklcbdty.api.user.vo.UserInterestVo;
+import com.nklcbdty.common.vo.UserInterestVo;
 
 public interface UserInterestRepository extends JpaRepository<UserInterestVo, Long>, UserInterestRepositoryCustom {
     List<UserInterestVo> findByUserId(String userId);

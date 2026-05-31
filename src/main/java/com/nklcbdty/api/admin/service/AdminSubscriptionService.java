@@ -30,7 +30,7 @@ import com.nklcbdty.api.user.dto.UserSettingsRequest;
 import com.nklcbdty.api.user.repository.UserInterestRepository;
 import com.nklcbdty.api.user.repository.UserRepository;
 import com.nklcbdty.api.user.service.UserInterestService;
-import com.nklcbdty.api.user.vo.UserInterestVo;
+import com.nklcbdty.common.vo.UserInterestVo;
 import com.nklcbdty.api.user.vo.UserVo;
 
 @Slf4j
