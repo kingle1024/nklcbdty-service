@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Repository;
 import com.querydsl.core.types.Expression;
-import com.nklcbdty.api.user.vo.QUserInterestVo;
+import com.nklcbdty.common.vo.QUserInterestVo;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.NumberExpression;
