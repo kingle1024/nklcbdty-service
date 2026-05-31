@@ -659,7 +659,7 @@ public class KakaoCrawlerService {
 
     private String getJobDescription(String recruitNoticeSn) {
         try {
-            String apiUrl = "https://recruit.kakaobank.com/api/user/recruit/" + recruitNoticeSn;
+            String apiUrl = "https://recruit.kakaobank.com/api/recruits/" + recruitNoticeSn;
             String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
             if (jsonResponse.isEmpty()) {
                 return "";
