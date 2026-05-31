@@ -1,10 +1,6 @@
 package com.nklcbdty.api.email.controller;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -49,19 +45,7 @@ public class EmailController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            Map<String, List<String>> userCategoryMap = emailService.getUserCategoryMap();
-            Map<String, String> ab = emailService.sendEmail(userCategoryMap.get("AB"));
-
-            LocalDate today = LocalDate.now().plusDays(1);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-
-            for (Map.Entry<String, String> entry : ab.entrySet()) {
-                String userEmail = entry.getKey();
-                String content = entry.getValue();
-                final String title = "[네카라쿠배] " + today.format(formatter) + " 맞춤 채용 공고가 도착했어요!";
-                emailService.sendEmail(userEmail, title, content);
-            }
-
+            emailService.sendJobDailyEmails(emailService.getUserCategoryMap().get("AB"));
             response.put("result", "ok");
             return ResponseEntity.ok().body(response);
         } catch (Exception e) {

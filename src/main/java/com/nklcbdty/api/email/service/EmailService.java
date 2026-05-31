@@ -42,6 +42,29 @@ public class EmailService {
     private final UserInterestRepositoryImpl userInterestRepositoryImpl;
     private final JobRepository jobRepository;
 
+    // 구독자에게 오늘자 맞춤 채용 공고 메일을 일괄 발송. 수동/자동 경로 공통 진입점.
+    public int sendJobDailyEmails(List<String> userIds) {
+        Map<String, String> mailMap = sendEmail(userIds);
+        if (mailMap.isEmpty()) {
+            log.info("맞춤 공고 메일 발송 건너뜀 (대상 없음): userIds={}", userIds);
+            return 0;
+        }
+        String title = buildDailyJobEmailTitle();
+        int sent = 0;
+        for (Map.Entry<String, String> entry : mailMap.entrySet()) {
+            String email = entry.getKey();
+            sendEmail(email, title, entry.getValue());
+            log.info("맞춤 공고 메일 발송 완료: email={}", email);
+            sent++;
+        }
+        return sent;
+    }
+
+    private String buildDailyJobEmailTitle() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
+        return "[네카라쿠배] " + LocalDate.now().format(formatter) + " 맞춤 채용 공고가 도착했어요!";
+    }
+
     public void sendEmail(String to, String subject, String body) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -65,7 +88,7 @@ public class EmailService {
 
     public String generateJobPostingEmailHtml(String keyword, List<JobPosting> jobPostings) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        String today = LocalDateTime.now().plusDays(1).format(dateFormatter);
+        String today = LocalDateTime.now().format(dateFormatter);
 
         StringBuilder htmlBuilder = new StringBuilder();
 
@@ -171,7 +194,7 @@ public class EmailService {
         }
     }
 
-    // null/"영입종료시"/파싱불가 → 살아있음. 파싱 가능한 과거 날짜만 종료.
+    // null/"영입종료시" 만 살아있음으로 간주. 파싱불가("error" 등) 는 손상 데이터로 보고 제외.
     // reconciliation 으로 종료된 공고는 endDate=어제 가 박혀 여기서 걸러진다.
     private boolean isLive(Job_mst job, LocalDate today) {
         String endDateStr = job.getEndDate();
@@ -180,7 +203,7 @@ public class EmailService {
         }
         LocalDate endDate = parseEndDate(endDateStr);
         if (endDate == null) {
-            return true;
+            return false;
         }
         return !endDate.isBefore(today);
     }
