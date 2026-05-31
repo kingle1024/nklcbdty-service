@@ -15,7 +15,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import com.nklcbdty.api.crawler.repository.JobRepository;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 import com.nklcbdty.api.email.dto.JobPosting;
 import com.nklcbdty.api.user.repository.UserIdAndEmailDto;
 import com.nklcbdty.api.user.repository.UserInterestRepository;

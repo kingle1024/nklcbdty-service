@@ -46,7 +46,7 @@ dependencyManagement {
 
 
 dependencies {
-    implementation 'com.nklcbdty:nklcbdty-common:0.0.1'
+    implementation 'com.nklcbdty:nklcbdty-common:0.1.0'
 
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
@@ -79,6 +79,11 @@ dependencies {
 
 	// Apache OpenNLP — 자체 NER(개체명 인식) 모델 학습/추론용
 	implementation 'org.apache.opennlp:opennlp-tools:2.3.3'
+
+	// DJL — 한국어 임베딩(자연어 공고 검색용). PyTorch 엔진 자동 다운로드.
+	implementation 'ai.djl:api:0.28.0'
+	implementation 'ai.djl.pytorch:pytorch-engine:0.28.0'
+	implementation 'ai.djl.huggingface:tokenizers:0.28.0'
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
     implementation 'org.springframework.data:spring-data-elasticsearch'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -20,7 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest

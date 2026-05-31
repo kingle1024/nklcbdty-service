@@ -21,7 +21,7 @@ import com.nklcbdty.api.crawler.service.JobService;
 import com.nklcbdty.api.crawler.service.KakaoCrawlerService;
 import com.nklcbdty.api.crawler.service.NaverJobCrawlerService;
 import com.nklcbdty.api.crawler.service.YanoljaCralwerService;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
