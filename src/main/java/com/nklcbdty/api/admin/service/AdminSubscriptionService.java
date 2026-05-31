@@ -1,8 +1,6 @@
 package com.nklcbdty.api.admin.service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -124,21 +122,7 @@ public class AdminSubscriptionService {
     @Async
     public void sendJobEmail(String userId) {
         try {
-            Map<String, String> mailMap = emailService.sendEmail(List.of(userId));
-            if (mailMap.isEmpty()) {
-                log.info("[admin] 메일 발송 건너뜀 (대상 없음): userId={}", userId);
-                return;
-            }
-            LocalDate target = LocalDate.now().plusDays(1);
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-            String title = "[네카라쿠배] " + target.format(formatter) + " 맞춤 채용 공고가 도착했어요!";
-
-            for (Map.Entry<String, String> entry : mailMap.entrySet()) {
-                String email = entry.getKey();
-                String content = entry.getValue();
-                emailService.sendEmail(email, title, content);
-                log.info("[admin] 메일 발송 완료: userId={}, email={}", userId, email);
-            }
+            emailService.sendJobDailyEmails(List.of(userId));
         } catch (Exception e) {
             log.error("[admin] 메일 발송 실패: userId={}, error={}", userId, e.getMessage(), e);
         }
