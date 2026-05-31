@@ -9,6 +9,7 @@ import com.nklcbdty.api.ai.nlp.PersonalHistoryEnsemble;
 import com.nklcbdty.api.ai.service.GeminiService;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.repository.CrawlerRepository;
+import com.nklcbdty.common.exception.ApiException;
 import com.nklcbdty.common.vo.Job_mst;
 import java.io.BufferedReader;
 import java.io.IOException;
