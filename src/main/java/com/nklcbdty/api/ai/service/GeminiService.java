@@ -80,7 +80,13 @@ public class GeminiService {
                 .bodyToMono(String.class)
                 .retryWhen(rateLimitRetrySpec())
                 .map(this::parseGeminiResponse)
-                .map(this::parseClassificationsFromText);
+                .map(this::parseClassificationsFromText)
+                // retry 후에도 429 가 지속되면 throw 되는 대신 빈 결과 반환 → caller 가 정상 흐름 유지.
+                // (직무 분류 누락은 다음 크롤 사이클에서 자연 복구)
+                .onErrorResume(this::isRateLimitExhausted, ex -> {
+                    log.warn("Gemini 429 (classifyJobTitles) — retry 한도 초과, 직무 분류 skip. 다음 사이클에서 재시도.");
+                    return Mono.just(Collections.emptyMap());
+                });
     }
 
     private void awaitRateLimitSlot() {
@@ -285,7 +291,21 @@ public class GeminiService {
                 .bodyToMono(String.class)
                 .retryWhen(rateLimitRetrySpec())
                 .map(this::parseGeminiResponse)
-                .map(this::parseExperienceLevelsFromText);
+                .map(this::parseExperienceLevelsFromText)
+                .onErrorResume(this::isRateLimitExhausted, ex -> {
+                    log.warn("Gemini 429 (classifyExperienceLevels) — retry 한도 초과, 경력 보정 skip.");
+                    return Mono.just(Collections.<String, Long>emptyMap());
+                });
+    }
+
+    private boolean isRateLimitExhausted(Throwable t) {
+        if (t instanceof WebClientResponseException w) {
+            return w.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS;
+        }
+        // reactor 가 retry exhausted 예외로 한 번 더 감싸는 경우 cause 확인
+        Throwable cause = t.getCause();
+        return cause instanceof WebClientResponseException w2
+                && w2.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS;
     }
 
     private String buildExperiencePrompt(List<Job_mst> jobs) {
