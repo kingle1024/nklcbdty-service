@@ -71,12 +71,12 @@ public class NaverJobCrawlerService {
                     PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(edge.getString("jobDetailLink"));
                     item.setPersonalHistory(personalHistoryDto.getFrom());
                     item.setPersonalHistoryEnd(personalHistoryDto.getTo());
-                    if (edge.get("staYmdTime").equals(null)) {
+                    if (edge.isNull("staYmdTime")) {
                         item.setStartDate("영입종료시");
                     } else {
                         item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
                     }
-                    if (edge.get("endYmdTime").equals(null)) {
+                    if (edge.isNull("endYmdTime")) {
                         item.setEndDate("영입종료시");
                     } else {
                         item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));

@@ -91,7 +91,7 @@ public class LineJobCrawlerService implements JobCrawler {
                         item.setPersonalHistory(personalHistoryDto.getFrom());
                         item.setPersonalHistoryEnd(personalHistoryDto.getTo());
                         item.setStartDate(formattedDate(node.getString("start_date")));
-                        if (endDate.equals(null)) {
+                        if (endDate == null || JSONObject.NULL.equals(endDate)) {
                             item.setEndDate("영입종료시");
                         } else {
                             item.setEndDate(formattedDate(endDate.toString()));
@@ -187,7 +187,7 @@ public class LineJobCrawlerService implements JobCrawler {
     }
 
     private boolean isCloseDate(Object endDate) {
-        if (endDate.equals(null)) {
+        if (endDate == null || JSONObject.NULL.equals(endDate)) {
             return false;
         }
 
