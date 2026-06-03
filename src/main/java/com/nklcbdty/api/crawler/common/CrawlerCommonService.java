@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -122,6 +123,8 @@ public class CrawlerCommonService {
             }
         }
 
+        refinePersonalHistoryByLlm(jobsToSave);
+
         // 한 번에 저장
         if (!jobsToSave.isEmpty()) {
             for (Job_mst item : jobsToSave) {
@@ -175,6 +178,53 @@ public class CrawlerCommonService {
             } else if (jobTitle.contains("인재풀 등록")) {
                 job.setSubJobCdNm(null);
             }
+        }
+    }
+
+    // 시니어/리드/매니저 직책 감지용. SPA 본문 누락 등으로 PersonalHistoryExtractor 가 "10년" 을 못 잡고
+    // 부수 표현인 "관리 경험 2년 이상" 만 잡는 케이스(쿠팡 Sr. Manager Payment 등) 보정 대상 식별.
+    private static final Pattern SENIOR_KEYWORD = Pattern.compile(
+        "(?i)\\bSr\\.?\\b|\\bSenior\\b|\\bLead\\b|\\bPrincipal\\b|\\bStaff\\b|\\bDirector\\b|\\bVP\\b|\\bHead of\\b|\\bManager\\b|\\bChief\\b|시니어|디렉터|매니저|책임|수석|팀장|리더"
+    );
+
+    /**
+     * 정규식 기반 PersonalHistoryExtractor 결과가 시니어 직책 공고에 비해 비현실적으로 낮은 경우
+     * LLM 으로 제목 기반 minYears 를 재추정하여 보정. 의심 케이스만 batch 호출.
+     */
+    void refinePersonalHistoryByLlm(List<Job_mst> jobs) {
+        if (jobs == null || jobs.isEmpty()) return;
+
+        List<Job_mst> suspects = jobs.stream()
+            .filter(j -> j.getAnnoSubject() != null)
+            .filter(j -> j.getPersonalHistory() < 5)
+            .filter(j -> SENIOR_KEYWORD.matcher(j.getAnnoSubject()).find())
+            .collect(Collectors.toList());
+
+        if (suspects.isEmpty()) {
+            log.info("LLM 경력 보정 대상 없음 (전체 {}건)", jobs.size());
+            return;
+        }
+        log.info("LLM 경력 보정 시작 — 대상 {}건 / 전체 {}건", suspects.size(), jobs.size());
+
+        try {
+            Map<String, Long> llmMap = geminiService.classifyExperienceLevels(suspects).block();
+            if (llmMap == null || llmMap.isEmpty()) {
+                log.warn("LLM 경력 보정 결과 비어있음");
+                return;
+            }
+            int updated = 0;
+            for (Job_mst job : suspects) {
+                Long llmMin = llmMap.get(job.getAnnoSubject().strip());
+                if (llmMin == null) continue;
+                if (llmMin > job.getPersonalHistory()) {
+                    log.info("경력 보정: '{}' {} → {}", job.getAnnoSubject(), job.getPersonalHistory(), llmMin);
+                    job.setPersonalHistory(llmMin);
+                    updated++;
+                }
+            }
+            log.info("LLM 경력 보정 완료 — {}건 업데이트", updated);
+        } catch (Exception e) {
+            log.error("LLM 경력 보정 실패: {}", e.getMessage(), e);
         }
     }
 

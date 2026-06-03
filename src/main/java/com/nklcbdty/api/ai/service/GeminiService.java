@@ -22,8 +22,10 @@ import com.nklcbdty.common.vo.Job_mst;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono; // 비동기 처리를 위한 Mono 사용
 
+@Slf4j
 @Service
 public class GeminiService {
 
@@ -257,6 +259,90 @@ public class GeminiService {
         promptBuilder.append("\n응답:"); // 모델이 응답을 시작할 부분 명시
 
         return promptBuilder.toString();
+    }
+
+    /**
+     * 제목 기반으로 요구 최소 경력(년) 추정. 정규식 추출이 SPA 본문 누락 등으로 시니어 직무의 minYears 를
+     * 낮게 잡는 케이스(예: "Sr. Manager, Backend Engineering (Payment)" → 10년이 아닌 2년)를 보정한다.
+     * batch 호출이라 의심 케이스만 모아 한 번 호출하는 게 비용 효율적.
+     */
+    public Mono<Map<String, Long>> classifyExperienceLevels(List<Job_mst> jobs) {
+        if (jobs == null || jobs.isEmpty()) {
+            return Mono.just(Collections.emptyMap());
+        }
+        return Mono.<Void>fromRunnable(this::awaitRateLimitSlot)
+                .then(Mono.defer(() -> doClassifyExperience(jobs)));
+    }
+
+    private Mono<Map<String, Long>> doClassifyExperience(List<Job_mst> jobs) {
+        String prompt = buildExperiencePrompt(jobs);
+        Object requestBody = buildGeminiRequestBody(prompt);
+
+        return geminiWebClient.post()
+                .uri(uriBuilder -> uriBuilder.queryParam("key", apiKey).build())
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .retryWhen(rateLimitRetrySpec())
+                .map(this::parseGeminiResponse)
+                .map(this::parseExperienceLevelsFromText);
+    }
+
+    private String buildExperiencePrompt(List<Job_mst> jobs) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("""
+                아래 채용 공고 제목들의 요구 최소 경력 연차를 정수로 추정해주세요.
+
+                직책별 일반 가이드:
+                - 신입/주니어/Entry/Junior/Associate: 0
+                - 경력/미드/Mid: 3
+                - 시니어/Senior/Sr.: 8
+                - 리드/Lead/Principal/Staff: 10
+                - 매니저/Manager: 10
+                - 디렉터/Director/Head of/VP: 13
+                - C-level(CTO/CPO 등): 15
+
+                응답 형식: '제목 -> 숫자' (각 줄에 하나)
+                숫자 외의 다른 설명/단위 없이 결과만 나열.
+
+                예시:
+                주니어 백엔드 개발자 -> 0
+                Senior Software Engineer -> 8
+                Sr. Manager, Backend Engineering (Payment) -> 10
+                Lead Data Scientist -> 10
+                VP of Engineering -> 13
+
+                ---
+                제목 리스트:
+                """);
+        for (Job_mst job : jobs) {
+            sb.append("- ").append(job.getAnnoSubject()).append("\n");
+        }
+        sb.append("\n응답:");
+        return sb.toString();
+    }
+
+    private Map<String, Long> parseExperienceLevelsFromText(String responseText) {
+        Map<String, Long> result = new HashMap<>();
+        if (responseText == null || responseText.trim().isEmpty()) {
+            return result;
+        }
+        String[] lines = responseText.split("\\r?\\n");
+        for (String line : lines) {
+            String trimmed = line.strip();
+            if (trimmed.isEmpty() || !trimmed.contains("->")) continue;
+            String[] parts = trimmed.split("->", 2);
+            if (parts.length != 2) continue;
+            String title = parts[0].strip();
+            String yearsStr = parts[1].strip().replaceAll("[^0-9]", "");
+            if (title.isEmpty() || yearsStr.isEmpty()) continue;
+            try {
+                result.put(title, Long.parseLong(yearsStr));
+            } catch (NumberFormatException e) {
+                log.warn("LLM 경력 응답 파싱 실패: line='{}'", trimmed);
+            }
+        }
+        return result;
     }
 
     /**
