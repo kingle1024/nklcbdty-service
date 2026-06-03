@@ -11,8 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.nklcbdty.api.crawler.repository.JobRepository;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.crawler.repository.JobRepository;
+import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,7 +49,8 @@ public class JobService {
                 shouldAdd = true;
             } else {
                 LocalDateTime endDate = parseDateTime(endDateStr);
-                if (endDate.isAfter(now)) {
+                // 파싱 불가 ("error" 같은 손상 데이터) 는 EmailService.isLive 와 동일하게 제외.
+                if (endDate != null && endDate.isAfter(now)) {
                     shouldAdd = true;
                 }
             }
@@ -72,19 +73,21 @@ public class JobService {
         jobRepository.deleteAllInBatch();
     }
 
+    // 더 긴 포맷 (HH:mm:ss) 을 먼저 시도해서 정상 데이터에 불필요한 error 로그 안 남기게 한다.
     private final List<DateTimeFormatter> FORMATTERS = Arrays.asList(
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     );
 
     private LocalDateTime parseDateTime(String dateTimeStr) {
         for (DateTimeFormatter formatter : FORMATTERS) {
             try {
                 return LocalDateTime.parse(dateTimeStr, formatter);
-            } catch (Exception e) {
-                log.error(e.getMessage());
+            } catch (Exception ignored) {
+                // 다음 formatter 시도
             }
         }
+        log.warn("endDate 파싱 실패: '{}'", dateTimeStr);
         return null;
     }
 }

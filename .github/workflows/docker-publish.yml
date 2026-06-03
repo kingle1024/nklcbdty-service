@@ -41,7 +41,10 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ejy1024/nklcbdty-service:latest .
+          docker build \
+            --build-arg GITHUB_ACTOR=${{ github.actor }} \
+            --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -t ejy1024/nklcbdty-service:latest .
 
       - name: Push Docker image
         run: |

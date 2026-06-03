@@ -25,7 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -385,7 +385,7 @@ public class KakaoCrawlerService {
 
                 Job_mst item = new Job_mst();
                 String endDate;
-                if (!endDateObj.equals(null)) {
+                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
                     endDate = endDateObj.toString();
                     OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -481,7 +481,7 @@ public class KakaoCrawlerService {
 
                 Job_mst item = new Job_mst();
                 String endDate;
-                if (!endDateObj.equals(null)) {
+                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
                     endDate = jsonObject.getString("deadlineValue");
                     OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -496,7 +496,7 @@ public class KakaoCrawlerService {
                 } else {
                     item.setEmpTypeCdNm("비정규");
                 }
-                if (!jsonObject.get("jobGroup").equals(null)) {
+                if (!jsonObject.isNull("jobGroup")) {
                     item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
                 }
                 item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
@@ -556,7 +556,7 @@ public class KakaoCrawlerService {
 
                 Job_mst item = new Job_mst();
                 String endDate;
-                if (!endDateObj.equals(null)) {
+                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
                     endDate = jsonObject.getString("deadlineValue");
                     OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -571,7 +571,7 @@ public class KakaoCrawlerService {
                 } else {
                     item.setEmpTypeCdNm("비정규");
                 }
-                if (!jsonObject.get("jobGroup").equals(null)) {
+                if (!jsonObject.isNull("jobGroup")) {
                     item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
                 }
                 if (jsonObject.get("career") instanceof JSONObject) {
@@ -749,7 +749,7 @@ public class KakaoCrawlerService {
             item.setSysCompanyCdNm(companyNameEn);
             item.setJobDetailLink("https://careers.kakao.com/jobs/" + type + "-" + jobOfferId +"?skillSet=&part=TECHNOLOGY"
                 + "&company="+ companyType +"&keyword=&employeeType=&page=" + idx);
-            if (endDate.equals(null)) {
+            if (endDate == null || JSONObject.NULL.equals(endDate)) {
                 item.setEndDate("영입종료시");
             } else {
                 DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -779,7 +779,7 @@ public class KakaoCrawlerService {
     }
 
     private boolean isCloseDate(Object endDate) {
-        if (endDate.equals(null)) {
+        if (endDate == null || JSONObject.NULL.equals(endDate)) {
             return false;
         }
         LocalDateTime endDateTime;

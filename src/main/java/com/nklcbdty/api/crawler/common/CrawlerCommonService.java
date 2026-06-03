@@ -1,5 +1,6 @@
 package com.nklcbdty.api.crawler.common;
 
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,8 +9,9 @@ import org.springframework.stereotype.Service;
 import com.nklcbdty.api.ai.nlp.PersonalHistoryEnsemble;
 import com.nklcbdty.api.ai.service.GeminiService;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
-import com.nklcbdty.api.crawler.repository.CrawlerRepository;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.crawler.repository.CrawlerRepository;
+import com.nklcbdty.common.exception.ApiException;
+import com.nklcbdty.common.vo.Job_mst;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -273,7 +275,9 @@ public class CrawlerCommonService {
 	}
 
     public boolean isCloseDate(Object endDate) {
-        if (endDate.equals(null)) {
+        // JSONObject.NULL.equals(null) 는 true 반환 → 과거에는 종료 여부를 정반대로 판단해
+        // null deadline 공고가 살아남고 endDate=NULL 로 저장되어 EmailService 의 isLive 가 true → 메일에 종료 공고가 계속 노출됐다.
+        if (endDate == null || JSONObject.NULL.equals(endDate)) {
             return false;
         }
         LocalDateTime endDateTime;

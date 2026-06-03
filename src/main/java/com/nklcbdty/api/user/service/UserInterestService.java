@@ -14,8 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.nklcbdty.api.user.dto.DeltaResult;
 import com.nklcbdty.api.user.dto.UserInterestResponseDto;
 import com.nklcbdty.api.user.dto.UserSettingsRequest;
-import com.nklcbdty.api.user.repository.UserInterestRepository;
-import com.nklcbdty.api.user.vo.UserInterestVo;
+import com.nklcbdty.common.user.repository.UserInterestRepository;
+import com.nklcbdty.common.vo.UserInterestVo;
 
 @Service
 public class UserInterestService {

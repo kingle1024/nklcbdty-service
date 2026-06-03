@@ -22,11 +22,11 @@ import com.nklcbdty.api.admin.dto.AdminSubscriptionRowDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionStatsDto;
 import com.nklcbdty.api.email.service.EmailService;
 import com.nklcbdty.api.user.dto.UserSettingsRequest;
-import com.nklcbdty.api.user.repository.UserInterestRepository;
-import com.nklcbdty.api.user.repository.UserRepository;
+import com.nklcbdty.common.user.repository.UserInterestRepository;
+import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.api.user.service.UserInterestService;
-import com.nklcbdty.api.user.vo.UserInterestVo;
-import com.nklcbdty.api.user.vo.UserVo;
+import com.nklcbdty.common.vo.UserInterestVo;
+import com.nklcbdty.common.vo.UserVo;
 
 class AdminSubscriptionServiceTest {
 

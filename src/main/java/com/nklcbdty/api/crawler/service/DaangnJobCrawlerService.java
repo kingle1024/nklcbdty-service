@@ -14,7 +14,7 @@ import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 

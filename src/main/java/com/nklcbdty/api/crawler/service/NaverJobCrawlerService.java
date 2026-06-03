@@ -22,7 +22,7 @@ import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
-import com.nklcbdty.api.crawler.vo.Job_mst;
+import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,12 +71,12 @@ public class NaverJobCrawlerService {
                     PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(edge.getString("jobDetailLink"));
                     item.setPersonalHistory(personalHistoryDto.getFrom());
                     item.setPersonalHistoryEnd(personalHistoryDto.getTo());
-                    if (edge.get("staYmdTime").equals(null)) {
+                    if (edge.isNull("staYmdTime")) {
                         item.setStartDate("영입종료시");
                     } else {
                         item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
                     }
-                    if (edge.get("endYmdTime").equals(null)) {
+                    if (edge.isNull("endYmdTime")) {
                         item.setEndDate("영입종료시");
                     } else {
                         item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));

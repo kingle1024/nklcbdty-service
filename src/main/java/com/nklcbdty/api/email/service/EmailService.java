@@ -1,11 +1,8 @@
 package com.nklcbdty.api.email.service;
 
-import static com.nklcbdty.api.user.vo.QUserInterestVo.*;
+import static com.nklcbdty.common.vo.QUserInterestVo.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,14 +11,15 @@ import java.util.Map;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import com.nklcbdty.api.crawler.repository.JobRepository;
-import com.nklcbdty.api.crawler.vo.Job_mst;
-import com.nklcbdty.api.email.dto.JobPosting;
-import com.nklcbdty.api.user.repository.UserIdAndEmailDto;
-import com.nklcbdty.api.user.repository.UserInterestRepository;
-import com.nklcbdty.api.user.repository.UserInterestRepositoryImpl;
+import com.nklcbdty.common.crawler.repository.JobRepository;
+import com.nklcbdty.common.vo.Job_mst;
+import com.nklcbdty.common.dto.JobPosting;
+import com.nklcbdty.common.email.JobEmailContentBuilder;
+import com.nklcbdty.common.user.dto.UserIdAndEmailDto;
+import com.nklcbdty.common.user.repository.UserInterestRepository;
+import com.nklcbdty.common.user.repository.UserInterestRepositoryImpl;
 import com.nklcbdty.api.user.service.UserService;
-import com.nklcbdty.api.user.vo.UserInterestVo;
+import com.nklcbdty.common.vo.UserInterestVo;
 import com.querydsl.core.Tuple;
 
 import jakarta.mail.AuthenticationFailedException;
@@ -49,7 +47,7 @@ public class EmailService {
             log.info("맞춤 공고 메일 발송 건너뜀 (대상 없음): userIds={}", userIds);
             return 0;
         }
-        String title = buildDailyJobEmailTitle();
+        String title = JobEmailContentBuilder.buildDailyTitle();
         int sent = 0;
         for (Map.Entry<String, String> entry : mailMap.entrySet()) {
             String email = entry.getKey();
@@ -58,11 +56,6 @@ public class EmailService {
             sent++;
         }
         return sent;
-    }
-
-    private String buildDailyJobEmailTitle() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        return "[네카라쿠배] " + LocalDate.now().format(formatter) + " 맞춤 채용 공고가 도착했어요!";
     }
 
     public void sendEmail(String to, String subject, String body) {
@@ -87,61 +80,7 @@ public class EmailService {
     }
 
     public String generateJobPostingEmailHtml(String keyword, List<JobPosting> jobPostings) {
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
-        String today = LocalDateTime.now().format(dateFormatter);
-
-        StringBuilder htmlBuilder = new StringBuilder();
-
-        // HTML 메일의 시작 부분 (헤더, 키워드 영역)
-        htmlBuilder.append("<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"padding: 20px 0\">");
-        htmlBuilder.append("<tbody><tr><td align=\"center\">");
-        htmlBuilder.append("<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background: #ffffff; border-radius: 8px; overflow: hidden\">");
-        htmlBuilder.append("<tbody><tr><td style=\"padding: 24px; background-color: #222; color: #fff; text-align: center; font-size: 20px;\">");
-        htmlBuilder.append("🎯 <strong>").append(today).append(" 맞춤 채용 공고가 도착했어요!</strong>");
-        htmlBuilder.append("</td></tr>");
-        htmlBuilder.append("<tr><td style=\"padding: 16px 24px; font-size: 16px; color: #333\">");
-        htmlBuilder.append("<p>");
-        htmlBuilder.append("네카라쿠배 채용 공고 모음 서비스에서 구독해주신 키워드 ");
-        htmlBuilder.append("<strong style=\"color: #007bff\">").append(keyword).append("</strong>에 해당하는 새로운 채용 소식을 알려드려요.");
-        htmlBuilder.append("</p>");
-        htmlBuilder.append("<p>");
-        htmlBuilder.append("더 많은 채용 공고를 보시려면 ");
-        htmlBuilder.append("<a href=\"https://www.nklcb.co.kr\" style=\"color: #007bff; text-decoration: underline\" rel=\"noreferrer noopener\" target=\"_blank\"><strong>nklcb.co.kr</strong></a>");
-        htmlBuilder.append("에서 확인하실 수 있어요.");
-        htmlBuilder.append("</p>");
-        htmlBuilder.append("</td></tr>");
-
-        for (JobPosting job : jobPostings) {
-            htmlBuilder.append("<tr><td style=\"padding: 16px; border-bottom: 1px solid #eee\">");
-            htmlBuilder.append("<a href=\"").append(job.getUrl()).append("\" style=\"font-size: 16px; font-weight: bold; color: #222; text-decoration: none;\" rel=\"noreferrer noopener\" target=\"_blank\">");
-            htmlBuilder.append(job.getTitle());
-            htmlBuilder.append("</a>");
-            htmlBuilder.append("<div style=\"font-size: 14px; color: #666; margin-top: 4px\">");
-            htmlBuilder.append(job.getCompany()).append(" | ").append(job.getJobType());
-
-            String deadline = job.getEndDate();
-            if (deadline != null && !deadline.isEmpty()) {
-                htmlBuilder.append(" | ").append(deadline);
-                if (job.getPersonalHistory() == 0 && job.getPersonalHistoryEnd() == 0) {
-                    htmlBuilder.append(" | 경력 무관");
-                } else if (job.getPersonalHistory() > 0 && job.getPersonalHistoryEnd() > 0) {
-                    htmlBuilder.append(" | ").append(job.getPersonalHistory()).append("년 ~ ").append(job.getPersonalHistoryEnd()).append("년");
-                } else if (job.getPersonalHistory() > 0) {
-                    htmlBuilder.append(" | ").append(job.getPersonalHistory()).append("년 이상");
-                } else if (job.getPersonalHistoryEnd() > 0) {
-                    htmlBuilder.append(" | ").append(job.getPersonalHistoryEnd()).append("년 이하");
-                }
-            }
-
-            htmlBuilder.append("</div>");
-            htmlBuilder.append("</td></tr>");
-        }
-
-        // HTML 메일의 끝 부분
-        htmlBuilder.append("</tbody></table>");
-        htmlBuilder.append("</td></tr></tbody></table>");
-
-        return htmlBuilder.toString();
+        return JobEmailContentBuilder.generateHtml(keyword, jobPostings);
     }
 
     public Map<String, List<String>> getUserCategoryMap() {
