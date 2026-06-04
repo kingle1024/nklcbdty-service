@@ -28,14 +28,9 @@ configurations {
 repositories {
 	mavenCentral() // Maven 중앙 저장소
     maven { url 'https://repo.spring.io/milestone' }
-    maven {
-        name = 'GitHubPackages'
-        url = uri('https://maven.pkg.github.com/kingle1024/nklcbdty-common')
-        credentials {
-            username = project.findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR')
-            password = project.findProperty('gpr.token') ?: System.getenv('GITHUB_TOKEN')
-        }
-    }
+    // nklcbdty-common 을 repo 내장 오프라인 Maven 저장소에서 해석.
+    // GitHub Packages(인증 필요)를 거치지 않으므로 cloudtype 등 토큰 없는 빌드 환경에서도 빌드 가능.
+    maven { url = uri("${projectDir}/offline-repo") }
 }
 
 dependencyManagement {
