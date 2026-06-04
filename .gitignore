@@ -121,6 +121,9 @@ local.properties
 *.tar.gz
 *.rar
 
+# 오프라인 의존성(nklcbdty-common) jar 는 위 *.jar 무시 규칙에서 제외하고 추적
+!offline-repo/**
+
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
