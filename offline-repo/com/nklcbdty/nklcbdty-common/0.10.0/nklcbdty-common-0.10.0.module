@@ -1,0 +1,142 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.nklcbdty",
+    "module": "nklcbdty-common",
+    "version": "0.10.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-data-jpa",
+          "version": {
+            "requires": "3.3.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-annotations",
+          "version": {
+            "requires": "2.17.1"
+          }
+        },
+        {
+          "group": "com.querydsl",
+          "module": "querydsl-jpa",
+          "version": {
+            "requires": "5.0.0"
+          },
+          "thirdPartyCompatibility": {
+            "artifactSelector": {
+              "name": "querydsl-jpa",
+              "type": "jar",
+              "extension": "jar",
+              "classifier": "jakarta"
+            }
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "nklcbdty-common-0.10.0.jar",
+          "url": "nklcbdty-common-0.10.0.jar",
+          "size": 33178,
+          "sha512": "ce1ea33b2e4149b9ad275c9cc5f48736fc6b7beb401aa25e4e944ccffde4548ef55d197d6d4a6ae8285f155b1d8b038e8c93f8e91510fed535b95d3ae607b25d",
+          "sha256": "a12b31da4239e73cfd7398acab3ddc2d8f53bc75d78c7a0dcd16281f43aeaa5e",
+          "sha1": "d723f930e8019bb74fd92258aa458f33009b2d01",
+          "md5": "b2d9ca483ac92c5ce0f30f3758806b92"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-data-jpa",
+          "version": {
+            "requires": "3.3.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-annotations",
+          "version": {
+            "requires": "2.17.1"
+          }
+        },
+        {
+          "group": "com.querydsl",
+          "module": "querydsl-jpa",
+          "version": {
+            "requires": "5.0.0"
+          },
+          "thirdPartyCompatibility": {
+            "artifactSelector": {
+              "name": "querydsl-jpa",
+              "type": "jar",
+              "extension": "jar",
+              "classifier": "jakarta"
+            }
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "nklcbdty-common-0.10.0.jar",
+          "url": "nklcbdty-common-0.10.0.jar",
+          "size": 33178,
+          "sha512": "ce1ea33b2e4149b9ad275c9cc5f48736fc6b7beb401aa25e4e944ccffde4548ef55d197d6d4a6ae8285f155b1d8b038e8c93f8e91510fed535b95d3ae607b25d",
+          "sha256": "a12b31da4239e73cfd7398acab3ddc2d8f53bc75d78c7a0dcd16281f43aeaa5e",
+          "sha1": "d723f930e8019bb74fd92258aa458f33009b2d01",
+          "md5": "b2d9ca483ac92c5ce0f30f3758806b92"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "nklcbdty-common-0.10.0-sources.jar",
+          "url": "nklcbdty-common-0.10.0-sources.jar",
+          "size": 15042,
+          "sha512": "fb247a2cebcb6b4ad49199a1a6fb6a132c062d424517b74bda75c618491d86380cf7587e783e518b952c745766992b9c6001f8a40b3f2e7ffb97a0ebdde9ff54",
+          "sha256": "b3b81dbbff43dc405c219b47a88208ec95d794f279f0b84fbc8f4b85663689fe",
+          "sha1": "e9abe7939eb048abe36344604c712e287a5ae313",
+          "md5": "7fa446bf88155ec5ad4d68abb49b7ae8"
+        }
+      ]
+    }
+  ]
+}
