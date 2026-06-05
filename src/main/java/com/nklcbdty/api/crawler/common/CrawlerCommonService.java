@@ -123,13 +123,33 @@ public class CrawlerCommonService {
             }
         }
 
-        refinePersonalHistoryByLlm(jobsToSave);
+        // 신규/기존 모두 LLM 보정 대상. 9820c47("LLM 경력 보정") 이전에 저장된 시니어 row
+        // (예: 쿠팡 Sr. Manager Payment 가 2년으로 박힌 케이스) 도 백필되도록 result 전체 전달.
+        // SENIOR_KEYWORD + personalHistory<5 필터가 메서드 내부에 있어 LLM 호출 비용은 거의 동일.
+        refinePersonalHistoryByLlm(result);
 
-        // 한 번에 저장
         if (!jobsToSave.isEmpty()) {
             for (Job_mst item : jobsToSave) {
                 item.setCompanyCd(company);
             }
+        }
+
+        // 기존 row 의 personalHistory 가 LLM 보정으로 바뀌었다면 update.
+        // 신규(jobsToSave) 는 호출자가 어차피 저장하므로 여기서 다시 다루지 않음.
+        List<Job_mst> existingToUpdate = new ArrayList<>();
+        for (Job_mst jobItem : result) {
+            Job_mst existing = existingJobs.stream()
+                .filter(e -> e.getAnnoId().equals(jobItem.getAnnoId()))
+                .findFirst().orElse(null);
+            if (existing == null) continue;
+            if (existing.getPersonalHistory() != jobItem.getPersonalHistory()) {
+                existing.setPersonalHistory(jobItem.getPersonalHistory());
+                existingToUpdate.add(existing);
+            }
+        }
+        if (!existingToUpdate.isEmpty()) {
+            crawlerRepository.saveAll(existingToUpdate);
+            log.info("기존 row 경력 보정 update — {}건 (회사={})", existingToUpdate.size(), company);
         }
 
         return jobsToSave;
