@@ -15,6 +15,7 @@ import com.nklcbdty.common.crawler.repository.JobRepository;
 import com.nklcbdty.common.vo.Job_mst;
 import com.nklcbdty.common.dto.JobPosting;
 import com.nklcbdty.common.email.JobEmailContentBuilder;
+import com.nklcbdty.common.email.JobMailOrdering;
 import com.nklcbdty.common.user.dto.UserIdAndEmailDto;
 import com.nklcbdty.common.user.repository.UserInterestRepository;
 import com.nklcbdty.common.user.repository.UserInterestRepositoryImpl;
@@ -99,54 +100,6 @@ public class EmailService {
         return userCategoryMap;
     }
 
-    /**
-     * 정렬된 공고 리스트에서 종료일이 현재 시점 + 1년을 넘는 항목은 뒤로 보낸다.
-     * 1년 이내 그룹은 원본 정렬(endDate DESC)을 유지하고, 초과 그룹도 자체 정렬을 유지한다.
-     * 종료일 파싱이 실패하는 값(예: "영입종료시")은 1년 이내 그룹으로 둔다.
-     */
-    List<Job_mst> pushFarFutureEndDateToBottom(List<Job_mst> jobs) {
-        LocalDate threshold = LocalDate.now().plusYears(1);
-        List<Job_mst> within = new ArrayList<>();
-        List<Job_mst> beyond = new ArrayList<>();
-        for (Job_mst job : jobs) {
-            LocalDate endDate = parseEndDate(job.getEndDate());
-            if (endDate != null && endDate.isAfter(threshold)) {
-                beyond.add(job);
-            } else {
-                within.add(job);
-            }
-        }
-        List<Job_mst> ordered = new ArrayList<>(within.size() + beyond.size());
-        ordered.addAll(within);
-        ordered.addAll(beyond);
-        return ordered;
-    }
-
-    private LocalDate parseEndDate(String endDate) {
-        if (endDate == null || endDate.length() < 10) {
-            return null;
-        }
-        try {
-            return LocalDate.parse(endDate.substring(0, 10));
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    // null/"영입종료시" 만 살아있음으로 간주. 파싱불가("error" 등) 는 손상 데이터로 보고 제외.
-    // reconciliation 으로 종료된 공고는 endDate=어제 가 박혀 여기서 걸러진다.
-    private boolean isLive(Job_mst job, LocalDate today) {
-        String endDateStr = job.getEndDate();
-        if (endDateStr == null || "영입종료시".equals(endDateStr)) {
-            return true;
-        }
-        LocalDate endDate = parseEndDate(endDateStr);
-        if (endDate == null) {
-            return false;
-        }
-        return !endDate.isBefore(today);
-    }
-
     public Map<String, String> sendEmail(List<String> userIds) {
         List<UserIdAndEmailDto> userEmailItems = userService.findByUserIdIn(userIds);
         Map<String, String> userEmailMap = new HashMap<>();
@@ -176,10 +129,10 @@ public class EmailService {
                 = jobRepository.findAllByCompanyCdInAndSubJobCdNmInOrderByEndDateDesc(companysStr, jobStr);
             LocalDate today = LocalDate.now();
             allByCompanyCdInAndSubJobCdNmIn = allByCompanyCdInAndSubJobCdNmIn.stream()
-                .filter(job -> isLive(job, today))
+                .filter(job -> JobMailOrdering.isLive(job, today))
                 .collect(java.util.stream.Collectors.toList());
             // 종료일이 현재 시점 기준 1년 초과인 공고(예: 2999-12-31 등 사실상 무기한)는 뒤로 밀어 노이즈를 줄임
-            allByCompanyCdInAndSubJobCdNmIn = pushFarFutureEndDateToBottom(allByCompanyCdInAndSubJobCdNmIn);
+            allByCompanyCdInAndSubJobCdNmIn = JobMailOrdering.pushFarFutureEndDateToBottom(allByCompanyCdInAndSubJobCdNmIn);
             log.info("userId: {}, companys: {}, jobs: {}, allByCompanyCdInAndSubJobCdNmIn: {}", userId, companys, jobs, allByCompanyCdInAndSubJobCdNmIn.size());
             List<JobPosting> jobPostings = new ArrayList<>();
             for (Job_mst job : allByCompanyCdInAndSubJobCdNmIn) {
