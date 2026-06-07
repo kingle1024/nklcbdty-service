@@ -125,8 +125,17 @@ public class EmailService {
             for (UserInterestVo job : jobs) {
                 jobStr.add(job.getItemValue());
             }
+            // 자동(batch) 메일과 동일하게 사용자 경력 필터링도 적용. 과거에는 빠져있어
+            // 경력 3년 사용자에게도 7년 이상 공고가 메일로 노출됐다.
+            List<UserInterestVo> careerYear = userInterestRepository.findItemValueByUserIdAndItemType(userId, "career_year");
+            long careerYearNum;
+            if (careerYear.isEmpty()) {
+                careerYearNum = 0;
+            } else {
+                careerYearNum = Long.parseLong(careerYear.get(careerYear.size() - 1).getItemValue());
+            }
             List<Job_mst> allByCompanyCdInAndSubJobCdNmIn
-                = jobRepository.findAllByCompanyCdInAndSubJobCdNmInOrderByEndDateDesc(companysStr, jobStr);
+                = jobRepository.findJobsByDetailedCriteria(companysStr, jobStr, careerYearNum, 0L);
             LocalDate today = LocalDate.now();
             allByCompanyCdInAndSubJobCdNmIn = allByCompanyCdInAndSubJobCdNmIn.stream()
                 .filter(job -> JobMailOrdering.isLive(job, today))
