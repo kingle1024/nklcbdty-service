@@ -47,9 +47,10 @@ public class JobService {
                 shouldAdd = true;
             } else if ("영입종료시".equals(endDateStr)) {
                 shouldAdd = true;
+            } else if ("error".equals(endDateStr)) {
+                // 크롤러가 파싱 실패 시 "error" 문자열을 그대로 적재 → 손상 데이터로 간주, 조용히 제외 (shouldAdd 는 false 유지)
             } else {
                 LocalDateTime endDate = parseDateTime(endDateStr);
-                // 파싱 불가 ("error" 같은 손상 데이터) 는 EmailService.isLive 와 동일하게 제외.
                 if (endDate != null && endDate.isAfter(now)) {
                     shouldAdd = true;
                 }
