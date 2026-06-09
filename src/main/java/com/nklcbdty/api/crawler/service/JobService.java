@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,8 +33,6 @@ public class JobService {
             items = jobRepository.findAllByCompanyCdAndSubJobCdNmIsNotNullOrderByEndDateAsc(company);
         }
 
-        Random random = new Random();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
 
         List<Job_mst> result = new ArrayList<>();
@@ -57,12 +54,42 @@ public class JobService {
             }
 
             if (shouldAdd) {
-                item.setId(random.nextLong());
+                // 실제 DB PK 유지(삭제요청 등에서 공고 식별에 사용). 과거 랜덤 id 덮어쓰기 제거.
                 result.add(item);
             }
         }
 
+        // 종료기간이 있는 공고를 위로, 상시채용(종료일 없음/"영입종료시")은 아래로.
+        // 종료기간이 있는 공고끼리는 마감 임박순(오름차순)으로 정렬한다.
+        result.sort((a, b) -> {
+            boolean aAlways = isAlwaysRecruiting(a.getEndDate());
+            boolean bAlways = isAlwaysRecruiting(b.getEndDate());
+            if (aAlways != bAlways) {
+                return aAlways ? 1 : -1; // 상시채용은 뒤로
+            }
+            if (aAlways) {
+                return 0; // 둘 다 상시채용이면 기존 순서 유지
+            }
+            LocalDateTime ad = parseDateTime(a.getEndDate());
+            LocalDateTime bd = parseDateTime(b.getEndDate());
+            if (ad == null && bd == null) {
+                return 0;
+            }
+            if (ad == null) {
+                return 1;
+            }
+            if (bd == null) {
+                return -1;
+            }
+            return ad.compareTo(bd); // 마감 임박순
+        });
+
         return result;
+    }
+
+    /** 종료기간이 없는 상시채용 공고인지 여부 (종료일 null 또는 "영입종료시") */
+    private boolean isAlwaysRecruiting(String endDateStr) {
+        return endDateStr == null || "영입종료시".equals(endDateStr);
     }
 
     @Transactional
