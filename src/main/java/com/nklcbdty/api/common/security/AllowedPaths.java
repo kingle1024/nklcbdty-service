@@ -16,6 +16,8 @@ public enum AllowedPaths {
     CATEGORY_ALL("/api/category/**"),
     EMAIL("/api/email/**"),
     CRALWER("/api/crawler"),
+    JOB_DELETE_REQUEST("/api/job-delete-requests"),
+    JOB_DELETE_REQUEST_ALL("/api/job-delete-requests/**"),
     COUNT_BY_DATE("/api/statistics/count-by-date"),
     TEST("/api/test"),
     SEARCH("/api/job/**"),

@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,8 +33,6 @@ public class JobService {
             items = jobRepository.findAllByCompanyCdAndSubJobCdNmIsNotNullOrderByEndDateAsc(company);
         }
 
-        Random random = new Random();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime now = LocalDateTime.now();
 
         List<Job_mst> result = new ArrayList<>();
@@ -57,7 +54,7 @@ public class JobService {
             }
 
             if (shouldAdd) {
-                item.setId(random.nextLong());
+                // 실제 DB PK 유지(삭제요청 등에서 공고 식별에 사용). 과거 랜덤 id 덮어쓰기 제거.
                 result.add(item);
             }
         }
