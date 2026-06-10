@@ -24,13 +24,14 @@ class EmailServiceTest {
         Job_mst veryFar = job("2999-12-31 마감", "2999-12-31 23:59:59");
         Job_mst nextMonth = job("한 달 후 마감", today.plusMonths(1).toString() + " 23:59:59");
 
-        // 원본은 endDate DESC라고 가정 → veryFar가 맨 앞
+        // 원본 순서가 뒤섞여 있어도 1년 이내 공고는 마감 임박순(오름차순)으로 정렬되고,
+        // 2999-12-31(1년 초과 무기한)은 맨 뒤로 간다.
         List<Job_mst> input = List.of(veryFar, nextMonth, near);
 
         List<Job_mst> result = JobMailOrdering.pushFarFutureEndDateToBottom(input);
 
         assertThat(result).extracting(Job_mst::getAnnoSubject)
-            .containsExactly("한 달 후 마감", "이번 달 마감", "2999-12-31 마감");
+            .containsExactly("이번 달 마감", "한 달 후 마감", "2999-12-31 마감");
     }
 
     @Test
