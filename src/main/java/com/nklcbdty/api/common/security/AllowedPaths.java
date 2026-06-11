@@ -21,8 +21,8 @@ public enum AllowedPaths {
     COUNT_BY_DATE("/api/statistics/count-by-date"),
     TEST("/api/test"),
     SEARCH("/api/job/**"),
-    // TODO: 관리자 로그인 도입 후 제거하고 AuthFilter에서 ADMIN 역할 검사로 전환
-    ADMIN("/api/admin/**"),
+    // 관리자 로그인만 공개. 그 외 /api/admin/** 은 AuthFilter 에서 ADMIN 역할 토큰을 요구한다.
+    ADMIN_LOGIN("/api/admin/login"),
     ;
 
     private final String path;
