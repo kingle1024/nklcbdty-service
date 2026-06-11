@@ -53,6 +53,21 @@ public class UtilityNklcb {
             .compact();
     }
 
+    // 관리자 토큰. subject=username, role=ADMIN 클레임 포함. (일반 사용자 토큰과 동일 시크릿/서명)
+    public String generateAdminToken(String username) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + 43_200_000); // 12시간 후 만료
+        SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
+
+        return Jwts.builder()
+            .setSubject(username)
+            .claim("role", "ADMIN")
+            .setIssuedAt(now)
+            .setExpiration(expiryDate)
+            .signWith(secretKey)
+            .compact();
+    }
+
     public void validToken(String token) {
         SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
         Claims claims = Jwts.parserBuilder()

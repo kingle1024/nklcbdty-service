@@ -40,6 +40,19 @@ public class AuthFilter extends OncePerRequestFilter {
             }
         }
 
+        // 관리자 경로(/api/admin/**). 단 /api/admin/login 은 위 허용목록에서 이미 통과됨.
+        // 나머지 관리자 경로는 ADMIN 역할이 담긴 토큰을 요구한다.
+        if (requestUri.startsWith("/api/admin/")) {
+            final String adminToken = getTokenByRequest(request);
+            if (adminToken != null && validateToken(adminToken) && isAdminToken(adminToken)) {
+                request.setAttribute("adminUsername", getUserIdByToken(adminToken));
+                filterChain.doFilter(request, response);
+                return;
+            }
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Admin authentication required");
+            return;
+        }
+
         final String token = getTokenByRequest(request);
         if (token != null && validateToken(token)) {
             String userId = getUserIdByToken(token);
@@ -54,6 +67,16 @@ public class AuthFilter extends OncePerRequestFilter {
     public String getUserIdByRequest(HttpServletRequest request) {
         final String token = getTokenByRequest(request);
         return getUserIdByToken(token);
+    }
+
+    // 토큰에 role=ADMIN 클레임이 있는지 검사
+    private boolean isAdminToken(String token) {
+        try {
+            Claims claims = Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+            return "ADMIN".equals(claims.get("role", String.class));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String getTokenByRequest(HttpServletRequest request) {
