@@ -31,7 +31,9 @@ public class BaeminJobCrawlerService implements JobCrawler{
 	}
     
     private String getApiUrl() {
-    	return "https://career.woowahan.com/w1/recruits?category=jobGroupCodes%3ABA005001&recruitCampaignSeq=0&jobGroupCodes=BA005001&page=0&size=21&sort=updateDate%";
+    	// 끝에 떨어진 '%'(sort=updateDate%) 때문에 URL escape 가 깨져 호출이 예외로 빠지며 크롤이 실패했다.
+    	// sort 파라미터 제거(기본 정렬). 목록 정렬은 조회/메일 단계에서 별도 처리한다.
+    	return "https://career.woowahan.com/w1/recruits?category=jobGroupCodes%3ABA005001&recruitCampaignSeq=0&jobGroupCodes=BA005001&page=0&size=21";
     }
     
     
