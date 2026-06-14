@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,8 @@ public class JobService {
 
         LocalDateTime now = LocalDateTime.now();
 
+        // 크롤 시 같은 공고(annoId)가 중복 INSERT 될 수 있어, 조회 시 중복은 하나만 노출한다.
+        final Set<String> seenKeys = new HashSet<>();
         List<Job_mst> result = new ArrayList<>();
         for (Job_mst item : items) {
             String endDateStr = item.getEndDate();
@@ -53,7 +57,7 @@ public class JobService {
                 }
             }
 
-            if (shouldAdd) {
+            if (shouldAdd && seenKeys.add(dedupKey(item))) {
                 // 실제 DB PK 유지(삭제요청 등에서 공고 식별에 사용). 과거 랜덤 id 덮어쓰기 제거.
                 result.add(item);
             }
@@ -90,6 +94,23 @@ public class JobService {
     /** 종료기간이 없는 상시채용 공고인지 여부 (종료일 null 또는 "영입종료시") */
     private boolean isAlwaysRecruiting(String endDateStr) {
         return endDateStr == null || "영입종료시".equals(endDateStr);
+    }
+
+    /**
+     * 중복 제거 키. 같은 회사의 같은 공고(annoId)를 동일 건으로 본다.
+     * annoId 가 없으면 회사+제목으로, 그것도 없으면 PK(id)로 폴백해 서로 다른 건이 합쳐지지 않게 한다.
+     */
+    private String dedupKey(Job_mst item) {
+        final String company = item.getCompanyCd() != null ? item.getCompanyCd() : "";
+        final String annoId = item.getAnnoId();
+        if (annoId != null && !annoId.isBlank()) {
+            return company + "|anno|" + annoId;
+        }
+        final String subject = item.getAnnoSubject();
+        if (subject != null && !subject.isBlank()) {
+            return company + "|subj|" + subject;
+        }
+        return "id|" + item.getId();
     }
 
     @Transactional
