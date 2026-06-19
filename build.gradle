@@ -72,6 +72,9 @@ dependencies {
 	// Jsoup 크롤링 라이브러리
 	implementation 'org.jsoup:jsoup:1.17.2'
 
+	// Apache PDFBox — 업로드된 이력서 PDF 텍스트 추출 (공고 매칭용)
+	implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+
 	// Apache OpenNLP — 자체 NER(개체명 인식) 모델 학습/추론용
 	implementation 'org.apache.opennlp:opennlp-tools:2.3.3'
 

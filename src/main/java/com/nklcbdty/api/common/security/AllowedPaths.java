@@ -21,6 +21,9 @@ public enum AllowedPaths {
     COUNT_BY_DATE("/api/statistics/count-by-date"),
     TEST("/api/test"),
     SEARCH("/api/job/**"),
+    // 공고 의미 검색(/api/jobs/search)과 이력서 PDF 매칭(/api/jobs/match). 인증 없이 공개.
+    // ('/api/job/**' 는 정규식상 's' 가 붙은 '/api/jobs/...' 를 매치하지 못해 별도 등록)
+    JOBS("/api/jobs/**"),
     // 관리자 로그인만 공개. 그 외 /api/admin/** 은 AuthFilter 에서 ADMIN 역할 토큰을 요구한다.
     ADMIN_LOGIN("/api/admin/login"),
     ;
