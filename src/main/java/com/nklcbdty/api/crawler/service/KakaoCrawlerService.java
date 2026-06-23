@@ -2,6 +2,8 @@ package com.nklcbdty.api.crawler.service;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +37,10 @@ public class KakaoCrawlerService {
 
     private final CrawlerCommonService crawlerCommonService;
 
+    // 카카오페이손해보험 마감일(UTC) -> KST 변환용
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter KST_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     @Autowired
     public KakaoCrawlerService(CrawlerCommonService crawlerCommonService) {
         this.crawlerCommonService = crawlerCommonService;
@@ -66,6 +72,12 @@ public class KakaoCrawlerService {
             refineBankResult(kakaoBankResult);
 
             result.addAll(kakaoBankResult);
+
+            // 카카오페이손해보험(그리팅 기반). sysCompanyCdNm 이 refineResult 의 default("카카오")로
+            // 덮이지 않도록 뱅크와 동일하게 refineResult 이후에 합친다.
+            List<Job_mst> kakaoPayInsResult = new ArrayList<>();
+            addRecruitPayIns(kakaoPayInsResult);
+            result.addAll(kakaoPayInsResult);
 
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
@@ -438,6 +450,160 @@ public class KakaoCrawlerService {
             }
         } catch (Exception e) {
             log.error("Error occurred while fetching Kakao Games jobs: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 카카오페이손해보험 채용 크롤. 그리팅(Greeting) 기반 Next.js 사이트로,
+     * {@code /ko/apply} HTML 의 __NEXT_DATA__ 에서 buildId 를 추출해
+     * {@code /_next/data/<buildId>/ko/apply.json} 의 openings 배열을 파싱한다.
+     */
+    private void addRecruitPayIns(List<Job_mst> kakaoPayInsResult) {
+        final String host = "https://career.kakaopayinscorp.co.kr";
+        String buildName = "";
+        try {
+            Document doc = Jsoup.connect(host + "/ko/apply").get();
+            Element scriptElement = doc.getElementById("__NEXT_DATA__");
+            if (scriptElement != null) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(scriptElement.html());
+                buildName = jsonNode.get("buildId").asText();
+            }
+            if (buildName == null || buildName.isBlank()) {
+                log.error("카카오페이손해보험 buildId 추출 실패");
+                return;
+            }
+
+            final String apiUrl = host + "/_next/data/" + buildName + "/ko/apply.json?locale=ko&page=apply";
+            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+
+            // pageProps.dehydratedState.queries 에서 queryKey[0] == "openings" 인 항목의 state.data
+            JSONArray queries = new JSONObject(jsonResponse)
+                .getJSONObject("pageProps")
+                .getJSONObject("dehydratedState")
+                .getJSONArray("queries");
+            JSONArray data = null;
+            for (int i = 0; i < queries.length(); i++) {
+                JSONObject query = queries.getJSONObject(i);
+                JSONArray queryKey = query.optJSONArray("queryKey");
+                if (queryKey != null && queryKey.length() > 0 && "openings".equals(queryKey.optString(0))) {
+                    JSONObject state = query.optJSONObject("state");
+                    if (state != null) {
+                        data = state.optJSONArray("data");
+                    }
+                    break;
+                }
+            }
+            if (data == null) {
+                log.error("카카오페이손해보험 openings data 미존재 (buildId={})", buildName);
+                return;
+            }
+
+            for (int i = 0; i < data.length(); i++) {
+                JSONObject jsonObject = data.getJSONObject(i);
+
+                // 미배포 공고 스킵
+                if (jsonObject.has("deploy") && !jsonObject.optBoolean("deploy", true)) {
+                    continue;
+                }
+
+                // dueDate(UTC, 예 "2026-06-21T14:59:59Z") -> KST ZonedDateTime.
+                // 공용 isCloseDate 는 타임존을 무시(UTC 벽시계 비교)해 마감일 당일 KST 공고를
+                // 9시간 일찍 종료 처리하므로, 손보 분기는 KST 기준으로 마감 판정/저장한다.
+                Object endDateObj = jsonObject.opt("dueDate");
+                ZonedDateTime kstEnd = null;
+                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
+                    kstEnd = OffsetDateTime.parse(endDateObj.toString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        .atZoneSameInstant(KST);
+                    if (kstEnd.toLocalDateTime().isBefore(LocalDateTime.now())) {
+                        continue;
+                    }
+                }
+
+                Job_mst item = new Job_mst();
+                if (kstEnd != null) {
+                    item.setEndDate(kstEnd.format(KST_DATE_FORMAT));
+                }
+
+                item.setAnnoSubject(jsonObject.getString("title").trim());
+                item.setSysCompanyCdNm("카카오페이손해보험");
+                String openingId = String.valueOf(jsonObject.get("openingId"));
+                item.setAnnoId(openingId);
+                item.setJobDetailLink(host + "/o/" + openingId);
+                item.setEmpTypeCdNm("정규");
+
+                // 직군/직무/근무지/경력/고용형태는 openingJobPositions[0] 기준
+                JSONObject jobPositionWrap = jsonObject.optJSONObject("openingJobPosition");
+                if (jobPositionWrap != null) {
+                    JSONArray positions = jobPositionWrap.optJSONArray("openingJobPositions");
+                    if (positions != null && positions.length() > 0) {
+                        JSONObject position = positions.getJSONObject(0);
+
+                        JSONObject occupation = position.optJSONObject("workspaceOccupation");
+                        if (occupation != null) {
+                            item.setClassCdNm(occupation.optString("occupation", null));
+                        }
+                        JSONObject job = position.optJSONObject("workspaceJob");
+                        if (job != null) {
+                            item.setSubJobCdNm(job.optString("job", null));
+                        }
+                        JSONObject place = position.optJSONObject("workspacePlace");
+                        if (place != null) {
+                            item.setWorkplace(convertPayInsWorkplace(place));
+                        }
+                        JSONObject career = position.optJSONObject("jobPositionCareer");
+                        if (career != null) {
+                            item.setPersonalHistory(career.optLong("careerFrom", 0L));
+                            if (!career.isNull("careerTo")) {
+                                item.setPersonalHistoryEnd(career.optLong("careerTo", 0L));
+                            }
+                        }
+                        JSONObject employment = position.optJSONObject("jobPositionEmployment");
+                        if (employment != null && "CONTRACT_WORKER".equals(employment.optString("employmentType"))) {
+                            item.setEmpTypeCdNm("비정규");
+                        }
+                    }
+                }
+
+                refinePayInsSubJob(item);
+                kakaoPayInsResult.add(item);
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while fetching Kakao Pay Insurance jobs: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 근무지 객체를 표시용 문자열로 변환. 판교(경기 성남) 본사는 "판교"로 정규화.
+     */
+    private String convertPayInsWorkplace(JSONObject place) {
+        final String region = place.optString("place", "");
+        if (region.contains("판교") || region.contains("성남") || region.contains("경기")) {
+            return "판교";
+        }
+        if (region.contains("서울")) {
+            return JobEnums.SEOUL.getTitle();
+        }
+        final String location = place.optString("location", null);
+        return (location == null || location.isBlank()) ? region : location;
+    }
+
+    /**
+     * 제목 기반 개발 직무 보정. 명확한 케이스만 선반영하고 나머지는 Gemini 분류에 맡긴다.
+     */
+    private void refinePayInsSubJob(Job_mst item) {
+        if (item.getAnnoSubject() == null) {
+            return;
+        }
+        final String title = item.getAnnoSubject().toUpperCase().replace(" ", "");
+        if (title.contains("BACKEND") || title.contains("BACK-END") || title.contains("서버개발")) {
+            item.setSubJobCdNm(JobEnums.BackEnd.getTitle());
+        } else if (title.contains("FRONTEND") || title.contains("FRONT-END")) {
+            item.setSubJobCdNm(JobEnums.FrontEnd.getTitle());
+        } else if (title.contains("DEVOPS") || title.contains("SRE")) {
+            item.setSubJobCdNm(JobEnums.DevOps.getTitle());
+        } else if (title.contains("(PM)") || title.contains("기획자") || title.contains("PRODUCTMANAGER")) {
+            item.setSubJobCdNm(JobEnums.PM.getTitle());
         }
     }
 
