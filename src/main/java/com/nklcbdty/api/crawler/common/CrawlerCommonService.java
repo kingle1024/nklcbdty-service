@@ -55,27 +55,53 @@ public class CrawlerCommonService {
         this.personalHistoryEnsemble = personalHistoryEnsemble;
     }
 
+    // 봇 차단(WAF)에 걸리지 않도록 브라우저처럼 보이는 User-Agent. 일부 채용 API(우아한형제들 등)는
+    // 기본 Java User-Agent 나 헤더 부재를 차단해 로컬은 되는데 서버에서만 실패하는 경우가 있다.
+    private static final String BROWSER_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+    private static final int CONNECT_TIMEOUT_MS = 5000;
+    private static final int READ_TIMEOUT_MS = 10000;
+
     public String fetchApiResponse(String apiUrl) {
 
         try {
             URL url = new URL(apiUrl);
             HttpURLConnection conn = (HttpURLConnection)url.openConnection();
             conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", BROWSER_USER_AGENT);
+            conn.setRequestProperty("Accept", "application/json, text/plain, */*");
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS); // 무한 대기 방지
+            conn.setReadTimeout(READ_TIMEOUT_MS);
 
-            StringBuilder response = new StringBuilder();
-            try (BufferedReader in = new BufferedReader(
-                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
+            int status = conn.getResponseCode();
+            if (status < 200 || status >= 300) {
+                // 4xx/5xx 는 getInputStream 이 예외를 던져 차단 사유가 사라진다.
+                // errorStream 을 읽어 상태코드와 본문 앞부분을 남겨 원인(차단/변경)을 진단 가능하게 한다.
+                String errBody = readStream(conn.getErrorStream());
+                log.error("API 응답 실패 status={} url={} body(앞부분)={}",
+                    status, apiUrl, errBody.substring(0, Math.min(300, errBody.length())));
+                throw new ApiException("Failed to fetch API response (status=" + status + ")");
             }
 
-            return response.toString();
+            return readStream(conn.getInputStream());
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
             throw new ApiException("Failed to fetch API response");  // 커스텀 예외 던지기
         }
+    }
+
+    private String readStream(java.io.InputStream is) throws IOException {
+        if (is == null) return "";
+        StringBuilder response = new StringBuilder();
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+        }
+        return response.toString();
     }
 
     public String fetchApiResponsePost(String apiUrl, String body) {
