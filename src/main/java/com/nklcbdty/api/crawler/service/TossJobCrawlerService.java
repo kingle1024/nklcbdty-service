@@ -46,18 +46,22 @@ public class TossJobCrawlerService implements JobCrawler {
                 JSONObject edge = edges.getJSONObject(i);
                 JSONArray contents = edge.getJSONArray("jobs");
                 for (int j = 0; j < contents.length(); j++) {
+                  try {
                     JSONObject contentItem = contents.getJSONObject(j);
-                    JSONArray metadata = contentItem.getJSONArray("metadata");
+                    JSONArray metadata = contentItem.optJSONArray("metadata");
+                    if (metadata == null) {
+                        metadata = new JSONArray();
+                    }
                     boolean saveOk = true;
                     Job_mst item = new Job_mst();
                     for (int k = 0; k < metadata.length(); k++) {
                         JSONObject jsonObject = metadata.getJSONObject(k);
-                        String name = jsonObject.getString("name");
-                        Object objectValue = jsonObject.get("value");
-                        String value = objectValue.toString();
-                        if(value == null) {
+                        String name = jsonObject.optString("name", "");
+                        Object objectValue = jsonObject.opt("value");
+                        if (objectValue == null || JSONObject.NULL.equals(objectValue)) {
                             continue;
                         }
+                        String value = objectValue.toString();
                         switch (name) {
                             case "포지션의 소속 자회사를 선택해 주세요.": {
                                 item.setSysCompanyCdNm(value);
@@ -80,9 +84,14 @@ public class TossJobCrawlerService implements JobCrawler {
                             }
                         }
                     }
-                    item.setAnnoId(contentItem.get("id").toString());
-                    item.setAnnoSubject(contentItem.getString("title"));
-                    item.setJobDetailLink(contentItem.getString("absolute_url"));
+                    item.setAnnoId(contentItem.opt("id") == null ? null : contentItem.get("id").toString());
+                    item.setAnnoSubject(contentItem.optString("title", ""));
+                    item.setJobDetailLink(contentItem.optString("absolute_url", ""));
+
+                    if (item.getAnnoId() == null || item.getAnnoId().isBlank() || item.getAnnoSubject().isBlank()) {
+                        log.warn("토스 공고 필수값 누락으로 건너뜀 (jobIndex={}, id={})", j, item.getAnnoId());
+                        continue;
+                    }
 
                     if("null".equals(item.getSysCompanyCdNm())) {
                       saveOk = false;
@@ -91,6 +100,9 @@ public class TossJobCrawlerService implements JobCrawler {
                     if(saveOk) {
                         result.add(item);
                     }
+                  } catch (Exception itemEx) {
+                    log.error("토스 공고 파싱 실패 (jobIndex={}): {}", j, itemEx.getMessage(), itemEx);
+                  }
                 }
             }
 

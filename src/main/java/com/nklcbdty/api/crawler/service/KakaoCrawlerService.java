@@ -337,7 +337,7 @@ public class KakaoCrawlerService {
     private void addRecruitGames(List<Job_mst> kakaoGames) {
         String buildName = "";
         try {
-            Document doc = Jsoup.connect("https://recruit.kakaogames.com/ko/joinjuskr").get();
+            Document doc = crawlerCommonService.jsoupConnect("https://recruit.kakaogames.com/ko/joinjuskr").get();
             Element scriptElement = doc.getElementById("__NEXT_DATA__");
 
             if (scriptElement != null) {
@@ -444,7 +444,7 @@ public class KakaoCrawlerService {
     private void addRecruitHealth(List<Job_mst> kakaopayHealth) {
         String buildName = "";
         try {
-            Document doc = Jsoup.connect("https://recruit.kakaohealthcare.com/recruit").get();
+            Document doc = crawlerCommonService.jsoupConnect("https://recruit.kakaohealthcare.com/recruit").get();
             Elements iconLinkTags = doc.select("link[rel=icon], link[rel=shortcut icon]");
 
             if (!iconLinkTags.isEmpty()) {
@@ -516,7 +516,7 @@ public class KakaoCrawlerService {
 
         try {
             // 웹 페이지에 연결하여 Document 객체 가져오기
-            Document doc = Jsoup.connect("https://career.kakaopaysec.com/job_posting").get();
+            Document doc = crawlerCommonService.jsoupConnect("https://career.kakaopaysec.com/job_posting").get();
 
             // property 속성이 "og:image"인 meta 태그 선택
             Elements metaTags = doc.select("meta[property=og:image]");
@@ -612,6 +612,7 @@ public class KakaoCrawlerService {
             JSONObject paging = root.getJSONObject("paging");
             lastIdx = paging.getInt("totalPages");
             for (int i = 0; i < jobList.length(); i++) {
+              try {
                 JSONObject edge = jobList.getJSONObject(i);
                 Object endDate = edge.get("receiveEndDatetime");
                 if (isCloseDate(endDate)) {
@@ -651,6 +652,9 @@ public class KakaoCrawlerService {
                 item.setPersonalHistory(personalHistory.getFrom());
                 item.setPersonalHistoryEnd(personalHistory.getTo());
                 result.add(item);
+              } catch (Exception itemEx) {
+                log.error("카카오뱅크 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+              }
             }
             idx++;
         }
@@ -714,6 +718,7 @@ public class KakaoCrawlerService {
 
         // edges 배열을 반복
         for (int i = 0; i < jobList.length(); i++) {
+          try {
             JSONObject edge = jobList.getJSONObject(i);
             String title = edge.getString("jobOfferTitle");
             Object endDate = edge.get("endDate");
@@ -767,6 +772,9 @@ public class KakaoCrawlerService {
             item.setPersonalHistoryEnd(personalHistory.getTo());
 
             result.add(item);
+          } catch (Exception itemEx) {
+            log.error("카카오(careers) 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+          }
         }
 
         try {

@@ -40,19 +40,25 @@ public class CoupangJobCrawlerService {
     @Async
 	public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> resList = new ArrayList<>();
-		String formattedDate = crawlerCommonService.formatCurrentTime(); 
+		String formattedDate = crawlerCommonService.formatCurrentTime();
 		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
-		
-		int totalCnt = getCoupangTotalListCnt(apiUrl);
-        int pagesize = 20;
-        double totalLoopCnt = totalCnt % pagesize
-            == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
 
-		for (int i = 1; i <= (int)totalLoopCnt; i++) {
-			// apiUrl = "https://www.coupang.jobs/kr/jobs?page="+i+"#results";
-			apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"&orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
-			resList.addAll(coupangParseHtmlData(apiUrl));
-            log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
+		// 기존엔 crawlJobs 에 try/catch 가 없어 쿠팡 실패 시 예외가 controller 의 all 모드까지 전파돼
+		// 전체 회사 크롤 결과가 0건이 됐다. 다른 크롤러처럼 내부에서 격리해 부분 결과를 반환한다.
+		try {
+			int totalCnt = getCoupangTotalListCnt(apiUrl);
+	        int pagesize = 20;
+	        double totalLoopCnt = totalCnt % pagesize
+	            == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
+
+			for (int i = 1; i <= (int)totalLoopCnt; i++) {
+				// apiUrl = "https://www.coupang.jobs/kr/jobs?page="+i+"#results";
+				apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"&orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
+				resList.addAll(coupangParseHtmlData(apiUrl));
+	            log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
+			}
+		} catch (Exception e) {
+			log.error("쿠팡 크롤링 실패: {}", e.getMessage(), e);
 		}
 
         return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("COUPANG", resList));
@@ -73,6 +79,7 @@ public class CoupangJobCrawlerService {
         	Elements root = doc.select("main#content div#js-job-search-results .card.card-job");
 
         	for (Element cardJobRoot : root) {
+              try {
 				// 근무지
 				String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
 				if (!"서울".equals(workplace)) {
@@ -94,6 +101,9 @@ public class CoupangJobCrawlerService {
                 job_mst.setPersonalHistory(personalHistoryDto.getFrom());
                 job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
                 tempList.add(job_mst);
+              } catch (Exception itemEx) {
+                log.error("쿠팡 공고 카드 파싱 실패: {}", itemEx.getMessage(), itemEx);
+              }
         	}
 
             for (Job_mst item : tempList) {
@@ -218,12 +228,22 @@ public class CoupangJobCrawlerService {
 
     		// 총건수 파싱하기.
     		strTotalCnt = doc.select("main#content div#js-job-search-results").attr("data-results");
-    		
+
         } catch (Exception e) {
             log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
             throw new ApiException("Failed to Jsoup response");  // 커스텀 예외 던지기
         }
-		
-		return Integer.parseInt(strTotalCnt);
+
+		// 쿠키 만료/차단으로 결과 페이지를 못 받으면 data-results 가 비어 parseInt 가 터진다. 방어한다.
+		if (strTotalCnt == null || strTotalCnt.isBlank()) {
+			log.error("쿠팡 총 건수(data-results) 파싱 실패 — 빈 값 (쿠키 만료/차단 의심)");
+			return 0;
+		}
+		try {
+			return Integer.parseInt(strTotalCnt.trim());
+		} catch (NumberFormatException e) {
+			log.error("쿠팡 총 건수 파싱 실패: '{}'", strTotalCnt);
+			return 0;
+		}
     }
 }

@@ -92,6 +92,14 @@ public class CrawlerCommonService {
         }
     }
 
+    // Jsoup 기반 크롤러(쿠팡/야놀자/카카오 buildName 스크래핑 등)가 공통으로 쓸 커넥션.
+    // 브라우저 User-Agent + 타임아웃을 걸어 WAF 차단/무한 대기를 방지한다.
+    public org.jsoup.Connection jsoupConnect(String url) {
+        return Jsoup.connect(url)
+            .userAgent(BROWSER_USER_AGENT)
+            .timeout(READ_TIMEOUT_MS);
+    }
+
     private String readStream(java.io.InputStream is) throws IOException {
         if (is == null) return "";
         StringBuilder response = new StringBuilder();
