@@ -58,30 +58,40 @@ public class NaverJobCrawlerService {
                 }
 
                 for (int i = 0; i < jobList.length(); i++) {
-                    JSONObject edge = jobList.getJSONObject(i);
+                    try {
+                        JSONObject edge = jobList.getJSONObject(i);
 
-                    Job_mst item = new Job_mst();
-                    item.setAnnoId(edge.get("annoId").toString());
-                    item.setAnnoSubject(edge.getString("annoSubject"));
-                    item.setClassCdNm(edge.getString("classCdNm"));
-                    item.setEmpTypeCdNm(edge.getString("empTypeCdNm"));
-                    item.setSubJobCdNm(edge.getString("subJobCdNm"));
-                    item.setSysCompanyCdNm(edge.getString("sysCompanyCdNm"));
-                    item.setJobDetailLink(edge.getString("jobDetailLink"));
-                    PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(edge.getString("jobDetailLink"));
-                    item.setPersonalHistory(personalHistoryDto.getFrom());
-                    item.setPersonalHistoryEnd(personalHistoryDto.getTo());
-                    if (edge.isNull("staYmdTime")) {
-                        item.setStartDate("영입종료시");
-                    } else {
-                        item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
+                        // 필드 하나가 null/누락이어도 해당 공고만 건너뛰고 나머지는 수집하도록 격리.
+                        Job_mst item = new Job_mst();
+                        item.setAnnoId(edge.opt("annoId") == null ? null : edge.get("annoId").toString());
+                        item.setAnnoSubject(edge.optString("annoSubject", ""));
+                        item.setClassCdNm(edge.optString("classCdNm", ""));
+                        item.setEmpTypeCdNm(edge.optString("empTypeCdNm", ""));
+                        item.setSubJobCdNm(edge.optString("subJobCdNm", ""));
+                        item.setSysCompanyCdNm(edge.optString("sysCompanyCdNm", ""));
+                        String jobDetailLink = edge.optString("jobDetailLink", "");
+                        if (item.getAnnoId() == null || item.getAnnoId().isBlank() || item.getAnnoSubject().isBlank()) {
+                            log.warn("네이버 공고 필수값 누락으로 건너뜀 (index={}, annoId={})", i, item.getAnnoId());
+                            continue;
+                        }
+                        item.setJobDetailLink(jobDetailLink);
+                        PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(jobDetailLink);
+                        item.setPersonalHistory(personalHistoryDto.getFrom());
+                        item.setPersonalHistoryEnd(personalHistoryDto.getTo());
+                        if (edge.isNull("staYmdTime")) {
+                            item.setStartDate("영입종료시");
+                        } else {
+                            item.setStartDate(edge.getString("staYmdTime").replace(".", "-"));
+                        }
+                        if (edge.isNull("endYmdTime")) {
+                            item.setEndDate("영입종료시");
+                        } else {
+                            item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
+                        }
+                        result.add(item);
+                    } catch (Exception itemEx) {
+                        log.error("네이버 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
                     }
-                    if (edge.isNull("endYmdTime")) {
-                        item.setEndDate("영입종료시");
-                    } else {
-                        item.setEndDate(edge.getString("endYmdTime").replace(".", "-"));
-                    }
-                    result.add(item);
                 }
 
                 idx += 10;

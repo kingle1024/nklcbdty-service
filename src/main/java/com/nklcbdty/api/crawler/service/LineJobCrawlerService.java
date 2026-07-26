@@ -47,6 +47,7 @@ public class LineJobCrawlerService implements JobCrawler {
 
             // edges 배열을 반복
             for (int i = 0; i < edges.length(); i++) {
+              try {
                 JSONObject edge = edges.getJSONObject(i);
 
 
@@ -99,6 +100,9 @@ public class LineJobCrawlerService implements JobCrawler {
                         result.add(item);
                     }
                 }
+              } catch (Exception itemEx) {
+                log.error("라인 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+              }
             }
 
             for (Job_mst item : result) {
@@ -163,14 +167,17 @@ public class LineJobCrawlerService implements JobCrawler {
             }
 
             for (Job_mst item : result) {
-                if (
-                    item.getSubJobCdNm().contains("Notinuse") ||
-                    item.getSubJobCdNm().contains("notinuse")
-                ) {
-                    item.setSubJobCdNm(null);
+                final String subJobCdNm = item.getSubJobCdNm();
+                if (subJobCdNm == null) {
+                    continue;
                 }
-                final String subJobCdNmReplace = item.getSubJobCdNm().replace(" ", "");
-                item.setSubJobCdNm(subJobCdNmReplace);
+                // Notinuse 는 미사용 코드 → null 처리 후 다음 항목으로. (기존엔 null 로 만든 직후
+                // .replace() 를 호출해 NPE 가 발생, 이후 분류 후처리가 통째로 중단됐다.)
+                if (subJobCdNm.contains("Notinuse") || subJobCdNm.contains("notinuse")) {
+                    item.setSubJobCdNm(null);
+                    continue;
+                }
+                item.setSubJobCdNm(subJobCdNm.replace(" ", ""));
             }
 
         } catch (Exception e) {

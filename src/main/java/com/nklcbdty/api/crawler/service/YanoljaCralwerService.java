@@ -38,7 +38,7 @@ public class YanoljaCralwerService {
         List<Job_mst> result = new ArrayList<>();
 
         try {
-            Document doc = Jsoup.connect("https://careers.yanolja.co/home").get();
+            Document doc = commonService.jsoupConnect("https://careers.yanolja.co/home").get();
             Elements scripts = doc.getElementsByTag("script");
             String regex = "/_next/static/(.*?)/_ssgManifest.js";
             Pattern pattern = Pattern.compile(regex);
@@ -73,10 +73,15 @@ public class YanoljaCralwerService {
 
                 JSONArray jsonArray1 = jsonObject.getJSONObject("state").getJSONArray("data");
                 for (int j = 0; j < jsonArray1.length(); j++) {
+                  try {
                     Job_mst item = new Job_mst();
                     JSONObject data = jsonArray1.getJSONObject(j);
-                    item.setAnnoId(data.get("openingId").toString());
-                    item.setAnnoSubject(data.getString("title"));
+                    item.setAnnoId(data.opt("openingId") == null ? null : data.get("openingId").toString());
+                    item.setAnnoSubject(data.optString("title", ""));
+                    if (item.getAnnoId() == null || item.getAnnoId().isBlank() || item.getAnnoSubject().isBlank()) {
+                        log.warn("야놀자 공고 필수값 누락으로 건너뜀 (jobIndex={}, openingId={})", j, item.getAnnoId());
+                        continue;
+                    }
                     if(data.has("job") && !data.isNull("job")) {
                         item.setClassCdNm(data.getString("job"));
                     } else {
@@ -115,6 +120,9 @@ public class YanoljaCralwerService {
                         item.setPersonalHistoryEnd(((Integer) to).longValue());
                     }
                     result.add(item);
+                  } catch (Exception itemEx) {
+                    log.error("야놀자 공고 파싱 실패 (jobIndex={}): {}", j, itemEx.getMessage(), itemEx);
+                  }
                 }
             }
 

@@ -49,47 +49,63 @@ public class DaangnJobCrawlerService {
 			JSONArray allJobPostNodes = jsonObj.getJSONObject("result").getJSONObject("data").getJSONObject("allJobPost").getJSONArray("nodes");
 			
 			for(int i = 0; i < allDepartmentFilteredJobPostNodes.length(); i++) {
-				Job_mst job_mst = new Job_mst();
-				JSONObject item = allDepartmentFilteredJobPostNodes.getJSONObject(i);
-				String classCdNm;
-				String subJobCdNm;
-				
-				String jobDetailLink = item.get("absoluteUrl").toString(); 
-				String annoId = item.get("ghId").toString();
-				String annoSubject = item.get("title").toString();
-				String rowEmploymentType = item.get("employmentType").toString(); // 컨버트 필요.
-				String empTypeCdNm = ConvertCodeToEmpType(rowEmploymentType);
-				
-				String sysCompanyCdNm = allJobPostNodes.getJSONObject(i).get("corporate").toString();
-				
-				JSONArray departmentsNodes = item.getJSONArray("departments");
-				for (int j = 0; j < departmentsNodes.length(); j++) {
-					JSONObject department = departmentsNodes.getJSONObject(j);
-					String rowDepartmentId = department.get("id").toString();
-					String departmentName = convertDepartmentIdToName(rowDepartmentId);
-					if (departmentName.contains(",")) {
-						String[] departmentNames = splitDepartmentName(departmentName);
-						classCdNm = departmentNames[0];
-						subJobCdNm = departmentNames[1];
-						
-						job_mst.setClassCdNm(classCdNm);
-						job_mst.setSubJobCdNm(subJobCdNm.trim());
-					} else {
-						classCdNm = departmentName;
-						job_mst.setClassCdNm(classCdNm);
+				try {
+					Job_mst job_mst = new Job_mst();
+					JSONObject item = allDepartmentFilteredJobPostNodes.getJSONObject(i);
+					String classCdNm;
+					String subJobCdNm;
+
+					String jobDetailLink = item.optString("absoluteUrl", "");
+					String annoId = item.opt("ghId") == null ? null : item.get("ghId").toString();
+					String annoSubject = item.optString("title", "");
+					String rowEmploymentType = item.optString("employmentType", ""); // 컨버트 필요.
+					String empTypeCdNm = ConvertCodeToEmpType(rowEmploymentType);
+
+					if (annoId == null || annoId.isBlank() || annoSubject.isBlank()) {
+						log.warn("당근 공고 필수값 누락으로 건너뜀 (index={}, ghId={})", i, annoId);
+						continue;
 					}
+
+					// allJobPost 와 allDepartmentFilteredJobPost 는 별개 배열이라 길이/순서가 다를 수 있다.
+					// 같은 인덱스로 접근하다 IndexOutOfBounds 로 전체가 죽지 않도록 범위를 확인한다.
+					String sysCompanyCdNm = "";
+					if (i < allJobPostNodes.length()) {
+						sysCompanyCdNm = allJobPostNodes.getJSONObject(i).optString("corporate", "");
+					}
+
+					JSONArray departmentsNodes = item.optJSONArray("departments");
+					if (departmentsNodes != null) {
+						for (int j = 0; j < departmentsNodes.length(); j++) {
+							JSONObject department = departmentsNodes.getJSONObject(j);
+							String rowDepartmentId = department.optString("id", "");
+							String departmentName = convertDepartmentIdToName(rowDepartmentId);
+							if (departmentName.contains(",")) {
+								String[] departmentNames = splitDepartmentName(departmentName);
+								classCdNm = departmentNames[0];
+								subJobCdNm = departmentNames[1];
+
+								job_mst.setClassCdNm(classCdNm);
+								job_mst.setSubJobCdNm(subJobCdNm.trim());
+							} else {
+								classCdNm = departmentName;
+								job_mst.setClassCdNm(classCdNm);
+							}
+						}
+					}
+
+					job_mst.setJobDetailLink(jobDetailLink);
+	                PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(jobDetailLink);
+	                job_mst.setPersonalHistory(personalHistoryDto.getFrom());
+	                job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
+	                job_mst.setAnnoId(annoId);
+					job_mst.setAnnoSubject(annoSubject);
+					job_mst.setEmpTypeCdNm(empTypeCdNm);
+					job_mst.setSysCompanyCdNm(sysCompanyCdNm);
+
+					list.add(job_mst);
+				} catch (Exception itemEx) {
+					log.error("당근 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
 				}
-				
-				job_mst.setJobDetailLink(jobDetailLink);
-                PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage(jobDetailLink);
-                job_mst.setPersonalHistory(personalHistoryDto.getFrom());
-                job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
-                job_mst.setAnnoId(annoId);
-				job_mst.setAnnoSubject(annoSubject);
-				job_mst.setEmpTypeCdNm(empTypeCdNm);
-				job_mst.setSysCompanyCdNm(sysCompanyCdNm);
-				
-				list.add(job_mst);
 			}
 
             for (Job_mst item : list) {
