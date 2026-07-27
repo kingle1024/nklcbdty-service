@@ -168,22 +168,49 @@ public class CrawlerCommonService {
             }
         }
 
-        // 기존 row 의 personalHistory 가 LLM 보정으로 바뀌었다면 update.
-        // 신규(jobsToSave) 는 호출자가 어차피 저장하므로 여기서 다시 다루지 않음.
+        // 기존 row 갱신. 신규(jobsToSave) 는 호출자가 어차피 저장하므로 여기서 다시 다루지 않음.
+        // 크롤 결과에 여전히 존재하는(=살아있는) 공고는 최신 값으로 되살린다:
+        //  1) personalHistory : LLM 경력 보정 결과 반영
+        //  2) endDate        : 마감일 변경/재오픈 반영. 과거 종료 처리(reconcileEndedJobs)나
+        //                       예전 크롤 시점 값으로 endDate 가 과거에 굳어, 살아있는 공고가
+        //                       목록(endDate>now 필터)에서 사라지던 문제를 해결한다.
+        //  3) subJobCdNm     : 비어있을 때만 크롤 값으로 채운다. Gemini 등으로 이미 분류된
+        //                       기존 값은 덮어쓰지 않는다(크롤러 키워드 분류가 null 일 수 있으므로).
         List<Job_mst> existingToUpdate = new ArrayList<>();
         for (Job_mst jobItem : result) {
             Job_mst existing = existingJobs.stream()
                 .filter(e -> e.getAnnoId().equals(jobItem.getAnnoId()))
                 .findFirst().orElse(null);
             if (existing == null) continue;
+
+            boolean changed = false;
+
             if (existing.getPersonalHistory() != jobItem.getPersonalHistory()) {
                 existing.setPersonalHistory(jobItem.getPersonalHistory());
+                changed = true;
+            }
+
+            final String freshEndDate = jobItem.getEndDate();
+            if (freshEndDate != null && !freshEndDate.isBlank()
+                && !freshEndDate.equals(existing.getEndDate())) {
+                existing.setEndDate(freshEndDate);
+                changed = true;
+            }
+
+            final String freshSubJob = jobItem.getSubJobCdNm();
+            if (freshSubJob != null && !freshSubJob.isBlank()
+                && (existing.getSubJobCdNm() == null || existing.getSubJobCdNm().isBlank())) {
+                existing.setSubJobCdNm(freshSubJob);
+                changed = true;
+            }
+
+            if (changed) {
                 existingToUpdate.add(existing);
             }
         }
         if (!existingToUpdate.isEmpty()) {
             crawlerRepository.saveAll(existingToUpdate);
-            log.info("기존 row 경력 보정 update — {}건 (회사={})", existingToUpdate.size(), company);
+            log.info("기존 row 갱신 update — {}건 (회사={})", existingToUpdate.size(), company);
         }
 
         return jobsToSave;
