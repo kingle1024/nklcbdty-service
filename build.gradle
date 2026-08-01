@@ -89,6 +89,8 @@ dependencies {
 
 	implementation 'org.json:json:20240303'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	// 목록 API 응답 캐시(@Cacheable/@CacheEvict). 저장소는 위 data-redis 를 그대로 쓴다.
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
 
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.kafka:spring-kafka'

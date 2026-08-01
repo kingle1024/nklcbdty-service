@@ -4,9 +4,11 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.ai.nlp.PersonalHistoryEnsemble;
+import com.nklcbdty.api.common.CacheConfig;
 import com.nklcbdty.api.ai.service.GeminiService;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.common.crawler.repository.CrawlerRepository;
@@ -495,6 +497,13 @@ public class CrawlerCommonService {
         return now.isAfter(endDateTime);
     }
 
+    /**
+     * 크롤 결과 저장. 모든 크롤 경로({@code /api/crawler} 의 각 case)가 마지막에 여기를 거친다.
+     *
+     * <p>크롤 중간에 일어나는 다른 쓰기(getNotSaveJobItem 의 기존 row 갱신, reconcileEndedJobs 의
+     * 종료 마킹)는 전부 이 호출보다 앞이라, 여기서 한 번 비우면 그 변경분까지 같이 반영된다.</p>
+     */
+    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
     public List<Job_mst> saveAll(List<Job_mst> result) {
         return crawlerRepository.saveAll(result);
     }
