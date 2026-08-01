@@ -172,6 +172,8 @@ public class CrawlerCommonService {
             }
         }
 
+        classifyUnclassifiedExistingJobs(result, existingJobs);
+
         // 기존 row 갱신. 신규(jobsToSave) 는 호출자가 어차피 저장하므로 여기서 다시 다루지 않음.
         // 크롤 결과에 여전히 존재하는(=살아있는) 공고는 최신 값으로 되살린다:
         //  1) personalHistory : LLM 경력 보정 결과 반영
@@ -180,6 +182,8 @@ public class CrawlerCommonService {
         //                       목록(endDate>now 필터)에서 사라지던 문제를 해결한다.
         //  3) subJobCdNm     : 비어있을 때만 크롤 값으로 채운다. Gemini 등으로 이미 분류된
         //                       기존 값은 덮어쓰지 않는다(크롤러 키워드 분류가 null 일 수 있으므로).
+        //  4) jobDetailLink  : 회사가 채용 사이트를 옮기면 기존 row 는 죽은 링크를 계속 들고 있고,
+        //                       링크 점검 배치가 매일 그 row 를 종료 처리한다(당근 이관 때 실제로 발생).
         List<Job_mst> existingToUpdate = new ArrayList<>();
         for (Job_mst jobItem : result) {
             Job_mst existing = existingJobs.stream()
@@ -195,9 +199,18 @@ public class CrawlerCommonService {
             }
 
             final String freshEndDate = jobItem.getEndDate();
-            if (freshEndDate != null && !freshEndDate.isBlank()
-                && !freshEndDate.equals(existing.getEndDate())) {
-                existing.setEndDate(freshEndDate);
+            if (freshEndDate != null && !freshEndDate.isBlank()) {
+                if (!freshEndDate.equals(existing.getEndDate())) {
+                    existing.setEndDate(freshEndDate);
+                    changed = true;
+                }
+            } else if (isEndedOrBroken(existing.getEndDate())) {
+                // 크롤에 잡혔다 = 회사 사이트에 아직 걸려 있다. 그런데 마감일이 없는 상시채용 공고라
+                // 위 분기로는 되살릴 방법이 없어, 한 번 종료로 찍히면 영영 목록에서 빠졌다.
+                // (링크 점검 배치가 이관된 옛 링크를 종료/error 로 찍어둔 당근 공고들이 이 경우)
+                log.info("종료 처리됐지만 크롤에 다시 잡힌 공고 복구 — annoId={} endDate={} → 상시채용",
+                    existing.getAnnoId(), existing.getEndDate());
+                existing.setEndDate(null);
                 changed = true;
             }
 
@@ -205,6 +218,13 @@ public class CrawlerCommonService {
             if (freshSubJob != null && !freshSubJob.isBlank()
                 && (existing.getSubJobCdNm() == null || existing.getSubJobCdNm().isBlank())) {
                 existing.setSubJobCdNm(freshSubJob);
+                changed = true;
+            }
+
+            final String freshLink = jobItem.getJobDetailLink();
+            if (freshLink != null && !freshLink.isBlank()
+                && !freshLink.equals(existing.getJobDetailLink())) {
+                existing.setJobDetailLink(freshLink);
                 changed = true;
             }
 
@@ -218,6 +238,49 @@ public class CrawlerCommonService {
         }
 
         return jobsToSave;
+    }
+
+    /**
+     * 기존 row 중 subJobCdNm 이 비어 있는 건을 LLM 으로 분류한다.
+     *
+     * <p>지금까지 Gemini 분류는 신규 저장분에만 돌았다. 그래서 크롤러 키워드 규칙이 못 맞춘 공고가
+     * subJobCdNm=null 로 한 번 들어가면, 이후 크롤에서는 "이미 있는 공고"로 걸러져 영영 분류되지 않고
+     * 목록(subJobCdNm IS NOT NULL 필터)에서 빠져 있었다. 분류가 필요한 건만 모아 다시 돌린다.</p>
+     */
+    private void classifyUnclassifiedExistingJobs(List<Job_mst> result, List<Job_mst> existingJobs) {
+        List<Job_mst> needClassify = result.stream()
+            .filter(jobItem -> jobItem.getSubJobCdNm() == null || jobItem.getSubJobCdNm().isBlank())
+            .filter(jobItem -> existingJobs.stream().anyMatch(e -> {
+                if (!e.getAnnoId().equals(jobItem.getAnnoId())) return false;
+                return e.getSubJobCdNm() == null || e.getSubJobCdNm().isBlank();
+            }))
+            .collect(Collectors.toList());
+
+        if (needClassify.isEmpty()) return;
+
+        log.info("기존 row 직무 분류 대상 {}건", needClassify.size());
+        refineJobItemBygemini(needClassify);
+    }
+
+    /**
+     * 종료로 찍혀 있거나 손상된 endDate 인지 판단한다.
+     * 링크 점검 배치의 "error"(2000-01-01) 마킹과 과거 날짜를 모두 종료로 본다.
+     */
+    private boolean isEndedOrBroken(String endDateStr) {
+        if (endDateStr == null || "영입종료시".equals(endDateStr)) {
+            return false; // 이미 상시채용
+        }
+        if ("error".equals(endDateStr)) {
+            return true;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (DateTimeFormatter formatter : END_DATE_FORMATTERS) {
+            try {
+                return !LocalDateTime.parse(endDateStr, formatter).isAfter(now);
+            } catch (DateTimeParseException ignored) { }
+        }
+        // 파싱 불가는 건드리지 않는다.
+        return false;
     }
 
     public void refineJobData(List<Job_mst> result) {
