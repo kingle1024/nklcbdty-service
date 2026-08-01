@@ -35,4 +35,22 @@ public enum CompanyEnums {
     public String getCompanyCd() {
         return name();
     }
+
+    /**
+     * {@code job_mst.company_cd} 로 회사를 찾는다.
+     *
+     * <p>없으면 null. 크롤러가 먼저 추가되고 이 enum 에 아직 없는 코드가 DB 에 있을 수 있어,
+     * 예외 대신 null 을 주고 호출부가 코드값으로 폴백하게 한다.</p>
+     */
+    public static CompanyEnums fromCompanyCd(String companyCd) {
+        if (companyCd == null) {
+            return null;
+        }
+        for (CompanyEnums company : values()) {
+            if (company.getCompanyCd().equalsIgnoreCase(companyCd)) {
+                return company;
+            }
+        }
+        return null;
+    }
 }
