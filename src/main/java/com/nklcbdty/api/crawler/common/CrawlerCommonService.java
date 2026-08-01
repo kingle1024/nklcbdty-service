@@ -119,6 +119,10 @@ public class CrawlerCommonService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
+            // GET 경로와 동일하게 브라우저 User-Agent + 타임아웃을 건다. (WAF 차단/무한 대기 방지)
+            conn.setRequestProperty("User-Agent", BROWSER_USER_AGENT);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setDoOutput(true);
 
             try (OutputStream os = conn.getOutputStream()) {
