@@ -9,9 +9,14 @@ import java.util.List;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nklcbdty.api.common.CacheConfig;
 import com.nklcbdty.common.crawler.repository.JobRepository;
 import com.nklcbdty.common.vo.Job_mst;
 
@@ -21,10 +26,29 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class JobService {
     private final JobRepository jobRepository;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public JobService(JobRepository jobRepository) {
+    public JobService(JobRepository jobRepository, ObjectMapper objectMapper) {
         this.jobRepository = jobRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * {@code /api/list} 응답 JSON. 캐시 히트 시 Redis GET 한 번으로 끝난다.
+     *
+     * <p>{@link #list(String)} 결과를 객체로 캐싱하지 않고 직렬화까지 끝낸 문자열을 담는 이유는
+     * {@link CacheConfig} 주석에 적어두었다. 직렬화는 컨트롤러가 쓰는 것과 같은
+     * 스프링 관리 ObjectMapper 로 하므로 응답 본문은 캐시 도입 전과 동일하다.</p>
+     */
+    @Cacheable(cacheNames = CacheConfig.JOB_LIST, key = "#company")
+    public String listAsJson(String company) {
+        try {
+            return objectMapper.writeValueAsString(list(company));
+        } catch (JsonProcessingException e) {
+            // 직렬화 실패는 설정/모델 문제이므로 조용히 넘기지 않는다.
+            throw new IllegalStateException("공고 목록 JSON 직렬화 실패 company=" + company, e);
+        }
     }
 
     public List<Job_mst> list(String company) {
@@ -114,10 +138,13 @@ public class JobService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
     public void deleteByCompany(String company_cd) {
         jobRepository.deleteByCompanyCd(company_cd);
     }
 
+    // company=ALL 캐시도 같이 틀어지므로 특정 키만 지우지 않고 전체를 비운다.
+    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
     public void deleteAll() {
         jobRepository.deleteAllInBatch();
     }
