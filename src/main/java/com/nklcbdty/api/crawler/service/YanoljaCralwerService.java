@@ -3,28 +3,40 @@ package com.nklcbdty.api.crawler.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
+import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 야놀자 채용 크롤러.
+ *
+ * <p>careers.yanolja.co(그리팅) 의 {@code _next/data} 에서 공고를 긁었지만, 채용 시스템이 Workday 로
+ * 이관되면서 그 페이지는 회사 소개/복지 페이지만 남고 공고 목록이 통째로 빠졌다(openings 항상 0건).
+ * 지금은 Workday 채용 사이트가 유일한 공고 출처라 Workday 의 공개 CxS API 를 직접 호출한다.</p>
+ */
 @Slf4j
 @Service
 public class YanoljaCralwerService {
+
+    private static final String WORKDAY_CXS_BASE =
+        "https://yanolja.wd102.myworkdayjobs.com/wday/cxs/yanolja/External_Yanolja";
+    private static final String WORKDAY_SITE_BASE =
+        "https://yanolja.wd102.myworkdayjobs.com/ko-KR/External_Yanolja";
+
+    private static final int PAGE_SIZE = 20;
+    // 무한 루프 방지용 상한. 야놀자 공고 규모(수십 건)에 비해 충분히 크다.
+    private static final int MAX_PAGES = 20;
 
     private final CrawlerCommonService commonService;
 
@@ -38,91 +50,46 @@ public class YanoljaCralwerService {
         List<Job_mst> result = new ArrayList<>();
 
         try {
-            Document doc = commonService.jsoupConnect("https://careers.yanolja.co/home").get();
-            Elements scripts = doc.getElementsByTag("script");
-            String regex = "/_next/static/(.*?)/_ssgManifest.js";
-            Pattern pattern = Pattern.compile(regex);
-            String buildName = "";
-            for (Element script : scripts) {
-                String src = script.attr("src"); // src 속성 값 가져오기
+            log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.",
+                this.getClass(), commonService.formatCurrentTime());
 
-                // 정규식으로 매칭
-                Matcher matcher = pattern.matcher(src);
-                if (matcher.find()) {
-                    buildName = matcher.group(1); // 첫 번째 그룹 추출
+            int offset = 0;
+            for (int page = 0; page < MAX_PAGES; page++) {
+                String body = new JSONObject()
+                    .put("appliedFacets", new JSONObject())
+                    .put("limit", PAGE_SIZE)
+                    .put("offset", offset)
+                    .put("searchText", "")
+                    .toString();
+
+                String jsonResponse = commonService.fetchApiResponsePost(WORKDAY_CXS_BASE + "/jobs", body);
+                JSONObject pageObj = new JSONObject(jsonResponse);
+                JSONArray postings = pageObj.optJSONArray("jobPostings");
+
+                if (postings == null) {
+                    log.error("야놀자 크롤 응답에서 jobPostings 를 찾지 못함. 응답 앞부분: {}",
+                        jsonResponse == null ? "null" : jsonResponse.substring(0, Math.min(300, jsonResponse.length())));
+                    break;
                 }
-            }
-
-            final String apiUrl = "https://careers.yanolja.co/_next/data/"+buildName+"/ko/home.json?occupations=R%26D&employments=FULL_TIME_WORKER&page=home";
-            final String jsonResponse = commonService.fetchApiResponse(apiUrl);
-
-            // JSON 객체로 변환
-            JSONObject jsonResult = new JSONObject(jsonResponse);
-
-            // edges 배열 가져오기
-            JSONArray jsonArray = jsonResult.getJSONObject("pageProps")
-                .getJSONObject("dehydratedState")
-                .getJSONArray("queries");
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-
-                if (jsonObject.getJSONObject("state") == null ||
-                    jsonObject.getJSONObject("state").get("data") instanceof JSONObject) {
-                    continue;
+                if (postings.isEmpty()) {
+                    // 공고가 실제로 0건일 수 있다(Workday 이관 직후 등). 정상 종료로 본다.
+                    break;
                 }
 
-                JSONArray jsonArray1 = jsonObject.getJSONObject("state").getJSONArray("data");
-                for (int j = 0; j < jsonArray1.length(); j++) {
-                  try {
-                    Job_mst item = new Job_mst();
-                    JSONObject data = jsonArray1.getJSONObject(j);
-                    item.setAnnoId(data.opt("openingId") == null ? null : data.get("openingId").toString());
-                    item.setAnnoSubject(data.optString("title", ""));
-                    if (item.getAnnoId() == null || item.getAnnoId().isBlank() || item.getAnnoSubject().isBlank()) {
-                        log.warn("야놀자 공고 필수값 누락으로 건너뜀 (jobIndex={}, openingId={})", j, item.getAnnoId());
-                        continue;
-                    }
-                    if(data.has("job") && !data.isNull("job")) {
-                        item.setClassCdNm(data.getString("job"));
-                    } else {
-                        item.setClassCdNm("기타");
-                    }
-                    String employmentType = data.getJSONObject("openingJobPosition").getJSONArray("openingJobPositions").getJSONObject(0).getJSONObject("jobPositionEmployment").getString("employmentType");
-                    switch (employmentType) {
-                        case "FULL_TIME_WORKER": {
-                            item.setEmpTypeCdNm("정규");
-                            break;
+                for (int i = 0; i < postings.length(); i++) {
+                    try {
+                        Job_mst item = toJobMst(postings.getJSONObject(i));
+                        if (item != null) {
+                            result.add(item);
                         }
-                        case "CONTRACT_WORKER": {
-                            item.setEmpTypeCdNm("비정규");
-                            break;
-                        }
-                        default: {
-                            item.setEmpTypeCdNm(employmentType);
-                        }
+                    } catch (Exception itemEx) {
+                        log.error("야놀자 공고 파싱 실패 (offset={}, index={}): {}", offset, i, itemEx.getMessage(), itemEx);
                     }
-                    item.setJobDetailLink("https://careers.yanolja.co/o/" + item.getAnnoId());
-                    item.setSubJobCdNm(item.getClassCdNm());
-                    if(data.has("subsidiary") && !data.isNull("subsidiary")) {
-                        item.setSysCompanyCdNm(data.getString("subsidiary"));
-                    } else {
-                        item.setSysCompanyCdNm("야놀자");
-                    }
-                    if (commonService.isCloseDate(data.get("dueDate"))) {
-                        item.setEndDate(data.get("dueDate").toString());
-                    }
-                    Object from = data.getJSONObject("careerInfo").get("from");
-                    if (from instanceof Integer) {
-                        item.setPersonalHistory(((Integer) from).longValue());
-                    }
-                    Object to = data.getJSONObject("careerInfo").get("to");
-                    if (to instanceof Integer) {
-                        item.setPersonalHistoryEnd(((Integer) to).longValue());
-                    }
-                    result.add(item);
-                  } catch (Exception itemEx) {
-                    log.error("야놀자 공고 파싱 실패 (jobIndex={}): {}", j, itemEx.getMessage(), itemEx);
-                  }
+                }
+
+                offset += PAGE_SIZE;
+                if (offset >= pageObj.optInt("total", 0)) {
+                    break;
                 }
             }
 
@@ -138,10 +105,78 @@ public class YanoljaCralwerService {
                 }
             }
 
+            log.info("야놀자 크롤 완료 — {}건", result.size());
         } catch (Exception e) {
             log.error("Error occurred while crawling jobs: {}", e.getMessage(), e);
         }
 
         return CompletableFuture.completedFuture(commonService.getNotSaveJobItem("YANOLJA", result));
+    }
+
+    /** Workday 목록 항목 하나를 Job_mst 로 변환한다. 필수값이 없으면 null. */
+    private Job_mst toJobMst(JSONObject posting) {
+        String annoSubject = posting.optString("title", "");
+        String externalPath = posting.optString("externalPath", "");
+        // bulletFields[0] 이 공고번호(jobReqId). 공고가 수정돼도 유지되는 값이라 annoId 로 쓴다.
+        JSONArray bulletFields = posting.optJSONArray("bulletFields");
+        String annoId = (bulletFields == null || bulletFields.isEmpty()) ? "" : bulletFields.optString(0, "");
+
+        if (annoId.isBlank() || annoSubject.isBlank() || externalPath.isBlank()) {
+            log.warn("야놀자 공고 필수값 누락으로 건너뜀 (title='{}', path='{}', reqId='{}')",
+                annoSubject, externalPath, annoId);
+            return null;
+        }
+
+        Job_mst item = new Job_mst();
+        item.setAnnoId(annoId);
+        item.setAnnoSubject(annoSubject);
+        item.setJobDetailLink(WORKDAY_SITE_BASE + externalPath);
+        item.setSysCompanyCdNm("야놀자");
+        // Workday 공고에는 마감일이 없다(내려갈 때까지 모집). endDate 는 비워 두고
+        // 사이트에서 사라지면 reconcileEndedJobs 가 종료 처리한다.
+
+        applyDetail(item, externalPath);
+        return item;
+    }
+
+    /**
+     * 상세 API 로 고용형태/게시일/경력을 채운다.
+     * 상세 조회가 실패해도 목록에서 얻은 정보만으로 공고는 살린다.
+     */
+    private void applyDetail(Job_mst item, String externalPath) {
+        try {
+            String detailJson = commonService.fetchApiResponse(WORKDAY_CXS_BASE + externalPath);
+            JSONObject info = new JSONObject(detailJson).optJSONObject("jobPostingInfo");
+            if (info == null) {
+                log.warn("야놀자 공고 상세에 jobPostingInfo 없음 (path={})", externalPath);
+                return;
+            }
+
+            item.setEmpTypeCdNm(convertTimeTypeToEmpType(info.optString("timeType", "")));
+            item.setStartDate(info.optString("startDate", null));
+
+            String jobDescription = info.optString("jobDescription", "");
+            if (!jobDescription.isBlank()) {
+                PersonalHistoryDto history = commonService.getPersonalHistory(Jsoup.parse(jobDescription).text());
+                item.setPersonalHistory(history.getFrom());
+                item.setPersonalHistoryEnd(history.getTo());
+            }
+        } catch (Exception e) {
+            log.error("야놀자 공고 상세 조회 실패 (path={}): {}", externalPath, e.getMessage());
+        }
+    }
+
+    /** Workday 의 timeType(Full time/Part time)을 기존 고용형태 표기로 바꾼다. */
+    private String convertTimeTypeToEmpType(String timeType) {
+        if (timeType == null || timeType.isBlank()) return "";
+
+        switch (timeType.replace(" ", "").toUpperCase()) {
+            case "FULLTIME":
+                return "정규";
+            case "PARTTIME":
+                return "비정규";
+            default:
+                return timeType;
+        }
     }
 }
