@@ -8,6 +8,10 @@ import lombok.Getter;
 public enum AllowedPaths {
     LOGIN("/login"),
     KAKAO_LOGIN("/api/kakaoLogin"),
+    // 자체 회원가입/로그인. 인증 전 단계이므로 공개.
+    AUTH_SIGNUP("/api/auth/signup"),
+    AUTH_LOGIN("/api/auth/login"),
+    AUTH_EMAIL_EXISTS("/api/auth/email-exists"),
     OAUTH2("/oauth2/**"),
     DETAIL("/detail/**"),
     LOG("/api/log/**"),
