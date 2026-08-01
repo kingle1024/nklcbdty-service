@@ -27,10 +27,10 @@ public class RedisConfig {
     @Value("${spring.redis.password}")
     private String password;
 
-    // 개발 환경 설정
+    // 기본 설정. dev/prod 모두 단일 Redis 를 쓴다.
+    // (dev = application-dev.properties 의 cloudtype 주소, prod = REDIS_HOST/REDIS_PORT 환경변수)
     @Bean
-    // @Profile("dev")
-    @Profile("prod")
+    @Profile("!cluster")
     public RedisConnectionFactory redisStandaloneConnectionFactory (
         @Value("${spring.redis.host}") String host,
         @Value("${spring.redis.port}") int port) {
@@ -46,10 +46,10 @@ public class RedisConfig {
         return new LettuceConnectionFactory(config, clientConfig);
     }
 
-    // 운영 환경 설정
+    // Redis Cluster 를 쓸 때만 'cluster' 프로파일로 켠다.
+    // 예전 EC2 클러스터(spring.redis.cluster.nodes)는 지금 응답하지 않으므로 기본에서 제외했다.
     @Bean
-    // @Profile("prod")
-    @Profile("dev")
+    @Profile("cluster")
     public RedisConnectionFactory redisClusterConnectionFactory (
         @Value("${spring.redis.cluster.nodes}") String clusterNodes) {
 
