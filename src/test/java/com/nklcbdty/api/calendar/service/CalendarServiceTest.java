@@ -26,8 +26,10 @@ class CalendarServiceTest {
     @Mock
     private JobRepository jobRepository;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private CalendarService calendarService() {
-        return new CalendarService(new JobService(jobRepository, new ObjectMapper()));
+        return new CalendarService(new JobService(jobRepository, objectMapper), objectMapper);
     }
 
     private Job_mst job(String annoId, String subject, String endDate) {
@@ -117,8 +119,8 @@ class CalendarServiceTest {
     }
 
     @Test
-    @DisplayName("이미 지난 마감도 그 달 캘린더에는 남고, closed=true 로 표시된다")
-    void keepsPastDeadlinesMarkedClosed() {
+    @DisplayName("이미 지난 마감도 그 달 캘린더에는 남는다 (마감 여부 판정은 프론트가 endDate 로 한다)")
+    void keepsPastDeadlines() {
         givenJobs(
             job("1", "이미 마감된 공고", "2000-01-10 18:00:00"),
             job("2", "아직 열린 공고", "2099-08-10 18:00:00")
@@ -127,10 +129,33 @@ class CalendarServiceTest {
 
         CalendarMonthDto past = service.getMonthlyDeadlines(YearMonth.of(2000, 1), "NAVER");
         assertThat(past.getTotalCount()).isEqualTo(1);
-        assertThat(past.getDays().get(0).getJobs().get(0).isClosed()).isTrue();
+        assertThat(past.getDays().get(0).getJobs().get(0).getEndDate()).isEqualTo("2000-01-10 18:00:00");
 
         CalendarMonthDto future = service.getMonthlyDeadlines(YearMonth.of(2099, 8), "NAVER");
-        assertThat(future.getDays().get(0).getJobs().get(0).isClosed()).isFalse();
+        assertThat(future.getTotalCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("응답 JSON 은 '지금' 에 의존하는 값을 담지 않는다 — 그래야 캐싱해도 안전하다")
+    void jsonHasNoTimeDependentField() {
+        givenJobs(job("1", "마감 지난 공고", "2000-01-10 18:00:00"));
+
+        String json = calendarService().getMonthlyDeadlinesAsJson(YearMonth.of(2000, 1), "NAVER");
+
+        assertThat(json).doesNotContain("closed");
+        assertThat(json).contains("\"endDate\":\"2000-01-10 18:00:00\"", "\"endTime\":\"18:00\"");
+    }
+
+    @Test
+    @DisplayName("JSON 응답은 객체 응답을 그대로 직렬화한 것이다")
+    void jsonMatchesObject() throws Exception {
+        givenJobs(job("1", "공고", "2099-08-10 18:00:00"));
+        CalendarService service = calendarService();
+
+        String json = service.getMonthlyDeadlinesAsJson(YearMonth.of(2099, 8), "NAVER");
+
+        assertThat(json).isEqualTo(
+            objectMapper.writeValueAsString(service.getMonthlyDeadlines(YearMonth.of(2099, 8), "NAVER")));
     }
 
     @Test

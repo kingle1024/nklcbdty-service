@@ -6,19 +6,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 import java.time.YearMonth;
-import java.util.Collections;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.nklcbdty.api.calendar.dto.CalendarMonthDto;
 import com.nklcbdty.api.calendar.service.CalendarService;
 
 class CalendarControllerTest {
@@ -35,8 +34,8 @@ class CalendarControllerTest {
     @Test
     @DisplayName("GET /api/calendar/deadlines: year/month 로 그 달 캘린더를 조회한다")
     void deadlines_returnsRequestedMonth() throws Exception {
-        when(calendarService.getMonthlyDeadlines(YearMonth.of(2026, 8), "NAVER"))
-            .thenReturn(new CalendarMonthDto(YearMonth.of(2026, 8), 0, Collections.emptyList()));
+        when(calendarService.getMonthlyDeadlinesAsJson(YearMonth.of(2026, 8), "NAVER"))
+            .thenReturn("{\"year\":2026,\"month\":8,\"totalCount\":0,\"days\":[]}");
 
         mockMvc.perform(get("/api/calendar/deadlines?year=2026&month=8&company=NAVER"))
             .andExpect(status().isOk())
@@ -49,13 +48,24 @@ class CalendarControllerTest {
     @DisplayName("year/month 를 안 주면 이번 달, company 를 안 주면 전체 회사를 조회한다")
     void deadlines_defaultsToThisMonthAndAllCompanies() throws Exception {
         YearMonth thisMonth = YearMonth.now();
-        when(calendarService.getMonthlyDeadlines(any(), any()))
-            .thenReturn(new CalendarMonthDto(thisMonth, 0, Collections.emptyList()));
+        when(calendarService.getMonthlyDeadlinesAsJson(any(), any())).thenReturn("{}");
 
         mockMvc.perform(get("/api/calendar/deadlines"))
             .andExpect(status().isOk());
 
-        verify(calendarService).getMonthlyDeadlines(eq(thisMonth), eq("ALL"));
+        verify(calendarService).getMonthlyDeadlinesAsJson(eq(thisMonth), eq("ALL"));
+    }
+
+    @Test
+    @DisplayName("한글이 깨지지 않도록 UTF-8 로 응답한다")
+    void deadlines_respondsAsUtf8Json() throws Exception {
+        when(calendarService.getMonthlyDeadlinesAsJson(any(), any()))
+            .thenReturn("{\"companyNm\":\"네이버\"}");
+
+        mockMvc.perform(get("/api/calendar/deadlines"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/json;charset=UTF-8"))
+            .andExpect(jsonPath("$.companyNm").value("네이버"));
     }
 
     @Test

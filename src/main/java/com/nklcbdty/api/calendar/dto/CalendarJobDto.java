@@ -30,10 +30,10 @@ public class CalendarJobDto {
     private final String endDate;
     /** 마감 시각 (HH:mm). 캘린더 칸에 "18:00 마감" 처럼 쓴다. */
     private final String endTime;
-    /** 조회 시점 기준 이미 마감된 공고인지. 지난 날짜를 흐리게 처리하는 데 쓴다. */
-    private final boolean closed;
 
-    public CalendarJobDto(Job_mst job, LocalDateTime now) {
+    // 마감 여부(closed)는 일부러 담지 않는다. "지금" 기준 값이라 응답이 시점에 따라 달라지면
+    // Redis 캐싱이 stale 을 만든다. endDate 를 그대로 주고 판정은 프론트가 한다.
+    public CalendarJobDto(Job_mst job) {
         this.id = job.getId();
         this.annoId = job.getAnnoId();
         this.companyCd = job.getCompanyCd();
@@ -49,6 +49,5 @@ public class CalendarJobDto {
         // 캘린더에 올라온 공고는 마감일시가 이미 파싱된 것들이라 null 이 아니지만, 방어적으로 처리한다.
         final LocalDateTime endDateTime = JobEndDates.parse(job.getEndDate());
         this.endTime = endDateTime != null ? endDateTime.format(TIME_FORMATTER) : null;
-        this.closed = endDateTime != null && endDateTime.isBefore(now);
     }
 }

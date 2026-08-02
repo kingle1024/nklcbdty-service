@@ -503,7 +503,7 @@ public class CrawlerCommonService {
      * <p>크롤 중간에 일어나는 다른 쓰기(getNotSaveJobItem 의 기존 row 갱신, reconcileEndedJobs 의
      * 종료 마킹)는 전부 이 호출보다 앞이라, 여기서 한 번 비우면 그 변경분까지 같이 반영된다.</p>
      */
-    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.JOB_LIST, CacheConfig.JOB_CALENDAR }, allEntries = true)
     public List<Job_mst> saveAll(List<Job_mst> result) {
         return crawlerRepository.saveAll(result);
     }

@@ -79,7 +79,7 @@ public class JobDeleteRequestService {
     /** 승인: 상태 변경 + 실제 공고(job_mst) 삭제 */
     @Transactional
     // 공고를 실제로 지우므로 목록 캐시를 비운다. 안 지우면 삭제된 공고가 최대 TTL 동안 계속 보인다.
-    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.JOB_LIST, CacheConfig.JOB_CALENDAR }, allEntries = true)
     public JobDeleteRequest approve(Long id, String processedBy) {
         JobDeleteRequest request = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("삭제요청을 찾을 수 없습니다. id=" + id));

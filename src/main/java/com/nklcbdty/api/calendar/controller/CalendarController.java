@@ -3,7 +3,9 @@ package com.nklcbdty.api.calendar.controller;
 import java.time.YearMonth;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,8 +36,14 @@ public class CalendarController {
         this.calendarService = calendarService;
     }
 
-    @GetMapping("/deadlines")
-    public ResponseEntity<?> deadlines(
+    /**
+     * 응답은 캐시된 JSON 문자열을 그대로 흘려보낸다.
+     *
+     * <p>charset 을 명시하는 이유는 목록 API({@code /api/list})와 같다 — String 반환 시
+     * StringHttpMessageConverter 의 프레임워크 기본 charset 이 ISO-8859-1 이라 한글이 깨질 수 있다.</p>
+     */
+    @GetMapping(value = "/deadlines", produces = "application/json;charset=UTF-8")
+    public String deadlines(
         @RequestParam(required = false) Integer year,
         @RequestParam(required = false) Integer month,
         @RequestParam(defaultValue = "ALL") String company) {
@@ -45,14 +53,21 @@ public class CalendarController {
         final int targetMonth = month != null ? month : thisMonth.getMonthValue();
 
         if (targetMonth < 1 || targetMonth > 12) {
-            return ResponseEntity.badRequest().body("month 는 1~12 여야 합니다. (요청값: " + targetMonth + ")");
+            throw new IllegalArgumentException("month 는 1~12 여야 합니다. (요청값: " + targetMonth + ")");
         }
         if (targetYear < MIN_YEAR || targetYear > MAX_YEAR) {
-            return ResponseEntity.badRequest()
-                                 .body("year 는 " + MIN_YEAR + "~" + MAX_YEAR + " 여야 합니다. (요청값: " + targetYear + ")");
+            throw new IllegalArgumentException(
+                "year 는 " + MIN_YEAR + "~" + MAX_YEAR + " 여야 합니다. (요청값: " + targetYear + ")");
         }
 
-        return ResponseEntity.ok(
-            calendarService.getMonthlyDeadlines(YearMonth.of(targetYear, targetMonth), company));
+        return calendarService.getMonthlyDeadlinesAsJson(YearMonth.of(targetYear, targetMonth), company);
+    }
+
+    /** 잘못된 year/month 는 400. 이 컨트롤러 안에서만 처리해 다른 API 의 예외 처리에 영향을 주지 않는다. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleInvalidParameter(IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+                             .contentType(MediaType.valueOf("text/plain;charset=UTF-8"))
+                             .body(e.getMessage());
     }
 }

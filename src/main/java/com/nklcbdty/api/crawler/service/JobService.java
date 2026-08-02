@@ -172,13 +172,13 @@ public class JobService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.JOB_LIST, CacheConfig.JOB_CALENDAR }, allEntries = true)
     public void deleteByCompany(String company_cd) {
         jobRepository.deleteByCompanyCd(company_cd);
     }
 
     // company=ALL 캐시도 같이 틀어지므로 특정 키만 지우지 않고 전체를 비운다.
-    @CacheEvict(cacheNames = CacheConfig.JOB_LIST, allEntries = true)
+    @CacheEvict(cacheNames = { CacheConfig.JOB_LIST, CacheConfig.JOB_CALENDAR }, allEntries = true)
     public void deleteAll() {
         jobRepository.deleteAllInBatch();
     }
