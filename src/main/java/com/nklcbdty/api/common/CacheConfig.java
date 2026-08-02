@@ -41,6 +41,15 @@ public class CacheConfig implements CachingConfigurer {
     public static final String CATEGORY_LIST = "categoryList";
 
     /**
+     * {@code /api/calendar/deadlines} 응답. 키는 {@code company:yyyy-MM} 이다.
+     *
+     * <p>목록과 같은 전건 조회·중복제거·날짜 파싱을 매번 다시 하므로 같은 이유로 캐싱한다.
+     * 달을 넘길 때마다 원본을 때리던 것이 캐시 히트로 끝난다. 응답에 "지금 기준 마감 여부" 같은
+     * 시점 의존 값을 담지 않기 때문에(마감 판정은 프론트가 endDate 로 한다) 캐싱해도 안전하다.</p>
+     */
+    public static final String JOB_CALENDAR = "jobCalendar";
+
+    /**
      * 무효화를 놓친 경우의 안전망. 크롤 후 @CacheEvict 가 정상 동작하면 여기까지 오지 않는다.
      * 아침에 한 번 채우고 하루 방치하면 그날 올라온 공고가 안 보이므로 짧게 잡는다.
      */
