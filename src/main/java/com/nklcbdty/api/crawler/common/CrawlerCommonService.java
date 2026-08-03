@@ -149,6 +149,14 @@ public class CrawlerCommonService {
     }
 
     public List<Job_mst> getNotSaveJobItem(String company, List<Job_mst> result) {
+        // 한 크롤 결과 안에 같은 annoId 가 두 번 들어오는 경우가 있다. 예를 들어 네이버는
+        // firstIndex 를 10씩 올리며 페이지를 넘기는데, 공고 하나마다 상세 페이지를 따로
+        // 받아오느라 크롤이 길어져 그 사이 목록 순서가 밀리면 같은 공고를 두 페이지에서
+        // 집게 된다. 아래 중복 판정은 DB 에 이미 있는 행만 보기 때문에, 이런 행은 둘 다
+        // "신규"로 분류되어 그대로 두 번 저장된다. anno_id 에 유니크 제약도 없어서
+        // 한 번 들어간 중복 행은 계속 남고, 구독 메일에도 같은 공고가 반복해서 실린다.
+        result = dedupeCrawledByAnnoId(company, result);
+
         reconcileEndedJobs(company, result);
 
         List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
@@ -283,6 +291,25 @@ public class CrawlerCommonService {
         }
         // 파싱 불가는 건드리지 않는다.
         return false;
+    }
+
+    // 크롤 결과에서 annoId 가 겹치는 행을 먼저 나온 것만 남기고 접는다.
+    // 호출자가 회사 단위로 넘기므로 annoId 만 비교해도 된다 (annoId 체계는 크롤 원본마다 다르다).
+    // annoId 가 없는 행은 식별할 수 없으므로 손대지 않고 통과시킨다.
+    List<Job_mst> dedupeCrawledByAnnoId(String company, List<Job_mst> crawled) {
+        Set<String> seen = new HashSet<>();
+        List<Job_mst> unique = new ArrayList<>(crawled.size());
+        for (Job_mst job : crawled) {
+            String annoId = job.getAnnoId();
+            if (annoId == null || seen.add(annoId)) {
+                unique.add(job);
+            }
+        }
+        int dropped = crawled.size() - unique.size();
+        if (dropped > 0) {
+            log.warn("크롤 결과 내 annoId 중복 {}건 제거 (회사={}, 원본={}건)", dropped, company, crawled.size());
+        }
+        return unique;
     }
 
     public void refineJobData(List<Job_mst> result) {
