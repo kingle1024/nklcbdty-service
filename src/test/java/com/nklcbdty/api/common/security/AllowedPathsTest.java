@@ -35,6 +35,13 @@ class AllowedPathsTest {
     }
 
     @Test
+    @DisplayName("자유게시판 목록·상세는 로그인 없이 볼 수 있다")
+    void boardIsPublic() {
+        assertThat(isPublic("/api/board/posts")).isTrue();
+        assertThat(isPublic("/api/board/posts/12")).isTrue();
+    }
+
+    @Test
     @DisplayName("마이페이지처럼 로그인이 필요한 경로는 공개 목록에 없다")
     void privatePathsStayPrivate() {
         assertThat(isPublic("/mypage")).isFalse();
