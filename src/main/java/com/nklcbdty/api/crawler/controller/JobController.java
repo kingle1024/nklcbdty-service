@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nklcbdty.api.common.KvCacheRefresher;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.interfaces.JobCrawler;
 import com.nklcbdty.api.crawler.service.CoupangJobCrawlerService;
@@ -39,6 +41,7 @@ public class JobController {
     private final JobCrawler baeminJobCrawlerService;
     private final DaangnJobCrawlerService daangnJobCrawlerService;
     private final CrawlerCommonService commonService;
+    private final KvCacheRefresher kvCacheRefresher;
 
     @Autowired
     public JobController(
@@ -50,7 +53,8 @@ public class JobController {
         CoupangJobCrawlerService coupangJobCrawlerService,
         @Qualifier("baeminJobCrawlerService") JobCrawler baeminJobCrawlerService,
         DaangnJobCrawlerService daangnJobCrawlerService,
-        JobService jobService, CrawlerCommonService commonService) {
+        JobService jobService, CrawlerCommonService commonService,
+        KvCacheRefresher kvCacheRefresher) {
 
         this.naverJobCrawlerService = naverJobCrawlerService;
         this.kakaoCrawlerService = kakaoCrawlerService;
@@ -62,6 +66,7 @@ public class JobController {
         this.baeminJobCrawlerService = baeminJobCrawlerService;
         this.daangnJobCrawlerService = daangnJobCrawlerService;
         this.commonService = commonService;
+        this.kvCacheRefresher = kvCacheRefresher;
     }
 
     /**
@@ -82,46 +87,22 @@ public class JobController {
         log.info("cralwer company : {}", company);
         try {
             switch (company) {
-                case "naver": {
-                    List<Job_mst> items = naverJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "kakao": {
-                    List<Job_mst> items = kakaoCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "line": {
-                    List<Job_mst> items = lineJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "coupang": {
-                    List<Job_mst> items = coupangJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "baemin": {
-                    List<Job_mst> items = baeminJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "daangn": {
-                    List<Job_mst> items = daangnJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "toss": {
-                    List<Job_mst> items = tossJobCrawlerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
-                case "yanolja": {
-                    List<Job_mst> items = yanoljaCralwerService.crawlJobs().get();
-                    commonService.refineJobItemBygemini(items);
-                    return commonService.saveAll(items);
-                }
+                case "naver":
+                    return crawlSaveAndRefresh(naverJobCrawlerService::crawlJobs, "NAVER");
+                case "kakao":
+                    return crawlSaveAndRefresh(kakaoCrawlerService::crawlJobs, "KAKAO");
+                case "line":
+                    return crawlSaveAndRefresh(lineJobCrawlerService::crawlJobs, "LINE");
+                case "coupang":
+                    return crawlSaveAndRefresh(coupangJobCrawlerService::crawlJobs, "COUPANG");
+                case "baemin":
+                    return crawlSaveAndRefresh(baeminJobCrawlerService::crawlJobs, "BAEMIN");
+                case "daangn":
+                    return crawlSaveAndRefresh(daangnJobCrawlerService::crawlJobs, "DAANGN");
+                case "toss":
+                    return crawlSaveAndRefresh(tossJobCrawlerService::crawlJobs, "TOSS");
+                case "yanolja":
+                    return crawlSaveAndRefresh(yanoljaCralwerService::crawlJobs, "YANOLJA");
                 case "all": {
                     jobService.deleteAll();
 
@@ -157,7 +138,9 @@ public class JobController {
                         log.info("Combined results count: {}", combinedResults.size());
 
                         // 모든 비동기 작업이 완료된 후에 결과를 반환합니다.
-                        return commonService.saveAll(combinedResults);
+                        List<Job_mst> saved = commonService.saveAll(combinedResults);
+                        kvCacheRefresher.refreshAll();
+                        return saved;
 
                     } catch (InterruptedException | ExecutionException e) {
                         log.error("Error during async crawler execution", e);
@@ -174,5 +157,25 @@ public class JobController {
             log.error("Error during async crawler execution", e);
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * 회사 단건 크롤: 크롤 → LLM 보정 → 저장 → KV 목록 캐시 갱신.
+     *
+     * <p>KV 갱신을 여기 묶어둔 이유는 저장 경로마다 따로 부르면 빠뜨리기 때문이다. 크롤러 타입이
+     * 제각각(일부만 {@link JobCrawler} 구현)이라 메서드 참조로 받는다.</p>
+     *
+     * <p>순서가 중요하다. {@code saveAll} 의 {@code @CacheEvict} 는 기본이
+     * {@code beforeInvocation=false} 라 메서드가 <b>반환된 뒤</b>에 Redis 를 비운다. 그 전에 목록을
+     * 만들면 방금 무효화될 예정인 옛 값을 그대로 KV 에 얹게 되므로, 반드시 저장이 끝난 다음에 부른다.</p>
+     */
+    private List<Job_mst> crawlSaveAndRefresh(
+        Supplier<CompletableFuture<List<Job_mst>>> crawl, String companyCd) throws Exception {
+
+        List<Job_mst> items = crawl.get().get();
+        commonService.refineJobItemBygemini(items);
+        List<Job_mst> saved = commonService.saveAll(items);
+        kvCacheRefresher.refreshAfterCrawl(companyCd);
+        return saved;
     }
 }
