@@ -24,9 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class BoardSchemaInitializer implements ApplicationRunner {
 
-    /** DB 가 늦게 뜨는 경우를 감안한 재시도 횟수/간격. 최악의 경우 기동이 12초 늘어난다. */
-    static final int MAX_ATTEMPTS = 5;
-    static final long RETRY_DELAY_MS = 3_000L;
+    /**
+     * DB 가 늦게 뜨는 경우를 감안한 재시도 횟수/간격. DB 가 끝까지 안 뜨면 기동이 45초 늘어난다.
+     * 이 러너는 웹서버가 이미 요청을 받는 상태에서 돌기 때문에 그 사이 다른 API 는 정상 동작하고,
+     * 예열 워크플로도 07:50 이라 여유가 있다. 새벽 재기동에서 DB 컨테이너가 같이 뜨는 시간을
+     * 넘겨야 하므로 짧게 잡으면 의미가 없다.
+     */
+    static final int MAX_ATTEMPTS = 10;
+    static final long RETRY_DELAY_MS = 5_000L;
 
     /** db/migration/V4__board_tables.sql 과 같은 내용이어야 한다. 한쪽만 바꾸지 말 것. */
     private static final String POST_DDL =
