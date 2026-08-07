@@ -14,8 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import com.nklcbdty.api.admin.dto.AdminSubscriptionDetailDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionPageResponse;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionRowDto;
@@ -195,25 +193,20 @@ class AdminSubscriptionServiceTest {
     }
 
     @Test
-    @DisplayName("sendJobEmail: 발송 대상 이메일이 있으면 EmailService.sendEmail로 본문을 발송한다")
+    @DisplayName("sendJobEmail: EmailService.sendJobDailyEmails에 해당 userId를 위임한다")
     void sendJobEmail_dispatchesMail() {
-        when(emailService.sendEmail(eq(List.of("kakao@1"))))
-            .thenReturn(Map.of("user@test.com", "<html>본문</html>"));
-
         service.sendJobEmail("kakao@1");
 
-        verify(emailService).sendEmail(eq("user@test.com"), any(String.class), eq("<html>본문</html>"));
+        verify(emailService).sendJobDailyEmails(eq(List.of("kakao@1")));
     }
 
     @Test
-    @DisplayName("sendJobEmail: 발송할 컨텐츠가 없으면 EmailService.sendEmail(to,...)을 호출하지 않는다")
-    void sendJobEmail_skipsWhenEmpty() {
-        when(emailService.sendEmail(eq(List.of("kakao@1")))).thenReturn(Map.of());
+    @DisplayName("sendJobEmail: 발송 중 예외가 발생해도 전파하지 않는다")
+    void sendJobEmail_swallowsException() {
+        when(emailService.sendJobDailyEmails(eq(List.of("kakao@1"))))
+            .thenThrow(new RuntimeException("smtp down"));
 
         service.sendJobEmail("kakao@1");
-
-        verify(emailService, org.mockito.Mockito.never())
-            .sendEmail(any(String.class), any(String.class), any(String.class));
     }
 
     @Test
