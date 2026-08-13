@@ -74,7 +74,9 @@ public class DaangnJobCrawlerService {
 
 					// Greenhouse job id. 구 크롤러의 ghId 와 같은 값이라 기존 DB row 와 그대로 매칭된다.
 					String annoId = item.opt("id") == null ? null : item.get("id").toString();
-					String annoSubject = item.optString("title", "");
+					// Greenhouse 의 title 은 "... (세일즈, Agency) " 처럼 끝에 공백이 붙어 내려오는 건이 있다.
+					// 그대로 저장하면 링크 점검 배치의 "HTML 에 공고명이 있는가" 판정이 항상 실패한다.
+					String annoSubject = item.optString("title", "").strip();
 
 					if (annoId == null || annoId.isBlank() || annoSubject.isBlank()) {
 						log.warn("당근 공고 필수값 누락으로 건너뜀 (index={}, id={})", i, annoId);
