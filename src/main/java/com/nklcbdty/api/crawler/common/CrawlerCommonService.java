@@ -4,9 +4,11 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import com.nklcbdty.api.ai.nlp.PersonalHistoryEnsemble;
+import com.nklcbdty.api.common.CacheConfig;
 import com.nklcbdty.api.ai.service.GeminiService;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
 import com.nklcbdty.common.crawler.repository.CrawlerRepository;
@@ -119,6 +121,10 @@ public class CrawlerCommonService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
+            // GET 경로와 동일하게 브라우저 User-Agent + 타임아웃을 건다. (WAF 차단/무한 대기 방지)
+            conn.setRequestProperty("User-Agent", BROWSER_USER_AGENT);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
             conn.setDoOutput(true);
 
             try (OutputStream os = conn.getOutputStream()) {
@@ -143,6 +149,14 @@ public class CrawlerCommonService {
     }
 
     public List<Job_mst> getNotSaveJobItem(String company, List<Job_mst> result) {
+        // 한 크롤 결과 안에 같은 annoId 가 두 번 들어오는 경우가 있다. 예를 들어 네이버는
+        // firstIndex 를 10씩 올리며 페이지를 넘기는데, 공고 하나마다 상세 페이지를 따로
+        // 받아오느라 크롤이 길어져 그 사이 목록 순서가 밀리면 같은 공고를 두 페이지에서
+        // 집게 된다. 아래 중복 판정은 DB 에 이미 있는 행만 보기 때문에, 이런 행은 둘 다
+        // "신규"로 분류되어 그대로 두 번 저장된다. anno_id 에 유니크 제약도 없어서
+        // 한 번 들어간 중복 행은 계속 남고, 구독 메일에도 같은 공고가 반복해서 실린다.
+        result = dedupeCrawledByAnnoId(company, result);
+
         reconcileEndedJobs(company, result);
 
         List<String> annoIds = result.stream().map(Job_mst::getAnnoId).collect(Collectors.toList());
@@ -168,6 +182,8 @@ public class CrawlerCommonService {
             }
         }
 
+        classifyUnclassifiedExistingJobs(result, existingJobs);
+
         // 기존 row 갱신. 신규(jobsToSave) 는 호출자가 어차피 저장하므로 여기서 다시 다루지 않음.
         // 크롤 결과에 여전히 존재하는(=살아있는) 공고는 최신 값으로 되살린다:
         //  1) personalHistory : LLM 경력 보정 결과 반영
@@ -176,6 +192,8 @@ public class CrawlerCommonService {
         //                       목록(endDate>now 필터)에서 사라지던 문제를 해결한다.
         //  3) subJobCdNm     : 비어있을 때만 크롤 값으로 채운다. Gemini 등으로 이미 분류된
         //                       기존 값은 덮어쓰지 않는다(크롤러 키워드 분류가 null 일 수 있으므로).
+        //  4) jobDetailLink  : 회사가 채용 사이트를 옮기면 기존 row 는 죽은 링크를 계속 들고 있고,
+        //                       링크 점검 배치가 매일 그 row 를 종료 처리한다(당근 이관 때 실제로 발생).
         List<Job_mst> existingToUpdate = new ArrayList<>();
         for (Job_mst jobItem : result) {
             Job_mst existing = existingJobs.stream()
@@ -191,9 +209,18 @@ public class CrawlerCommonService {
             }
 
             final String freshEndDate = jobItem.getEndDate();
-            if (freshEndDate != null && !freshEndDate.isBlank()
-                && !freshEndDate.equals(existing.getEndDate())) {
-                existing.setEndDate(freshEndDate);
+            if (freshEndDate != null && !freshEndDate.isBlank()) {
+                if (!freshEndDate.equals(existing.getEndDate())) {
+                    existing.setEndDate(freshEndDate);
+                    changed = true;
+                }
+            } else if (isEndedOrBroken(existing.getEndDate())) {
+                // 크롤에 잡혔다 = 회사 사이트에 아직 걸려 있다. 그런데 마감일이 없는 상시채용 공고라
+                // 위 분기로는 되살릴 방법이 없어, 한 번 종료로 찍히면 영영 목록에서 빠졌다.
+                // (링크 점검 배치가 이관된 옛 링크를 종료/error 로 찍어둔 당근 공고들이 이 경우)
+                log.info("종료 처리됐지만 크롤에 다시 잡힌 공고 복구 — annoId={} endDate={} → 상시채용",
+                    existing.getAnnoId(), existing.getEndDate());
+                existing.setEndDate(null);
                 changed = true;
             }
 
@@ -201,6 +228,13 @@ public class CrawlerCommonService {
             if (freshSubJob != null && !freshSubJob.isBlank()
                 && (existing.getSubJobCdNm() == null || existing.getSubJobCdNm().isBlank())) {
                 existing.setSubJobCdNm(freshSubJob);
+                changed = true;
+            }
+
+            final String freshLink = jobItem.getJobDetailLink();
+            if (freshLink != null && !freshLink.isBlank()
+                && !freshLink.equals(existing.getJobDetailLink())) {
+                existing.setJobDetailLink(freshLink);
                 changed = true;
             }
 
@@ -214,6 +248,68 @@ public class CrawlerCommonService {
         }
 
         return jobsToSave;
+    }
+
+    /**
+     * 기존 row 중 subJobCdNm 이 비어 있는 건을 LLM 으로 분류한다.
+     *
+     * <p>지금까지 Gemini 분류는 신규 저장분에만 돌았다. 그래서 크롤러 키워드 규칙이 못 맞춘 공고가
+     * subJobCdNm=null 로 한 번 들어가면, 이후 크롤에서는 "이미 있는 공고"로 걸러져 영영 분류되지 않고
+     * 목록(subJobCdNm IS NOT NULL 필터)에서 빠져 있었다. 분류가 필요한 건만 모아 다시 돌린다.</p>
+     */
+    private void classifyUnclassifiedExistingJobs(List<Job_mst> result, List<Job_mst> existingJobs) {
+        List<Job_mst> needClassify = result.stream()
+            .filter(jobItem -> jobItem.getSubJobCdNm() == null || jobItem.getSubJobCdNm().isBlank())
+            .filter(jobItem -> existingJobs.stream().anyMatch(e -> {
+                if (!e.getAnnoId().equals(jobItem.getAnnoId())) return false;
+                return e.getSubJobCdNm() == null || e.getSubJobCdNm().isBlank();
+            }))
+            .collect(Collectors.toList());
+
+        if (needClassify.isEmpty()) return;
+
+        log.info("기존 row 직무 분류 대상 {}건", needClassify.size());
+        refineJobItemBygemini(needClassify);
+    }
+
+    /**
+     * 종료로 찍혀 있거나 손상된 endDate 인지 판단한다.
+     * 링크 점검 배치의 "error"(2000-01-01) 마킹과 과거 날짜를 모두 종료로 본다.
+     */
+    private boolean isEndedOrBroken(String endDateStr) {
+        if (endDateStr == null || "영입종료시".equals(endDateStr)) {
+            return false; // 이미 상시채용
+        }
+        if ("error".equals(endDateStr)) {
+            return true;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (DateTimeFormatter formatter : END_DATE_FORMATTERS) {
+            try {
+                return !LocalDateTime.parse(endDateStr, formatter).isAfter(now);
+            } catch (DateTimeParseException ignored) { }
+        }
+        // 파싱 불가는 건드리지 않는다.
+        return false;
+    }
+
+    // 크롤 결과에서 annoId 가 겹치는 행을 먼저 나온 것만 남기고 접는다.
+    // 호출자가 회사 단위로 넘기므로 annoId 만 비교해도 된다 (annoId 체계는 크롤 원본마다 다르다).
+    // annoId 가 없는 행은 식별할 수 없으므로 손대지 않고 통과시킨다.
+    List<Job_mst> dedupeCrawledByAnnoId(String company, List<Job_mst> crawled) {
+        Set<String> seen = new HashSet<>();
+        List<Job_mst> unique = new ArrayList<>(crawled.size());
+        for (Job_mst job : crawled) {
+            String annoId = job.getAnnoId();
+            if (annoId == null || seen.add(annoId)) {
+                unique.add(job);
+            }
+        }
+        int dropped = crawled.size() - unique.size();
+        if (dropped > 0) {
+            log.warn("크롤 결과 내 annoId 중복 {}건 제거 (회사={}, 원본={}건)", dropped, company, crawled.size());
+        }
+        return unique;
     }
 
     public void refineJobData(List<Job_mst> result) {
@@ -428,6 +524,13 @@ public class CrawlerCommonService {
         return now.isAfter(endDateTime);
     }
 
+    /**
+     * 크롤 결과 저장. 모든 크롤 경로({@code /api/crawler} 의 각 case)가 마지막에 여기를 거친다.
+     *
+     * <p>크롤 중간에 일어나는 다른 쓰기(getNotSaveJobItem 의 기존 row 갱신, reconcileEndedJobs 의
+     * 종료 마킹)는 전부 이 호출보다 앞이라, 여기서 한 번 비우면 그 변경분까지 같이 반영된다.</p>
+     */
+    @CacheEvict(cacheNames = { CacheConfig.JOB_LIST, CacheConfig.JOB_CALENDAR }, allEntries = true)
     public List<Job_mst> saveAll(List<Job_mst> result) {
         return crawlerRepository.saveAll(result);
     }

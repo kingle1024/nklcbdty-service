@@ -68,5 +68,27 @@ public class BoardSchemaInitializer implements ApplicationRunner {
         } catch (Exception e) {
             log.error("[Board] 게시판 테이블 생성 실패: {}", e.getMessage(), e);
         }
+
+        verifySchema();
+    }
+
+    /**
+     * 엔티티가 쓰는 컬럼으로 실제 조회를 한 번 해본다.
+     *
+     * 위 CREATE 는 IF NOT EXISTS 라, 이 DB 를 함께 쓰는 다른 프로젝트가 같은 이름의 테이블을
+     * 다른 모양으로 이미 만들어 뒀으면 조용히 넘어간다. 그러면 기동은 성공하고 게시판 API 만
+     * "Unknown column" 으로 500 이 난다(실제로 그렇게 장애가 났다). 그 상태를 배포 직후
+     * 기동 로그에서 바로 알아채려고 둔 확인이다.
+     */
+    private void verifySchema() {
+        try {
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM board_post WHERE board_type = 'FREE' AND deleted = false", Integer.class);
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM board_comment WHERE deleted = false", Integer.class);
+            log.info("[Board] 게시판 스키마 확인 완료");
+        } catch (Exception e) {
+            log.error("[Board] 게시판 스키마가 코드와 맞지 않는다 — 게시판 API 가 실패한다: {}", e.getMessage(), e);
+        }
     }
 }

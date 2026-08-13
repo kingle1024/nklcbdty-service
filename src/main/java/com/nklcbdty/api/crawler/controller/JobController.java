@@ -64,11 +64,19 @@ public class JobController {
         this.commonService = commonService;
     }
 
-    @GetMapping("/list")
-    public List<Job_mst> list(@RequestParam(defaultValue = "ALL") String company) {
-        return jobService.list(company);
+    /**
+     * 공고 목록. 응답은 캐시된 JSON 문자열을 그대로 흘려보낸다(본문은 캐시 도입 전과 동일).
+     *
+     * <p>charset 을 명시하는 이유: String 을 반환하면 StringHttpMessageConverter 가 쓰이는데,
+     * 이 컨버터의 프레임워크 기본 charset 은 ISO-8859-1 이라 한글이 깨질 수 있다.
+     * 스프링 부트가 UTF-8 로 바꿔주긴 하지만 설정에 의존하지 않도록 여기서 못박는다.</p>
+     */
+    @GetMapping(value = "/list", produces = "application/json;charset=UTF-8")
+    public String list(@RequestParam(defaultValue = "ALL") String company) {
+        return jobService.listAsJson(company);
     }
 
+    // 크롤 결과 저장으로 목록이 바뀌면 CrawlerCommonService#saveAll 이 캐시를 비운다.
     @GetMapping("/crawler")
     public List<Job_mst> cralwer(@RequestParam String company) {
         log.info("cralwer company : {}", company);

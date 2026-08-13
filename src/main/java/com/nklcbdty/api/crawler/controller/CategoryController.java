@@ -1,14 +1,11 @@
 package com.nklcbdty.api.crawler.controller;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.crawler.service.CategoryService;
-import com.nklcbdty.api.crawler.vo.CategoryMst;
 
 @RestController
 @RequestMapping("/api/category")
@@ -20,8 +17,9 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
-    @GetMapping("/list")
-    public List<CategoryMst> list() {
-        return categoryService.getAllCategoriesOrderedByRank();
+    // 캐시된 응답 JSON 을 그대로 흘려보낸다. charset 명시 이유는 JobController#list 주석 참고.
+    @GetMapping(value = "/list", produces = "application/json;charset=UTF-8")
+    public String list() {
+        return categoryService.getAllCategoriesOrderedByRankAsJson();
     }
 }

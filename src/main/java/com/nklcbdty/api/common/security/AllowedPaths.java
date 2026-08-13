@@ -18,6 +18,10 @@ public enum AllowedPaths {
     LIST("/api/list"),
     LIST_ALL("/api/list/**"),
     CATEGORY_ALL("/api/category/**"),
+    // 회사 목록 + 채용 페이지 주소. 로그인 없이 보는 목록 화면에서 쓰므로 공개.
+    COMPANY_ALL("/api/company/**"),
+    // 채용 캘린더(마감일 기준). 목록 화면과 같이 로그인 없이 보는 화면이라 공개.
+    CALENDAR_ALL("/api/calendar/**"),
     EMAIL("/api/email/**"),
     CRALWER("/api/crawler"),
     JOB_DELETE_REQUEST("/api/job-delete-requests"),
