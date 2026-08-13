@@ -1,9 +1,11 @@
 package com.nklcbdty.api.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,8 +15,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
 
 import com.nklcbdty.api.admin.dto.AdminSubscriptionDetailDto;
 import com.nklcbdty.api.admin.dto.AdminSubscriptionPageResponse;
@@ -195,25 +195,27 @@ class AdminSubscriptionServiceTest {
     }
 
     @Test
-    @DisplayName("sendJobEmail: 발송 대상 이메일이 있으면 EmailService.sendEmail로 본문을 발송한다")
-    void sendJobEmail_dispatchesMail() {
-        when(emailService.sendEmail(eq(List.of("kakao@1"))))
-            .thenReturn(Map.of("user@test.com", "<html>본문</html>"));
+    @DisplayName("sendJobEmail: 메일 조립·발송을 EmailService 단일 진입점(sendJobDailyEmails)에 위임한다")
+    void sendJobEmail_delegatesToSingleEntryPoint() {
+        when(emailService.sendJobDailyEmails(eq(List.of("kakao@1")))).thenReturn(1);
 
         service.sendJobEmail("kakao@1");
 
-        verify(emailService).sendEmail(eq("user@test.com"), any(String.class), eq("<html>본문</html>"));
+        verify(emailService).sendJobDailyEmails(eq(List.of("kakao@1")));
+        // 제목 생성·수신자별 발송·대상 없을 때 건너뛰기는 EmailService 책임이므로
+        // 관리자 경로에서 직접 발송하지 않는다 (자동 메일과 정책이 갈라지던 원인)
+        verify(emailService, never()).sendEmail(any(String.class), any(String.class), any(String.class));
     }
 
     @Test
-    @DisplayName("sendJobEmail: 발송할 컨텐츠가 없으면 EmailService.sendEmail(to,...)을 호출하지 않는다")
-    void sendJobEmail_skipsWhenEmpty() {
-        when(emailService.sendEmail(eq(List.of("kakao@1")))).thenReturn(Map.of());
+    @DisplayName("sendJobEmail: 발송이 실패해도 @Async 호출자로 예외를 전파하지 않는다")
+    void sendJobEmail_swallowsException() {
+        when(emailService.sendJobDailyEmails(eq(List.of("kakao@1"))))
+            .thenThrow(new RuntimeException("smtp down"));
 
-        service.sendJobEmail("kakao@1");
+        assertThatCode(() -> service.sendJobEmail("kakao@1")).doesNotThrowAnyException();
 
-        verify(emailService, org.mockito.Mockito.never())
-            .sendEmail(any(String.class), any(String.class), any(String.class));
+        verify(emailService).sendJobDailyEmails(eq(List.of("kakao@1")));
     }
 
     @Test
