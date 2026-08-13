@@ -17,6 +17,9 @@ import lombok.Data;
  * 자유게시판 글. 삭제는 실제 DELETE 대신 deleted 플래그로 처리한다(댓글이 딸려 있어 흔적을 남긴다).
  * 작성자 닉네임(authorName)은 작성 시점 값을 복사해 둔다 — 나중에 닉네임이 바뀌어도 글 목록 조회에
  * user 테이블을 조인하지 않도록.
+ *
+ * board_post 테이블은 게시판 종류를 board_type 으로 구분해 함께 쓴다(자유게시판 = FREE).
+ * 따라서 조회는 반드시 board_type 으로 걸러야 다른 게시판 글이 섞이지 않는다.
  */
 @Entity
 @Table(name = "board_post")
@@ -26,9 +29,16 @@ public class BoardPost {
     public static final int MAX_TITLE_LENGTH = 200;
     public static final int MAX_CONTENT_LENGTH = 10000;
 
+    /** 자유게시판 */
+    public static final String TYPE_FREE = "FREE";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** 게시판 종류. 이 코드가 다루는 값은 FREE 뿐이다. */
+    @Column(nullable = false, length = 20)
+    private String boardType = TYPE_FREE;
 
     @Column(nullable = false, length = MAX_TITLE_LENGTH)
     private String title;

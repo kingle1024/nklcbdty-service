@@ -14,16 +14,17 @@ import com.nklcbdty.api.board.vo.BoardPost;
 public interface BoardPostRepository extends JpaRepository<BoardPost, Long> {
 
     /** 목록(최신순). 삭제된 글은 제외한다. */
-    Page<BoardPost> findByDeletedFalseOrderByIdDesc(Pageable pageable);
+    Page<BoardPost> findByBoardTypeAndDeletedFalseOrderByIdDesc(String boardType, Pageable pageable);
 
     /** 제목/본문 검색 */
-    @Query("select p from BoardPost p where p.deleted = false "
+    @Query("select p from BoardPost p where p.boardType = :boardType and p.deleted = false "
         + "and (lower(p.title) like lower(concat('%', :keyword, '%')) "
         + "  or lower(p.content) like lower(concat('%', :keyword, '%'))) "
         + "order by p.id desc")
-    Page<BoardPost> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    Page<BoardPost> searchByKeyword(@Param("boardType") String boardType,
+                                    @Param("keyword") String keyword, Pageable pageable);
 
-    Optional<BoardPost> findByIdAndDeletedFalse(Long id);
+    Optional<BoardPost> findByIdAndBoardTypeAndDeletedFalse(Long id, String boardType);
 
     /**
      * 조회수 증가. 엔티티를 읽어 save 하면 @UpdateTimestamp 때문에 수정일시가 바뀌므로

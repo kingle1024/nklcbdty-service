@@ -49,8 +49,8 @@ public class BoardService {
     public BoardPostPageDto list(int page, int size, String keyword) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizeSize(size));
         Page<BoardPost> found = (keyword == null || keyword.isBlank())
-            ? postRepository.findByDeletedFalseOrderByIdDesc(pageable)
-            : postRepository.searchByKeyword(keyword.trim(), pageable);
+            ? postRepository.findByBoardTypeAndDeletedFalseOrderByIdDesc(BoardPost.TYPE_FREE, pageable)
+            : postRepository.searchByKeyword(BoardPost.TYPE_FREE, keyword.trim(), pageable);
         return BoardPostPageDto.of(found);
     }
 
@@ -61,7 +61,7 @@ public class BoardService {
     @Transactional
     public BoardPostDetailDto detail(Long id, String viewerId) {
         postRepository.increaseViewCount(id);
-        BoardPost post = postRepository.findByIdAndDeletedFalse(id)
+        BoardPost post = postRepository.findByIdAndBoardTypeAndDeletedFalse(id, BoardPost.TYPE_FREE)
             .orElseThrow(() -> new BoardNotFoundException("글을 찾을 수 없습니다. id=" + id));
 
         List<BoardCommentDto> comments = commentRepository
@@ -107,7 +107,7 @@ public class BoardService {
     @Transactional
     public BoardComment addComment(Long postId, String content, String authorId) {
         // 삭제된 글에는 댓글을 달 수 없다
-        postRepository.findByIdAndDeletedFalse(postId)
+        postRepository.findByIdAndBoardTypeAndDeletedFalse(postId, BoardPost.TYPE_FREE)
             .orElseThrow(() -> new BoardNotFoundException("글을 찾을 수 없습니다. id=" + postId));
 
         BoardComment comment = new BoardComment();
@@ -141,7 +141,7 @@ public class BoardService {
 
     /** 수정/삭제 대상 글을 찾고 작성자 본인인지 확인한다. */
     private BoardPost findWritablePost(Long id, String requesterId) {
-        BoardPost post = postRepository.findByIdAndDeletedFalse(id)
+        BoardPost post = postRepository.findByIdAndBoardTypeAndDeletedFalse(id, BoardPost.TYPE_FREE)
             .orElseThrow(() -> new BoardNotFoundException("글을 찾을 수 없습니다. id=" + id));
         if (!post.getAuthorId().equals(requesterId)) {
             throw new BoardForbiddenException("본인이 쓴 글만 수정/삭제할 수 있습니다.");

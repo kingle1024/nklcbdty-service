@@ -20,8 +20,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import com.nklcbdty.api.board.dto.BoardPostDetailDto;
+import com.nklcbdty.api.board.dto.BoardPostPageDto;
 import com.nklcbdty.api.board.exception.BoardForbiddenException;
 import com.nklcbdty.api.board.exception.BoardNotFoundException;
 import com.nklcbdty.api.board.repository.BoardCommentRepository;
@@ -85,6 +88,34 @@ class BoardServiceTest {
         assertThat(saved.getAuthorName()).isEqualTo(AUTHOR);
     }
 
+    /**
+     * board_post 는 다른 게시판과 한 테이블을 쓰므로 글에 FREE 를 반드시 찍어야 한다.
+     * (board_type 은 NOT NULL 이라 비워두면 INSERT 자체가 실패한다)
+     */
+    @Test
+    void create_자유게시판_종류를_찍어_저장한다() {
+        when(userRepository.findByUserId(AUTHOR)).thenReturn(null);
+        when(postRepository.save(any(BoardPost.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BoardPost saved = service.create("제목", "내용", AUTHOR);
+
+        assertThat(saved.getBoardType()).isEqualTo(BoardPost.TYPE_FREE);
+    }
+
+    /** 목록은 자유게시판 글만 봐야 한다 — 같은 테이블의 다른 게시판 글이 섞이면 안 된다. */
+    @Test
+    void list_자유게시판_글만_조회한다() {
+        when(postRepository.findByBoardTypeAndDeletedFalseOrderByIdDesc(
+            org.mockito.ArgumentMatchers.eq(BoardPost.TYPE_FREE), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(post(1L, AUTHOR))));
+
+        BoardPostPageDto result = service.list(0, 20, null);
+
+        assertThat(result.items()).hasSize(1);
+        verify(postRepository).findByBoardTypeAndDeletedFalseOrderByIdDesc(
+            org.mockito.ArgumentMatchers.eq(BoardPost.TYPE_FREE), any(Pageable.class));
+    }
+
     @Test
     void create_제목이_비어있으면_저장하지_않는다() {
         assertThatThrownBy(() -> service.create("   ", "내용", AUTHOR))
@@ -97,7 +128,7 @@ class BoardServiceTest {
 
     @Test
     void update_작성자가_아니면_거부한다() {
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post(1L, AUTHOR)));
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.of(post(1L, AUTHOR)));
 
         assertThatThrownBy(() -> service.update(1L, "바뀐 제목", "바뀐 내용", OTHER))
             .isInstanceOf(BoardForbiddenException.class);
@@ -112,7 +143,7 @@ class BoardServiceTest {
         comment.setPostId(1L);
         comment.setAuthorId(OTHER);
 
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post(1L, AUTHOR)));
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.of(post(1L, AUTHOR)));
         when(commentRepository.findByPostIdAndDeletedFalseOrderByIdAsc(1L)).thenReturn(List.of(comment));
         when(postRepository.save(any(BoardPost.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -127,7 +158,7 @@ class BoardServiceTest {
 
     @Test
     void delete_없는_글이면_404로_다룬다() {
-        when(postRepository.findByIdAndDeletedFalse(404L)).thenReturn(Optional.empty());
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(404L, BoardPost.TYPE_FREE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(404L, AUTHOR))
             .isInstanceOf(BoardNotFoundException.class);
@@ -137,7 +168,7 @@ class BoardServiceTest {
 
     @Test
     void addComment_등록하면_글의_댓글수를_실제개수로_맞춘다() {
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post(1L, AUTHOR)));
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.of(post(1L, AUTHOR)));
         when(userRepository.findByUserId(OTHER))
             .thenReturn(UserVo.builder().userId(OTHER).username("지나가던행인").build());
         when(commentRepository.save(any(BoardComment.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -152,7 +183,7 @@ class BoardServiceTest {
 
     @Test
     void addComment_삭제된_글에는_달_수_없다() {
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.empty());
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.addComment(1L, "댓글", OTHER))
             .isInstanceOf(BoardNotFoundException.class);
@@ -186,7 +217,7 @@ class BoardServiceTest {
         comment.setContent("댓글 내용");
         comment.setAuthorId(OTHER);
 
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post(1L, AUTHOR)));
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.of(post(1L, AUTHOR)));
         when(commentRepository.findByPostIdAndDeletedFalseOrderByIdAsc(1L)).thenReturn(List.of(comment));
 
         BoardPostDetailDto detail = service.detail(1L, AUTHOR);
@@ -200,7 +231,7 @@ class BoardServiceTest {
 
     @Test
     void detail_비로그인이면_내글여부는_모두_false다() {
-        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post(1L, AUTHOR)));
+        when(postRepository.findByIdAndBoardTypeAndDeletedFalse(1L, BoardPost.TYPE_FREE)).thenReturn(Optional.of(post(1L, AUTHOR)));
         when(commentRepository.findByPostIdAndDeletedFalseOrderByIdAsc(1L)).thenReturn(List.of());
 
         BoardPostDetailDto detail = service.detail(1L, null);
