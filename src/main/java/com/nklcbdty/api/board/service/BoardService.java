@@ -95,19 +95,28 @@ public class BoardService {
             .build();
     }
 
-    /** 상세 조회. 호출 시 조회수를 1 증가시킨다. */
+    /** 상세 조회. 호출 시 조회수를 1 증가시킨다. actor 는 mine 값을 채우는 데만 쓴다. */
     @Transactional
-    public BoardPostDetailDto read(BoardType boardType, Long postId) {
+    public BoardPostDetailDto read(BoardType boardType, Long postId, BoardActor actor) {
         BoardPost post = loadPost(boardType, postId);
         postRepository.increaseViewCount(post.getId());
 
-        List<BoardCommentDto> comments =
-            commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(post.getId()).stream()
-                .map(BoardCommentDto::from)
-                .toList();
+        List<BoardCommentDto> comments = commentsOf(post.getId(), actor);
 
         // increaseViewCount 는 DB 에 직접 UPDATE 하므로 엔티티 값은 그대로다. 응답에만 +1 반영.
-        return BoardPostDetailDto.from(post, post.getViewCount() + 1, comments);
+        return BoardPostDetailDto.from(post, post.getViewCount() + 1, comments, viewerId(actor));
+    }
+
+    private List<BoardCommentDto> commentsOf(Long postId, BoardActor actor) {
+        String viewerId = viewerId(actor);
+        return commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(postId).stream()
+            .map(comment -> BoardCommentDto.from(comment, viewerId))
+            .toList();
+    }
+
+    /** 관리자 요청에는 userId 가 없다 — mine 은 로그인 사용자 기준이므로 null 로 둔다. */
+    private String viewerId(BoardActor actor) {
+        return actor == null ? null : actor.userId();
     }
 
     /** 글 작성 */
@@ -136,7 +145,7 @@ public class BoardService {
 
         BoardPost saved = postRepository.save(post);
         log.info("[Board] 글 작성 boardType={} id={} author={}", boardType, saved.getId(), saved.getAuthorName());
-        return BoardPostDetailDto.from(saved, saved.getViewCount(), List.of());
+        return BoardPostDetailDto.from(saved, saved.getViewCount(), List.of(), viewerId(actor));
     }
 
     /** 글 수정 */
@@ -153,11 +162,7 @@ public class BoardService {
         }
 
         BoardPost saved = postRepository.save(post);
-        List<BoardCommentDto> comments =
-            commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(postId).stream()
-                .map(BoardCommentDto::from)
-                .toList();
-        return BoardPostDetailDto.from(saved, saved.getViewCount(), comments);
+        return BoardPostDetailDto.from(saved, saved.getViewCount(), commentsOf(postId, actor), viewerId(actor));
     }
 
     /** 글 삭제(soft delete). 딸린 댓글도 함께 감춘다. */
@@ -175,11 +180,9 @@ public class BoardService {
     // -------------------------------------------------------------------- 댓글
 
     @Transactional(readOnly = true)
-    public List<BoardCommentDto> listComments(BoardType boardType, Long postId) {
+    public List<BoardCommentDto> listComments(BoardType boardType, Long postId, BoardActor actor) {
         loadPost(boardType, postId);
-        return commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(postId).stream()
-            .map(BoardCommentDto::from)
-            .toList();
+        return commentsOf(postId, actor);
     }
 
     /** 댓글 작성. 공지사항/자유게시판 모두 로그인 사용자와 익명 모두 가능. */
@@ -202,7 +205,7 @@ public class BoardService {
             comment.setPasswordHash(passwordEncoder.encode(requirePassword(request.getPassword())));
         }
 
-        return BoardCommentDto.from(commentRepository.save(comment));
+        return BoardCommentDto.from(commentRepository.save(comment), viewerId(actor));
     }
 
     @Transactional
@@ -211,7 +214,7 @@ public class BoardService {
         authorizeOwner(comment, request.getPassword(), actor, "수정");
 
         comment.setContent(requireText(request.getContent(), "댓글 내용", MAX_COMMENT_LENGTH));
-        return BoardCommentDto.from(commentRepository.save(comment));
+        return BoardCommentDto.from(commentRepository.save(comment), viewerId(actor));
     }
 
     @Transactional

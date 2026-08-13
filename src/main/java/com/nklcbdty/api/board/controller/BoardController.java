@@ -70,8 +70,9 @@ public class BoardController {
     }
 
     @GetMapping("/{boardType}/posts/{postId}")
-    public ResponseEntity<BoardPostDetailDto> read(@PathVariable String boardType, @PathVariable Long postId) {
-        return ResponseEntity.ok(boardService.read(BoardType.from(boardType), postId));
+    public ResponseEntity<BoardPostDetailDto> read(@PathVariable String boardType, @PathVariable Long postId,
+                                                   HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(boardService.read(BoardType.from(boardType), postId, actor(httpRequest)));
     }
 
     @PostMapping("/{boardType}/posts")
@@ -110,9 +111,11 @@ public class BoardController {
     @GetMapping("/{boardType}/posts/{postId}/comments")
     public ResponseEntity<List<BoardCommentDto>> listComments(
         @PathVariable String boardType,
-        @PathVariable Long postId
+        @PathVariable Long postId,
+        HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.ok(boardService.listComments(BoardType.from(boardType), postId));
+        return ResponseEntity.ok(
+            boardService.listComments(BoardType.from(boardType), postId, actor(httpRequest)));
     }
 
     @PostMapping("/{boardType}/posts/{postId}/comments")

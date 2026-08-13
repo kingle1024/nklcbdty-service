@@ -145,7 +145,7 @@ class BoardServiceTest {
         when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(1L)).thenReturn(List.of());
 
-        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L);
+        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L, BoardActor.ANONYMOUS);
 
         assertThat(detail.getViewCount()).isEqualTo(11);
         verify(postRepository, times(1)).increaseViewCount(1L);
@@ -156,7 +156,7 @@ class BoardServiceTest {
         BoardPost post = freePost(1L, "kakao-1", null);
         when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> service.read(BoardType.NOTICE, 1L))
+        assertThatThrownBy(() -> service.read(BoardType.NOTICE, 1L, BoardActor.ANONYMOUS))
             .isInstanceOf(BoardNotFoundException.class);
     }
 
@@ -164,8 +164,53 @@ class BoardServiceTest {
     void read_삭제된글은_찾을수없다() {
         when(postRepository.findByIdAndDeletedFalse(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.read(BoardType.FREE, 99L))
+        assertThatThrownBy(() -> service.read(BoardType.FREE, 99L, BoardActor.ANONYMOUS))
             .isInstanceOf(BoardNotFoundException.class);
+    }
+
+    // mine 은 프론트가 비밀번호 없이 수정/삭제 버튼을 띄울지 판단하는 값이라
+    // 소유권 규칙(authorizeOwner)과 어긋나면 안 된다.
+
+    @Test
+    void read_내가_쓴_로그인글이면_mine이_true다() {
+        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(freePost(1L, "kakao-1", null)));
+        when(commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(1L)).thenReturn(List.of());
+
+        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L, BoardActor.user("kakao-1"));
+
+        assertThat(detail.isMine()).isTrue();
+    }
+
+    @Test
+    void read_남이_쓴_로그인글이면_mine이_false다() {
+        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(freePost(1L, "kakao-1", null)));
+        when(commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(1L)).thenReturn(List.of());
+
+        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L, BoardActor.user("kakao-2"));
+
+        assertThat(detail.isMine()).isFalse();
+    }
+
+    /** 익명 글은 누구의 것도 아니다 — 비밀번호로만 수정/삭제한다. */
+    @Test
+    void read_익명글은_로그인해도_mine이_false고_비밀번호글로_표시된다() {
+        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(freePost(1L, null, "해시")));
+        when(commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(1L)).thenReturn(List.of());
+
+        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L, BoardActor.user("kakao-1"));
+
+        assertThat(detail.isMine()).isFalse();
+        assertThat(detail.isPasswordProtected()).isTrue();
+    }
+
+    @Test
+    void read_비로그인이면_mine이_false다() {
+        when(postRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(freePost(1L, "kakao-1", null)));
+        when(commentRepository.findByPostIdAndDeletedFalseOrderByInsertDtsAscIdAsc(1L)).thenReturn(List.of());
+
+        BoardPostDetailDto detail = service.read(BoardType.FREE, 1L, BoardActor.ANONYMOUS);
+
+        assertThat(detail.isMine()).isFalse();
     }
 
     // --------------------------------------------------------------- 수정/삭제

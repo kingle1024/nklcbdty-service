@@ -23,11 +23,15 @@ public class BoardPostDetailDto {
     private boolean writtenByAdmin;
     /** 익명 글(비밀번호로 수정/삭제하는 글)인지 — 프론트에서 비밀번호 입력창 노출 판단용 */
     private boolean passwordProtected;
+    /** 지금 보고 있는 로그인 사용자가 쓴 글인지 — 비밀번호 없이 수정/삭제 버튼을 띄울지 판단용 */
+    private boolean mine;
     private LocalDateTime insertDts;
     private LocalDateTime updateDts;
     private List<BoardCommentDto> comments;
 
-    public static BoardPostDetailDto from(BoardPost post, int viewCount, List<BoardCommentDto> comments) {
+    /** viewerId 는 조회하는 로그인 사용자(비로그인이면 null). */
+    public static BoardPostDetailDto from(BoardPost post, int viewCount, List<BoardCommentDto> comments,
+                                          String viewerId) {
         return BoardPostDetailDto.builder()
             .id(post.getId())
             .boardType(post.getBoardType().name())
@@ -38,6 +42,7 @@ public class BoardPostDetailDto {
             .pinned(post.isPinned())
             .writtenByAdmin(post.getAdminAuthor() != null)
             .passwordProtected(post.getPasswordHash() != null)
+            .mine(BoardCommentDto.isMine(post.getAuthorId(), viewerId))
             .insertDts(post.getInsertDts())
             .updateDts(post.getUpdateDts())
             .comments(comments)
