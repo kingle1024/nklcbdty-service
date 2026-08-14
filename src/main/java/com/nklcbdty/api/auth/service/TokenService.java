@@ -1,25 +1,43 @@
 package com.nklcbdty.api.auth.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import com.nklcbdty.api.common.UtilityNklcb;
 import com.nklcbdty.api.user.repository.RefreshTokenRepository;
 import com.nklcbdty.api.user.vo.RefreshTokenVo;
 
-import io.lettuce.core.RedisConnectionException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 리프레시 토큰 저장·검증.
+ *
+ * <p>DB(refresh_tokens)가 진실의 원천이고 Redis 는 빠른 조회용 캐시다.
+ * 예전에는 Redis 에만 의존해서 Redis 가 비면(재시작·유실) 갱신이 전부 실패해
+ * 사용자가 1시간마다 로그아웃되는 문제가 있었다.</p>
+ *
+ * <p>DB 검증은 userId+토큰해시 단위라 기기(브라우저)마다 각자의 리프레시 토큰이
+ * 유효하다 — 다른 기기에서 로그인해도 기존 기기가 로그아웃되지 않는다.</p>
+ */
 @Slf4j
 @Service
 public class TokenService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final long REFRESH_TOKEN_EXPIRATION_DAYS = 7;
+    private final long REFRESH_TOKEN_EXPIRATION_DAYS = UtilityNklcb.REFRESH_TOKEN_EXPIRATION_DAYS;
+    /** 여러 탭이 같은 토큰으로 동시에 갱신을 부르면 한쪽은 회전 직후의 옛 토큰을 내민다. 그 유예 시간. */
+    private static final long ROTATED_TOKEN_GRACE_SECONDS = 60;
 
     @Autowired
     public TokenService(RedisTemplate<String, Object> redisTemplate, RefreshTokenRepository refreshTokenRepository) {
@@ -28,45 +46,94 @@ public class TokenService {
     }
 
     public void saveRefreshToken(String userId, String refreshToken) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusDays(REFRESH_TOKEN_EXPIRATION_DAYS);
+        String ipAddress = null;
+        String userAgent = null;
+
         try {
-            redisTemplate.opsForValue().set(userId + ":refreshToken", refreshToken);
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            ipAddress = request.getRemoteAddr();
+            userAgent = request.getHeader("User-Agent");
+        } catch (IllegalStateException e) {
+            log.warn("Cannot get HttpServletRequest outside of web request context: {}", e.getMessage());
+        }
 
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime expiresAt = now.plusDays(REFRESH_TOKEN_EXPIRATION_DAYS);
-            String ipAddress = null;
-            String userAgent = null;
-
-            try {
-                HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
-                ipAddress = request.getRemoteAddr();
-                userAgent = request.getHeader("User-Agent");
-            } catch (IllegalStateException e) {
-                log.warn("Cannot get HttpServletRequest outside of web request context: {}", e.getMessage());
-            }
-            
-            String hashedRefreshToken = hashToken(refreshToken); // 별도의 해싱 유틸리티 필요
-            
+        try {
             RefreshTokenVo refreshTokenEntity = RefreshTokenVo.builder()
                 .userId(userId)
-                .token(hashedRefreshToken) // 해싱된 토큰 저장
-                .issuedAt(now) // 발급 시각
-                .expiresAt(expiresAt) // 만료 시각
-                .isRevoked(false) // 처음 발급될 때는 무효화되지 않음
-                .ipAddress(ipAddress) // IP 주소
-                .userAgent(userAgent) // User-Agent
+                .token(hashToken(refreshToken)) // 원문 대신 해시를 저장
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .isRevoked(false)
+                .ipAddress(ipAddress)
+                .userAgent(userAgent)
                 .build();
             refreshTokenRepository.save(refreshTokenEntity);
-
-            log.info("Redis token created: {}, {}. token saved for userId: {}", userId + ":refreshToken", refreshToken, userId);
-        } catch (RedisConnectionException e) {
-            log.info("error {}", e.getMessage());
         } catch (Exception e) {
-            log.info("error {}", e.getMessage());
+            // DB 저장이 실패하면 Redis 가 비었을 때 갱신이 실패한다. 반드시 로그로 남긴다.
+            log.error("refresh token DB save failed for userId {}: {}", userId, e.getMessage());
+        }
+
+        try {
+            redisTemplate.opsForValue()
+                .set(userId + ":refreshToken", refreshToken, Duration.ofDays(REFRESH_TOKEN_EXPIRATION_DAYS));
+            log.info("refresh token saved for userId: {}", userId);
+        } catch (Exception e) {
+            log.warn("refresh token Redis save failed (DB fallback will be used) for userId {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * 리프레시 토큰이 이 사용자에게 발급된 유효한 토큰인지 확인한다.
+     * Redis 에 있으면 바로 통과, 없으면 DB 에서 해시로 찾는다.
+     */
+    public boolean isRefreshTokenValid(String userId, String refreshToken) {
+        if (userId == null || refreshToken == null) {
+            return false;
+        }
+        if (refreshToken.equals(getRefreshToken(userId))) {
+            return true;
+        }
+
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            return refreshTokenRepository
+                .findFirstByUserIdAndTokenOrderByIdDesc(userId, hashToken(refreshToken))
+                .filter(t -> t.getExpiresAt().isAfter(now))
+                .filter(t -> !t.isRevoked()
+                    || (t.getRevokedAt() != null
+                        && t.getRevokedAt().isAfter(now.minusSeconds(ROTATED_TOKEN_GRACE_SECONDS))))
+                .isPresent();
+        } catch (Exception e) {
+            log.error("refresh token DB lookup failed for userId {}: {}", userId, e.getMessage());
+            return false;
+        }
+    }
+
+    /** 갱신 성공 시 새 토큰을 저장하고 방금 쓴 옛 토큰은 무효화한다(유예 시간 동안은 통과). */
+    public void rotateRefreshToken(String userId, String oldRefreshToken, String newRefreshToken) {
+        saveRefreshToken(userId, newRefreshToken);
+        try {
+            refreshTokenRepository
+                .findFirstByUserIdAndTokenAndIsRevokedFalseOrderByIdDesc(userId, hashToken(oldRefreshToken))
+                .ifPresent(t -> {
+                    t.setRevoked(true);
+                    t.setRevokedAt(LocalDateTime.now());
+                    refreshTokenRepository.save(t);
+                });
+        } catch (Exception e) {
+            log.warn("old refresh token revoke failed for userId {}: {}", userId, e.getMessage());
         }
     }
 
     private String hashToken(String token) {
-        return "hashed_" + token;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     public String getRefreshToken(String userId) {

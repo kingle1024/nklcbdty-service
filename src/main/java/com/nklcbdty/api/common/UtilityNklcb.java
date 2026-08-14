@@ -14,6 +14,9 @@ import javax.crypto.SecretKey; // 추가해야 할 import
 
 @Component
 public class UtilityNklcb {
+    /** 한 번 로그인하면 이 기간 동안 로그인이 유지된다. TokenService 의 DB 만료 시각도 이 값을 쓴다. */
+    public static final long REFRESH_TOKEN_EXPIRATION_DAYS = 30;
+
     @Value("${jwt.secret}")
     private String SECRET_KEY;
 
@@ -39,7 +42,7 @@ public class UtilityNklcb {
         Date expiryDate;
 
         if (isRefreshToken) {
-            expiryDate = new Date(now.getTime() + 604_800_000); // 7일 후 만료
+            expiryDate = new Date(now.getTime() + REFRESH_TOKEN_EXPIRATION_DAYS * 24L * 60 * 60 * 1000); // 30일 후 만료
         } else {
             expiryDate = new Date(now.getTime() + 3_600_000); // 1시간 후 만료
         }
