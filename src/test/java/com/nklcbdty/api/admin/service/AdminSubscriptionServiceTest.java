@@ -1,9 +1,11 @@
 package com.nklcbdty.api.admin.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -198,6 +200,9 @@ class AdminSubscriptionServiceTest {
         service.sendJobEmail("kakao@1");
 
         verify(emailService).sendJobDailyEmails(eq(List.of("kakao@1")));
+        // 제목 생성·수신자별 발송·대상 없을 때 건너뛰기는 EmailService 책임이다.
+        // 관리자 경로가 다시 직접 조립하면 자동(batch) 메일과 정책이 갈라진다.
+        verify(emailService, never()).sendEmail(any(String.class), any(String.class), any(String.class));
     }
 
     @Test
@@ -206,7 +211,8 @@ class AdminSubscriptionServiceTest {
         when(emailService.sendJobDailyEmails(eq(List.of("kakao@1"))))
             .thenThrow(new RuntimeException("smtp down"));
 
-        service.sendJobEmail("kakao@1");
+        // @Async 로 도는 메서드라 예외를 흘리면 호출자가 알 수 없는 곳에서 죽는다
+        assertThatCode(() -> service.sendJobEmail("kakao@1")).doesNotThrowAnyException();
     }
 
     @Test
