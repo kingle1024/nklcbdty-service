@@ -86,6 +86,9 @@ dependencies {
     implementation 'org.springframework.data:spring-data-elasticsearch'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// @Query 로 직접 쓴 JPQL 은 앱 기동 때 검증된다 — 틀리면 배포가 곧 장애다.
+	// 운영 DB 없이 그 검증을 미리 하기 위한 인메모리 DB(@DataJpaTest 용).
+	testRuntimeOnly 'com.h2database:h2'
 
 	implementation 'org.json:json:20240303'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
