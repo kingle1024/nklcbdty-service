@@ -54,4 +54,16 @@ class AllowedPathsTest {
         assertThat(isPublic("/mypage")).isFalse();
         assertThat(isPublic("/api/admin/subscriptions")).isFalse();
     }
+
+    /**
+     * 개인 일정이라 공개되면 남의 캘린더가 그대로 보인다. 경로가 비슷해서
+     * 공개인 {@code /api/calendar/**} 에 딸려 들어가기 쉬우므로 못박아 둔다.
+     */
+    @Test
+    @DisplayName("나의 채용 캘린더는 공개 목록에 없다 — 공개 채용 캘린더와 다른 경로다")
+    void myCalendarStaysPrivate() {
+        assertThat(isPublic("/api/my-calendar/entries")).isFalse();
+        assertThat(isPublic("/api/my-calendar/entries/12")).isFalse();
+        assertThat(isPublic("/api/my-calendar/company-name")).isFalse();
+    }
 }
