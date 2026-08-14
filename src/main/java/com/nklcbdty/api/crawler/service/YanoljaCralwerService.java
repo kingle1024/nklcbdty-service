@@ -72,7 +72,13 @@ public class YanoljaCralwerService {
                     break;
                 }
                 if (postings.isEmpty()) {
-                    // 공고가 실제로 0건일 수 있다(Workday 이관 직후 등). 정상 종료로 본다.
+                    // 공고가 실제로 0건일 수 있다. Workday 사이트가 살아 있어도(HTTP 200 + 정상 스키마)
+                    // 야놀자가 공개 공고를 전부 내리면 total=0 이 온다(2026-08-14 확인). 차단/스키마 변경과
+                    // 구분되도록 첫 페이지에서 0건이면 total 과 함께 경고로 남긴다.
+                    if (page == 0) {
+                        log.warn("야놀자 채용 사이트에 공개 공고가 0건 (total={}). 응답은 정상이라 차단/스키마 변경이 아닌 "
+                            + "'공고 없음'으로 판단한다. 사이트: {}", pageObj.optInt("total", 0), WORKDAY_SITE_BASE);
+                    }
                     break;
                 }
 

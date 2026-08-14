@@ -4,15 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.nklcbdty.common.exception.ApiException;
 import com.nklcbdty.api.crawler.common.CrawlerCommonService;
 import com.nklcbdty.api.crawler.common.JobEnums;
 import com.nklcbdty.api.crawler.dto.PersonalHistoryDto;
@@ -20,102 +18,127 @@ import com.nklcbdty.common.vo.Job_mst;
 
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 쿠팡 채용 크롤러.
+ *
+ * <p>예전엔 www.coupang.jobs 목록 HTML 을 Jsoup 으로 긁었지만, 이 사이트가 Cloudflare 봇 차단
+ * 뒤로 들어가면서 서버(운영/배치)에서는 "Just a moment..." 챌린지 페이지(403)만 받게 됐다.
+ * 그래서 총 건수(data-results) 파싱이 항상 실패해 0건이 되고, 링크 점검 배치도 같은 403 을 받아
+ * 이미 저장된 쿠팡 공고를 매번 오류 종료(endDate=2000-01-01) 처리했다.</p>
+ *
+ * <p>coupang.jobs 자체가 Greenhouse 를 채용 시스템으로 쓰고 있어(목록 링크가 모두 {@code ?gh_jid=})
+ * Greenhouse 의 공개 job board API 를 직접 호출한다. 이쪽은 봇 차단이 없는 공개 JSON API 이고,
+ * 공고 번호({@code id})가 기존에 쓰던 {@code data-id} 와 같은 값이라 저장된 annoId 와도 이어진다.</p>
+ */
 @Service
 @Slf4j
 public class CoupangJobCrawlerService {
-	
+
+    private static final String GREENHOUSE_BOARD = "https://boards-api.greenhouse.io/v1/boards/coupang/jobs";
+    /** 기존 크롤러가 목록을 서울(반경 100km)로 좁혀 받아왔던 것과 동일한 범위. */
+    private static final String SEOUL_LOCATION_KEYWORD = "Seoul";
+
     private final CrawlerCommonService crawlerCommonService;
-    private String apiUrl;
 
     @Autowired
-	public CoupangJobCrawlerService(CrawlerCommonService crawlerCommonService) {
-		this.crawlerCommonService = crawlerCommonService;
-		this.apiUrl = getApiUrl();
-	}
-
-    private String getApiUrl() {
-    	return "https://www.coupang.jobs/kr/jobs/?orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
+    public CoupangJobCrawlerService(CrawlerCommonService crawlerCommonService) {
+        this.crawlerCommonService = crawlerCommonService;
     }
 
     @Async
-	public CompletableFuture<List<Job_mst>> crawlJobs() {
+    public CompletableFuture<List<Job_mst>> crawlJobs() {
         List<Job_mst> resList = new ArrayList<>();
-		String formattedDate = crawlerCommonService.formatCurrentTime();
-		log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.", this.getClass(), formattedDate);
+        log.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> {}의 크롤러가 {}로 시작됩니다.",
+            this.getClass(), crawlerCommonService.formatCurrentTime());
 
-		// 기존엔 crawlJobs 에 try/catch 가 없어 쿠팡 실패 시 예외가 controller 의 all 모드까지 전파돼
-		// 전체 회사 크롤 결과가 0건이 됐다. 다른 크롤러처럼 내부에서 격리해 부분 결과를 반환한다.
-		try {
-			int totalCnt = getCoupangTotalListCnt(apiUrl);
-	        int pagesize = 20;
-	        double totalLoopCnt = totalCnt % pagesize
-	            == 0 ? (double)(totalCnt / pagesize) : Math.ceil((double)totalCnt / pagesize);
-
-			for (int i = 1; i <= (int)totalLoopCnt; i++) {
-				// apiUrl = "https://www.coupang.jobs/kr/jobs?page="+i+"#results";
-				apiUrl = "https://www.coupang.jobs/kr/jobs/?page="+i+"&orderby=0&pagesize=20&radius=100&location=Seoul,%20South%20Korea#results";
-				resList.addAll(coupangParseHtmlData(apiUrl));
-	            log.info("{} / {} 크롤링 완료", i, totalLoopCnt);
-			}
-		} catch (Exception e) {
-			log.error("쿠팡 크롤링 실패: {}", e.getMessage(), e);
-		}
-
-        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("COUPANG", resList));
-	}
-		
-    /**
-     * <p>서버통신 리스폰스 데이터가 HTML데이터인경우 Jsoup으로 파싱한다.</p>
-     * @author DavieLee
-     * @return Document */
-    private List<Job_mst> coupangParseHtmlData(String apiUrl) {
-		List<Job_mst> tempList = new ArrayList<>();
-
+        // 기존엔 crawlJobs 에 try/catch 가 없어 쿠팡 실패 시 예외가 controller 의 all 모드까지 전파돼
+        // 전체 회사 크롤 결과가 0건이 됐다. 다른 크롤러처럼 내부에서 격리해 부분 결과를 반환한다.
         try {
-        	Document doc = Jsoup.connect(apiUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36") // User-Agent 설정
-                .header("Cookie", "ph_cookiePref=NFAT; _gcl_au=1.1.160249659.1740312267; _fbp=fb.1.1740312267141.693781373128074153; __Host-vId=8465453b-8366-43f0-9eb3-28f53a0a4d7f; UMB_SESSION=CfDJ8M8dnfYreA1GpSGqsJMV%2Fne4R874RnIPG4Yp8b9jCiHmki4Wh7FVEB93%2BmLAcQbDqHih7Kty7GoinxvrY84UJd9DMz8GMpe9mvir0tzDjZWY9Z4m0N1W9O2lSy8zp4jFVKJNgOAy36P5cngYOQK9yIqRmRJPiCwoYrw8rqwtOOYU; _clck=tp51lh%7C2%7Cfuo%7C0%7C1880; _gid=GA1.2.13238582.1743427274; _ga=GA1.1.1363205650.1740312267; _clsk=z9ir1d%7C1743427383507%7C4%7C1%7Co.clarity.ms%2Fcollect; _ga_WN9DBP9Q8X=GS1.1.1743427274.12.1.1743427388.53.0.0")
-                .get();
-        	Elements root = doc.select("main#content div#js-job-search-results .card.card-job");
+            // content=false 로 목록만 받는다(약 0.5MB). 상세 본문까지 한 번에 받으면 13MB 라
+            // all 모드에서 8개 크롤러가 동시에 도는 힙에 부담이 된다.
+            String listJson = crawlerCommonService.fetchApiResponse(GREENHOUSE_BOARD + "?content=false");
+            JSONArray jobs = new JSONObject(listJson).optJSONArray("jobs");
 
-        	for (Element cardJobRoot : root) {
-              try {
-				// 근무지
-				String workplace = cardJobRoot.select(".list-inline.job-meta > li").text();
-				if (!"서울".equals(workplace)) {
-                    log.info(workplace);
-					continue;
-				}
+            if (jobs == null) {
+                log.error("쿠팡 크롤 응답에서 jobs 를 찾지 못함. 응답 앞부분: {}",
+                    listJson == null ? "null" : listJson.substring(0, Math.min(300, listJson.length())));
+                return CompletableFuture.completedFuture(
+                    crawlerCommonService.getNotSaveJobItem("COUPANG", resList));
+            }
 
-        		Job_mst job_mst = new Job_mst();
-        		// 상세공고 url
-        		String jobDetailLink = cardJobRoot.select("a.stretched-link.js-view-job").attr("href");
-        		// 공고명
-        		String annoSubject = cardJobRoot.select("a.stretched-link.js-view-job").text();
-        		String rowAnnoId = cardJobRoot.select(".card-job-actions.js-job").attr("data-id");
-        		job_mst.setJobDetailLink("https://www.coupang.jobs".concat(jobDetailLink));
-        		job_mst.setAnnoSubject(annoSubject);
-                job_mst.setAnnoId(rowAnnoId);
-        		job_mst.setWorkplace(workplace);
-                PersonalHistoryDto personalHistoryDto = crawlerCommonService.extractPersonalHistoryFromJobPage("https://www.coupang.jobs".concat(jobDetailLink));
-                job_mst.setPersonalHistory(personalHistoryDto.getFrom());
-                job_mst.setPersonalHistoryEnd(personalHistoryDto.getTo());
-                tempList.add(job_mst);
-              } catch (Exception itemEx) {
-                log.error("쿠팡 공고 카드 파싱 실패: {}", itemEx.getMessage(), itemEx);
-              }
-        	}
+            for (int i = 0; i < jobs.length(); i++) {
+                try {
+                    Job_mst item = toJobMst(jobs.getJSONObject(i));
+                    if (item != null) {
+                        resList.add(item);
+                    }
+                } catch (Exception itemEx) {
+                    log.error("쿠팡 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+                }
+            }
 
-            for (Job_mst item : tempList) {
+            for (Job_mst item : resList) {
                 setSubJobCdNm(item);
                 setSysCompanyCdNm(item);
             }
-        	
+
+            log.info("쿠팡 크롤 완료 — 전체 {}건 중 서울 {}건", jobs.length(), resList.size());
+            if (resList.isEmpty()) {
+                log.warn("쿠팡 크롤 결과 0건 — Greenhouse board 응답 스키마 변경/보드 이관 의심");
+            }
         } catch (Exception e) {
-            log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
-            throw new ApiException("Failed to fetch API response");  // 커스텀 예외 던지기
+            log.error("쿠팡 크롤링 실패: {}", e.getMessage(), e);
         }
-        return tempList;
+
+        return CompletableFuture.completedFuture(crawlerCommonService.getNotSaveJobItem("COUPANG", resList));
+    }
+
+    /** Greenhouse 목록 항목 하나를 Job_mst 로 변환한다. 서울 공고가 아니거나 필수값이 없으면 null. */
+    private Job_mst toJobMst(JSONObject posting) {
+        JSONObject location = posting.optJSONObject("location");
+        String workplace = location == null ? "" : location.optString("name", "");
+        if (!workplace.contains(SEOUL_LOCATION_KEYWORD)) {
+            return null;
+        }
+
+        long id = posting.optLong("id", 0L);
+        String annoSubject = posting.optString("title", "");
+        if (id == 0L || annoSubject.isBlank()) {
+            log.warn("쿠팡 공고 필수값 누락으로 건너뜀 (id={}, title='{}')", id, annoSubject);
+            return null;
+        }
+
+        Job_mst job_mst = new Job_mst();
+        job_mst.setAnnoId(String.valueOf(id));
+        job_mst.setAnnoSubject(annoSubject);
+        // absolute_url 은 영문(/en/) 페이지라 한국어 공고 페이지로 맞춰 준다. gh_jid 로 같은 공고가 열린다.
+        job_mst.setJobDetailLink("https://www.coupang.jobs/kr/jobs/?gh_jid=" + id);
+        job_mst.setWorkplace(JobEnums.SEOUL.getTitle());
+
+        applyPersonalHistory(job_mst, id);
+        return job_mst;
+    }
+
+    /**
+     * 상세 API 본문에서 경력 요건을 뽑는다.
+     * 상세 조회가 실패해도 목록에서 얻은 정보만으로 공고는 살린다.
+     */
+    private void applyPersonalHistory(Job_mst item, long id) {
+        try {
+            String detailJson = crawlerCommonService.fetchApiResponse(GREENHOUSE_BOARD + "/" + id);
+            String content = new JSONObject(detailJson).optString("content", "");
+            if (content.isBlank()) {
+                return;
+            }
+
+            // content 는 HTML 이 이스케이프된 문자열이라 Jsoup 으로 두 번 풀어야 본문 텍스트가 된다.
+            PersonalHistoryDto personalHistoryDto =
+                crawlerCommonService.getPersonalHistory(Jsoup.parse(Jsoup.parse(content).text()).text());
+            item.setPersonalHistory(personalHistoryDto.getFrom());
+            item.setPersonalHistoryEnd(personalHistoryDto.getTo());
+        } catch (Exception e) {
+            log.error("쿠팡 공고 상세 조회 실패 (id={}): {}", id, e.getMessage());
+        }
     }
 
     private void setSysCompanyCdNm(Job_mst item) {
@@ -211,39 +234,5 @@ public class CoupangJobCrawlerService {
         } else if (item.getAnnoSubject().contains("Technical Program Manage")) {
             item.setSubJobCdNm(JobEnums.TechnicalSupport.getTitle());
         }
-    }
-
-    /**
-     * <p>모든 공고를 파싱하기 위해 필요한 총 건수를 반환한다.</p>
-     * 
-     * */
-    private int getCoupangTotalListCnt(String apiUrl) {
-        String strTotalCnt;
-
-    	try {
-            Document doc = Jsoup.connect(apiUrl)
-                                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36") // User-Agent 설정
-                                .header("Cookie", "ph_cookiePref=NFAT; _gcl_au=1.1.160249659.1740312267; _fbp=fb.1.1740312267141.693781373128074153; __Host-vId=8465453b-8366-43f0-9eb3-28f53a0a4d7f; UMB_SESSION=CfDJ8M8dnfYreA1GpSGqsJMV%2Fne4R874RnIPG4Yp8b9jCiHmki4Wh7FVEB93%2BmLAcQbDqHih7Kty7GoinxvrY84UJd9DMz8GMpe9mvir0tzDjZWY9Z4m0N1W9O2lSy8zp4jFVKJNgOAy36P5cngYOQK9yIqRmRJPiCwoYrw8rqwtOOYU; _clck=tp51lh%7C2%7Cfuo%7C0%7C1880; _gid=GA1.2.13238582.1743427274; _ga=GA1.1.1363205650.1740312267; _clsk=z9ir1d%7C1743427383507%7C4%7C1%7Co.clarity.ms%2Fcollect; _ga_WN9DBP9Q8X=GS1.1.1743427274.12.1.1743427388.53.0.0")
-                                .get(); // GET 요청
-
-    		// 총건수 파싱하기.
-    		strTotalCnt = doc.select("main#content div#js-job-search-results").attr("data-results");
-
-        } catch (Exception e) {
-            log.error("Error occurred while fetching API response: {}", e.getMessage(), e);
-            throw new ApiException("Failed to Jsoup response");  // 커스텀 예외 던지기
-        }
-
-		// 쿠키 만료/차단으로 결과 페이지를 못 받으면 data-results 가 비어 parseInt 가 터진다. 방어한다.
-		if (strTotalCnt == null || strTotalCnt.isBlank()) {
-			log.error("쿠팡 총 건수(data-results) 파싱 실패 — 빈 값 (쿠키 만료/차단 의심)");
-			return 0;
-		}
-		try {
-			return Integer.parseInt(strTotalCnt.trim());
-		} catch (NumberFormatException e) {
-			log.error("쿠팡 총 건수 파싱 실패: '{}'", strTotalCnt);
-			return 0;
-		}
     }
 }
