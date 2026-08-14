@@ -170,6 +170,48 @@ class CrawlerCommonServiceExistingRowTest {
     }
 
     @Test
+    void 회사가_공고명을_바꾸면_기존_row_의_공고명도_따라간다() {
+        // 당근이 "A | B" → "A - B" 로 제목을 일괄 변경했는데 DB 만 옛 제목으로 남아,
+        // 링크 점검 배치가 상세페이지 HTML 에서 그 제목을 못 찾고 매일 종료 처리했다.
+        Job_mst existing = job("5296522003", "Software Engineer, Backend | 부동산");
+        existing.setSubJobCdNm("Backend");
+        existing.setEmbedding(new byte[] { 1, 2, 3 }); // 옛 제목으로 색인된 벡터
+
+        Job_mst crawled = job("5296522003", "Software Engineer, Backend - 부동산");
+        crawled.setSubJobCdNm("Backend");
+
+        when(crawlerRepository.findAllByAnnoIdIn(anyList())).thenReturn(List.of(existing));
+        when(crawlerRepository.findAllByCompanyCd("DAANGN")).thenReturn(List.of(existing));
+
+        service.getNotSaveJobItem("DAANGN", List.of(crawled));
+
+        verify(crawlerRepository).saveAll(savedCaptor.capture());
+        Job_mst updated = savedCaptor.getValue().get(0);
+        assertEquals("Software Engineer, Backend - 부동산", updated.getAnnoSubject());
+        assertNull(updated.getEmbedding(), "제목이 바뀌었으면 다시 색인되도록 임베딩을 비운다");
+    }
+
+    @Test
+    void 공고명_앞뒤_공백만_다른_경우는_갱신하지_않는다() {
+        // Greenhouse 는 제목 끝에 공백을 붙여 내려주기도 한다. 같은 제목으로 보고 쓰기를 만들지 않는다.
+        Job_mst existing = job("7568233003", "Sales & Account Manager - 로컬 잡스");
+        existing.setSubJobCdNm("Backend");
+        existing.setEndDate("2999-12-31 00:00:00");
+
+        Job_mst crawled = job("7568233003", "Sales & Account Manager - 로컬 잡스 ");
+        crawled.setSubJobCdNm("Backend");
+        crawled.setEndDate("2999-12-31 00:00:00");
+
+        when(crawlerRepository.findAllByAnnoIdIn(anyList())).thenReturn(List.of(existing));
+        when(crawlerRepository.findAllByCompanyCd("DAANGN")).thenReturn(List.of(existing));
+
+        service.getNotSaveJobItem("DAANGN", List.of(crawled));
+
+        verify(crawlerRepository, never()).saveAll(anyList());
+        assertEquals("Sales & Account Manager - 로컬 잡스", existing.getAnnoSubject());
+    }
+
+    @Test
     void 신규_공고는_기존_row_갱신_대상이_아니다() {
         Job_mst crawled = job("999", "새로 올라온 공고");
 

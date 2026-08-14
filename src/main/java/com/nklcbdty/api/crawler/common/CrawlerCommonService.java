@@ -194,6 +194,9 @@ public class CrawlerCommonService {
         //                       기존 값은 덮어쓰지 않는다(크롤러 키워드 분류가 null 일 수 있으므로).
         //  4) jobDetailLink  : 회사가 채용 사이트를 옮기면 기존 row 는 죽은 링크를 계속 들고 있고,
         //                       링크 점검 배치가 매일 그 row 를 종료 처리한다(당근 이관 때 실제로 발생).
+        //  5) annoSubject    : 링크 점검 배치는 "상세페이지 HTML 에 DB 의 공고명이 들어있는가"로 생존을
+        //                       판정한다. 회사가 공고 제목을 바꾸면(당근이 "A | B" → "A - B" 로 일괄 변경)
+        //                       DB 만 옛 제목으로 남아 살아있는 공고가 매일 종료 처리된다.
         List<Job_mst> existingToUpdate = new ArrayList<>();
         for (Job_mst jobItem : result) {
             Job_mst existing = existingJobs.stream()
@@ -235,6 +238,18 @@ public class CrawlerCommonService {
             if (freshLink != null && !freshLink.isBlank()
                 && !freshLink.equals(existing.getJobDetailLink())) {
                 existing.setJobDetailLink(freshLink);
+                changed = true;
+            }
+
+            final String freshSubject = jobItem.getAnnoSubject() == null ? null : jobItem.getAnnoSubject().strip();
+            if (freshSubject != null && !freshSubject.isEmpty()
+                && !freshSubject.equals(existing.getAnnoSubject())) {
+                log.info("공고명 변경 반영 — annoId={} '{}' → '{}'",
+                    existing.getAnnoId(), existing.getAnnoSubject(), freshSubject);
+                existing.setAnnoSubject(freshSubject);
+                // 제목이 검색 임베딩 입력의 첫 항목이라, 바뀐 채로 두면 옛 제목으로 색인된 벡터가 남는다.
+                // embedding 을 비우면 JobEmbeddingIndexer 가 다음 주기에 다시 색인한다.
+                existing.setEmbedding(null);
                 changed = true;
             }
 
