@@ -29,6 +29,10 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>DB 검증은 userId+토큰해시 단위라 기기(브라우저)마다 각자의 리프레시 토큰이
  * 유효하다 — 다른 기기에서 로그인해도 기존 기기가 로그아웃되지 않는다.</p>
+ *
+ * <p>DB·Redis 어느 쪽에도 토큰 원문은 남기지 않는다. Redis 는 "이 토큰이 유효한가"만
+ * 알면 되므로 해시를 키에 담고 존재 여부만 본다 — 덤프(RDB/AOF)가 유출돼도
+ * 그 값으로 로그인할 수 없다.</p>
  */
 @Slf4j
 @Service
@@ -77,7 +81,7 @@ public class TokenService {
 
         try {
             redisTemplate.opsForValue()
-                .set(userId + ":refreshToken", refreshToken, Duration.ofDays(REFRESH_TOKEN_EXPIRATION_DAYS));
+                .set(cacheKey(userId, refreshToken), "1", Duration.ofDays(REFRESH_TOKEN_EXPIRATION_DAYS));
             log.info("refresh token saved for userId: {}", userId);
         } catch (Exception e) {
             log.warn("refresh token Redis save failed (DB fallback will be used) for userId {}: {}", userId, e.getMessage());
@@ -92,7 +96,7 @@ public class TokenService {
         if (userId == null || refreshToken == null) {
             return false;
         }
-        if (refreshToken.equals(getRefreshToken(userId))) {
+        if (isCached(userId, refreshToken)) {
             return true;
         }
 
@@ -114,6 +118,12 @@ public class TokenService {
     /** 갱신 성공 시 새 토큰을 저장하고 방금 쓴 옛 토큰은 무효화한다(유예 시간 동안은 통과). */
     public void rotateRefreshToken(String userId, String oldRefreshToken, String newRefreshToken) {
         saveRefreshToken(userId, newRefreshToken);
+        // 캐시는 토큰별 키라 덮어써지지 않는다. 지우지 않으면 무효화한 토큰이 빠른 경로로 계속 통과한다.
+        try {
+            redisTemplate.delete(cacheKey(userId, oldRefreshToken));
+        } catch (Exception e) {
+            log.warn("old refresh token cache delete failed for userId {}: {}", userId, e.getMessage());
+        }
         try {
             refreshTokenRepository
                 .findFirstByUserIdAndTokenAndIsRevokedFalseOrderByIdDesc(userId, hashToken(oldRefreshToken))
@@ -136,17 +146,16 @@ public class TokenService {
         }
     }
 
-    public String getRefreshToken(String userId) {
+    /** 값이 아니라 키로 판별한다 — 캐시에 토큰 원문이 남지 않는다. */
+    private String cacheKey(String userId, String refreshToken) {
+        return "refresh:" + userId + ":" + hashToken(refreshToken);
+    }
+
+    private boolean isCached(String userId, String refreshToken) {
         try {
-            Object token = redisTemplate.opsForValue().get(userId + ":refreshToken");
-
-            if (token == null) {
-                return null;
-            }
-
-            return (String)redisTemplate.opsForValue().get(userId + ":refreshToken");
+            return Boolean.TRUE.equals(redisTemplate.hasKey(cacheKey(userId, refreshToken)));
         } catch (Exception e) {
-            return null;
+            return false;
         }
     }
 }
