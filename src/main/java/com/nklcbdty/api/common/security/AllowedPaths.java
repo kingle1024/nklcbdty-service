@@ -39,6 +39,8 @@ public enum AllowedPaths {
     JOBS("/api/jobs/**"),
     // 관리자 로그인만 공개. 그 외 /api/admin/** 은 AuthFilter 에서 ADMIN 역할 토큰을 요구한다.
     ADMIN_LOGIN("/api/admin/login"),
+    // 지금 떠 있는 빌드 확인용(빌드/기동 시각). 배포가 실제로 반영됐는지 보려면 인증 없이 열려 있어야 한다.
+    VERSION("/api/version"),
     ;
 
     private final String path;
