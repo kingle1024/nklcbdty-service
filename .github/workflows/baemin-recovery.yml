@@ -1,0 +1,61 @@
+name: Baemin Recovery
+
+# 배민 공고 되살리기.
+#
+# 배민 상세페이지는 Next.js 클라이언트 렌더링이라 원본 HTML 에 공고명이 없다. batch 의 링크 점검은
+# "상세페이지 HTML 에 공고명이 있는가" 로 생존을 판정하므로 살아있는 배민 공고를 매일 아침 전부
+# 종료 처리한다(운영 실측: 07:30~08:21 사이에 10건 전부 end_date=어제 23:59:59).
+#
+# 제대로 된 자리는 두 곳인데 둘 다 운영에 못 올라간다:
+#   1. batch 의 BaeminLivenessChecker (2026-08-04) — 채용 API 로 판정해 애초에 종료 처리를 안 한다
+#   2. service 의 BaeminRecoveryScheduler (PR #218) — 09:00 에 재크롤
+# 둘 다 코드는 main 에 있고 도커 이미지도 푸시됐는데, CloudType 이 새 이미지를 컨테이너에
+# 반영하지 않는다. 판별법: GET /api/version 이 401 이면(=AllowedPaths 에 없음) PR #219 이전 코드다.
+#
+# 그래서 앱 안이 아니라 **여기서** 되살린다. Actions 는 정상 동작하고, /api/crawler 는 옛 빌드에도
+# 있으므로 컨테이너가 낡아 있어도 동작한다. 배포가 정상화되면 이 워크플로는 무해한 중복이 되니
+# 그때 지우면 된다.
+
+on:
+  schedule:
+    # UTC 00:00 = KST 09:00. 링크 점검(07:30~08:21)과 메일(08:23)이 끝난 뒤여야 한다.
+    # Actions cron 은 몇 분~십여 분 늦게 뜨지만, 다음 점검까지 22시간 여유가 있어 문제되지 않는다.
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  recover:
+    name: 배민 재크롤 + 결과 확인
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 배민 재크롤
+        env:
+          API_BASE: ${{ vars.API_BASE_URL || 'https://port-0-nklcbdty-service-m6qh1fte0c037b76.sel4.cloudtype.app' }}
+        run: |
+          echo "재크롤 요청"
+          out=$(curl -s -o /dev/null --max-time 300 \
+            -w '%{http_code} %{time_total}' "$API_BASE/api/crawler?company=baemin" || echo "000 0")
+          code=${out%% *}
+          echo "  HTTP $code (${out##* }s)"
+          if [ "$code" != "200" ]; then
+            echo "::error::배민 재크롤 실패 (HTTP $code)"
+            exit 1
+          fi
+
+      - name: 목록에 실제로 올라왔는지 확인
+        env:
+          API_BASE: ${{ vars.API_BASE_URL || 'https://port-0-nklcbdty-service-m6qh1fte0c037b76.sel4.cloudtype.app' }}
+        run: |
+          body=$(curl -s --max-time 120 "$API_BASE/api/list?company=BAEMIN" || echo "")
+          # 건수만 센다. jq 가 없는 러너는 없지만, 응답이 JSON 이 아닐 때도 죽지 않게 || 로 받는다.
+          count=$(printf '%s' "$body" | jq 'length' 2>/dev/null || echo "-1")
+          echo "BAEMIN 공고 $count 건"
+          if [ "$count" = "-1" ]; then
+            echo "::error::목록 응답을 해석할 수 없습니다: $(printf '%s' "$body" | head -c 200)"
+            exit 1
+          fi
+          if [ "$count" -lt 1 ]; then
+            echo "::error::재크롤 후에도 배민 공고가 0건입니다. 크롤 원본(career.woowahan.com) 또는 분류(subJobCdNm)를 확인하세요."
+            exit 1
+          fi
