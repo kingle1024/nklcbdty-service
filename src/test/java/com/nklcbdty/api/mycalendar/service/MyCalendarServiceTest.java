@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +48,13 @@ class MyCalendarServiceTest {
         request.setCompanyName(company);
         request.setUrl(url);
         request.setMemo(memo);
+        return request;
+    }
+
+    /** 마감일 없는 상시채용 등록 요청. 날짜를 같이 넘겨 "그래도 버리는지" 를 볼 수 있게 해 둔다. */
+    private static MyCalendarEntryRequest ongoingRequest(String date, String company) {
+        MyCalendarEntryRequest request = request(date, company, null, null);
+        request.setOngoing(true);
         return request;
     }
 
@@ -99,10 +107,12 @@ class MyCalendarServiceTest {
     }
 
     @Test
-    @DisplayName("날짜가 없거나 형식이 틀리면 400")
+    @DisplayName("상시채용이 아닌데 날짜가 없거나 형식이 틀리면 400")
     void applyDateMustBeValid() {
         assertThatThrownBy(() -> service.create(ME, request(null, "카카오", null, null)))
-            .isInstanceOf(IllegalArgumentException.class);
+            .isInstanceOf(IllegalArgumentException.class)
+            // 날짜를 비우는 방법(상시채용)을 알려 줘야 사용자가 막히지 않는다.
+            .hasMessageContaining("상시채용");
         assertThatThrownBy(() -> service.create(ME, request("2026/09/01", "카카오", null, null)))
             .isInstanceOf(IllegalArgumentException.class);
 
@@ -201,5 +211,131 @@ class MyCalendarServiceTest {
 
         verify(entryRepository).findByIdAndUserId(7L, ME);
         verify(entryRepository, never()).findById(anyLong());
+    }
+
+    // --------------------------------------------------------------------- 상시채용
+
+    @Test
+    @DisplayName("상시채용은 날짜 없이 저장된다")
+    void ongoingEntryIsSavedWithoutDate() {
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        MyCalendarEntryDto created = service.create(ME, ongoingRequest(null, "카카오"));
+
+        assertThat(created.isOngoing()).isTrue();
+        assertThat(created.getApplyDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("상시채용으로 저장하면 함께 온 날짜는 버린다 — 표식 날짜를 남기지 않는다")
+    void ongoingEntryDropsTheDate() {
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        service.create(ME, ongoingRequest("2026-09-01", "카카오"));
+
+        ArgumentCaptor<MyCalendarEntry> saved = ArgumentCaptor.forClass(MyCalendarEntry.class);
+        verify(entryRepository).save(saved.capture());
+        assertThat(saved.getValue().getApplyDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("날짜 있는 일정을 상시채용으로 바꿀 수 있다")
+    void updateCanTurnADatedEntryIntoOngoing() {
+        MyCalendarEntry mine = entry(7L, ME, LocalDate.of(2026, 9, 1), "카카오");
+        when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        MyCalendarEntryDto updated = service.update(ME, 7L, ongoingRequest("2026-09-01", "카카오"));
+
+        assertThat(updated.isOngoing()).isTrue();
+        assertThat(updated.getApplyDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("상시채용은 어느 달을 조회해도 함께 온다 — 특정 달의 일정이 아니다")
+    void ongoingEntriesComeWithEveryMonth() {
+        when(entryRepository.findByUserIdAndApplyDateBetweenOrderByApplyDateAscIdAsc(
+            ME, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)))
+            .thenReturn(List.of(entry(1L, ME, LocalDate.of(2026, 9, 3), "카카오")));
+        when(entryRepository.findByUserIdAndApplyDateIsNullOrderByCompletedAscIdAsc(ME))
+            .thenReturn(List.of(entry(2L, ME, null, "네이버"), entry(3L, ME, null, "토스")));
+
+        MyCalendarMonthDto month = service.getMonth(ME, YearMonth.of(2026, 9));
+
+        assertThat(month.getOngoingCount()).isEqualTo(2);
+        assertThat(month.getOngoingEntries()).extracting(MyCalendarEntryDto::getCompanyName)
+                                             .containsExactly("네이버", "토스");
+        // 상시채용은 그 달의 일정 건수에 섞이지 않는다 — "9월에 적어 둔 일정 N건" 이 틀리면 안 된다.
+        assertThat(month.getTotalCount()).isEqualTo(1);
+        assertThat(month.getDays()).hasSize(1);
+    }
+
+    // ------------------------------------------------------------------- 완료 표시
+
+    @Test
+    @DisplayName("완료로 표시하면 완료 시각이 남는다")
+    void completingStampsTheTime() {
+        when(entryRepository.findByIdAndUserId(7L, ME))
+            .thenReturn(Optional.of(entry(7L, ME, null, "카카오")));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        MyCalendarEntryDto completed = service.setCompleted(ME, 7L, true);
+
+        assertThat(completed.isCompleted()).isTrue();
+        assertThat(completed.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("완료를 되돌리면 완료 시각도 지운다 — 앞뒤 안 맞는 값을 남기지 않는다")
+    void uncompletingClearsTheTime() {
+        MyCalendarEntry mine = entry(7L, ME, null, "카카오");
+        mine.setCompleted(true);
+        mine.setCompletedDts(LocalDateTime.of(2026, 8, 20, 10, 0));
+        when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        MyCalendarEntryDto reopened = service.setCompleted(ME, 7L, false);
+
+        assertThat(reopened.isCompleted()).isFalse();
+        assertThat(reopened.getCompletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("같은 완료 요청을 두 번 보내도 결과가 같다 — 두 곳에서 눌릴 수 있다")
+    void completingTwiceIsHarmless() {
+        MyCalendarEntry mine = entry(7L, ME, null, "카카오");
+        when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        service.setCompleted(ME, 7L, true);
+        MyCalendarEntryDto again = service.setCompleted(ME, 7L, true);
+
+        assertThat(again.isCompleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("일정을 수정해도 완료 표시는 풀리지 않는다")
+    void updateKeepsTheCompletedFlag() {
+        MyCalendarEntry mine = entry(7L, ME, null, "카카오");
+        mine.setCompleted(true);
+        mine.setCompletedDts(LocalDateTime.of(2026, 8, 20, 10, 0));
+        when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        MyCalendarEntryDto updated = service.update(ME, 7L, ongoingRequest(null, "카카오"));
+
+        assertThat(updated.isCompleted()).isTrue();
+        assertThat(updated.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("남의 일정은 완료로 표시할 수 없다")
+    void completeOnlyTouchesMyOwnEntry() {
+        when(entryRepository.findByIdAndUserId(7L, SOMEONE_ELSE)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.setCompleted(SOMEONE_ELSE, 7L, true))
+            .isInstanceOf(MyCalendarNotFoundException.class);
+
+        verify(entryRepository, never()).save(any());
     }
 }
