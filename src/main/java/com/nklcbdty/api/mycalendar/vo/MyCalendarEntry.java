@@ -36,8 +36,14 @@ public class MyCalendarEntry {
     @Column(nullable = false)
     private String userId;
 
-    /** 달력에서 이 일정이 찍히는 날 */
-    @Column(nullable = false)
+    /**
+     * 달력에서 이 일정이 찍히는 날. <b>{@code null} 이면 상시채용</b>이다 — 마감일이 없어 어느 칸에도
+     * 못 찍으므로 달력 아래 상시채용 목록에 따로 모아 보여준다.
+     *
+     * <p>마감일 대신 {@code 2000-01-01} 같은 표식을 넣지 않는다. {@code job_mst.end_date} 가 그렇게
+     * 쓰이는데, 실제 날짜와 구분이 안 돼서 공고가 사라진 원인을 찾는 데 한참 걸렸다.</p>
+     */
+    @Column(nullable = true)
     private LocalDate applyDate;
 
     /** 유일한 필수 입력값 */
@@ -50,6 +56,20 @@ public class MyCalendarEntry {
 
     @Column(nullable = true, length = 2000)
     private String memo;
+
+    /**
+     * 지원을 마쳤는지. 상시채용은 마감일이 없어 언제까지고 목록에 남으므로, 손으로 끝냈다고
+     * 표시할 수 있어야 한다. 날짜가 있는 일정에도 같이 쓴다.
+     *
+     * <p>등록·수정({@code apply})은 이 값을 건드리지 않는다. 완료 표시는 전용 API 만 바꾼다 —
+     * 그러지 않으면 완료한 일정의 메모만 고쳐도 완료가 풀린다.</p>
+     */
+    @Column(nullable = false)
+    private boolean completed;
+
+    /** 완료로 표시한 시각. 완료를 되돌리면 다시 {@code null} 이 된다. */
+    @Column(nullable = true)
+    private LocalDateTime completedDts;
 
     @CreationTimestamp
     private LocalDateTime insertDts;

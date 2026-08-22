@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nklcbdty.api.mycalendar.dto.MyCalendarCompleteRequest;
 import com.nklcbdty.api.mycalendar.dto.MyCalendarEntryDto;
 import com.nklcbdty.api.mycalendar.dto.MyCalendarEntryRequest;
 import com.nklcbdty.api.mycalendar.dto.MyCalendarMonthDto;
@@ -33,9 +34,14 @@ import jakarta.servlet.http.HttpServletRequest;
  *   <li>GET    /api/my-calendar/entries?year=&month=  : 그 달에 적어 둔 일정</li>
  *   <li>POST   /api/my-calendar/entries               : 등록</li>
  *   <li>PUT    /api/my-calendar/entries/{entryId}     : 수정</li>
+ *   <li>PUT    /api/my-calendar/entries/{entryId}/complete : 완료 표시(되돌리기 포함)</li>
  *   <li>DELETE /api/my-calendar/entries/{entryId}     : 삭제</li>
  *   <li>GET    /api/my-calendar/company-name?url=     : URL 로 회사명 추측(입력 도우미)</li>
  * </ul>
+ *
+ * <p>완료 표시는 PATCH 가 더 어울리지만 PUT 으로 둔다 — {@code WebConfig} 의 CORS 허용 메서드에
+ * PATCH 가 없어서, PATCH 로 만들면 브라우저 preflight 에서 막힌다. 상태를 그대로 지정하는
+ * 멱등 요청이라 PUT 으로도 의미가 어긋나지 않는다.</p>
  *
  * <p>이 경로는 {@code AllowedPaths} 에 <b>없다</b>. 그래서 {@code AuthFilter} 가 유효한 토큰을
  * 요구하고, 토큰이 없으면 컨트롤러까지 오지도 못한다(401). 사용자 구분은 필터가 넣어 둔
@@ -79,6 +85,20 @@ public class MyCalendarController {
         HttpServletRequest httpRequest
     ) {
         return ResponseEntity.ok(myCalendarService.update(userId(httpRequest), entryId, request));
+    }
+
+    /**
+     * 완료 표시. 상시채용은 마감일이 없어 목록에서 저절로 내려가지 않으므로 손으로 끝냈다고 적는다.
+     * 본문을 비워 보내면 완료로 보고, 되돌릴 때만 {@code {"completed": false}} 를 보낸다.
+     */
+    @PutMapping("/entries/{entryId}/complete")
+    public ResponseEntity<MyCalendarEntryDto> complete(
+        @PathVariable Long entryId,
+        @RequestBody(required = false) MyCalendarCompleteRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        final boolean completed = request == null || !Boolean.FALSE.equals(request.getCompleted());
+        return ResponseEntity.ok(myCalendarService.setCompleted(userId(httpRequest), entryId, completed));
     }
 
     @DeleteMapping("/entries/{entryId}")

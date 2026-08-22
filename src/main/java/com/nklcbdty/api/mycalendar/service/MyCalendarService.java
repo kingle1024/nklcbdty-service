@@ -1,6 +1,7 @@
 package com.nklcbdty.api.mycalendar.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -22,6 +23,10 @@ import com.nklcbdty.api.mycalendar.vo.MyCalendarEntry;
 /**
  * 나의 채용 캘린더. 내가 지원할 회사를 달력에 적어 두는 개인 메모다.
  *
+ * <p>일정은 두 종류다. 마감일이 있는 일정은 그 날짜 칸에 찍히고, 마감일이 없는 상시채용은
+ * {@code applyDate} 를 비운 채로 저장해 달력 아래 목록에 모인다. 상시채용은 저절로 사라지지
+ * 않으므로 완료 표시({@link #setCompleted})로 끝냈다고 적을 수 있다.</p>
+ *
  * <p>모든 메서드가 {@code userId} 를 첫 인자로 받고 저장소 조회에도 반드시 함께 건다.
  * 이 API 는 캐싱하지 않는다 — 사람마다 다른 데이터라 캐시가 섞이면 남의 일정이 보인다.</p>
  */
@@ -39,7 +44,10 @@ public class MyCalendarService {
         this.entryRepository = entryRepository;
     }
 
-    /** 그 달에 적어 둔 내 일정을 날짜별로 모아 준다. */
+    /**
+     * 그 달에 적어 둔 내 일정을 날짜별로 모아 준다. 상시채용은 특정 달에 속하지 않으므로
+     * 어느 달을 조회하든 같은 목록을 함께 담아 준다.
+     */
     @Transactional(readOnly = true)
     public MyCalendarMonthDto getMonth(String userId, YearMonth yearMonth) {
         final List<MyCalendarEntry> entries =
@@ -58,7 +66,7 @@ public class MyCalendarService {
             days.add(new MyCalendarDayDto(day.getKey(), day.getValue()));
         }
 
-        return new MyCalendarMonthDto(yearMonth, entries.size(), days);
+        return new MyCalendarMonthDto(yearMonth, entries.size(), days, ongoingEntries(userId));
     }
 
     @Transactional
@@ -76,6 +84,27 @@ public class MyCalendarService {
         return new MyCalendarEntryDto(entryRepository.save(entry));
     }
 
+    /**
+     * 완료 표시를 켜고 끈다. 이미 같은 상태여도 그대로 성공시킨다 — 달력 칸과 상시채용 목록
+     * 두 곳에서 같은 일정을 누를 수 있어 두 번 눌리는 일이 실제로 생긴다.
+     *
+     * @param completed {@code false} 면 완료를 되돌린다(잘못 눌렀을 때 필요하다).
+     */
+    @Transactional
+    public MyCalendarEntryDto setCompleted(String userId, Long entryId, boolean completed) {
+        final MyCalendarEntry entry = mine(userId, entryId);
+        if (!completed) {
+            // 되돌리면 시각도 지운다. 남겨 두면 "완료 아님 + 완료 시각 있음" 이라는 앞뒤 안 맞는 값이 된다.
+            entry.setCompletedDts(null);
+        } else if (!entry.isCompleted() || entry.getCompletedDts() == null) {
+            // 이미 완료였으면 처음 끝낸 시각을 그대로 둔다 — 두 번 눌렀다고 "언제 지원했나" 가
+            // 오늘로 밀려나면 안 된다. 시각이 비어 있는 옛 데이터만 지금으로 채운다.
+            entry.setCompletedDts(LocalDateTime.now());
+        }
+        entry.setCompleted(completed);
+        return new MyCalendarEntryDto(entryRepository.save(entry));
+    }
+
     @Transactional
     public void delete(String userId, Long entryId) {
         entryRepository.delete(mine(userId, entryId));
@@ -86,25 +115,51 @@ public class MyCalendarService {
         return CompanyNameGuesser.guess(url);
     }
 
+    /** 날짜 없이 적어 둔 상시채용. 정렬(안 끝낸 것 먼저, 그 안에서 등록순)은 저장소 쿼리가 맡는다. */
+    private List<MyCalendarEntryDto> ongoingEntries(String userId) {
+        final List<MyCalendarEntryDto> ongoing = new ArrayList<>();
+        for (MyCalendarEntry entry
+                : entryRepository.findByUserIdAndApplyDateIsNullOrderByCompletedAscIdAsc(userId)) {
+            ongoing.add(new MyCalendarEntryDto(entry));
+        }
+        return ongoing;
+    }
+
     private MyCalendarEntry mine(String userId, Long entryId) {
         return entryRepository.findByIdAndUserId(entryId, userId)
                               .orElseThrow(MyCalendarNotFoundException::new);
     }
 
-    /** 요청값을 검증해서 엔티티에 옮긴다. 등록·수정이 같은 규칙을 쓰도록 한 곳에 모았다. */
+    /**
+     * 요청값을 검증해서 엔티티에 옮긴다. 등록·수정이 같은 규칙을 쓰도록 한 곳에 모았다.
+     *
+     * <p>완료 여부는 일부러 건드리지 않는다 — 폼이 그 값을 들고 다니지 않아도 메모만 고쳤을 때
+     * 완료가 풀리지 않아야 한다. 완료는 {@link #setCompleted} 만 바꾼다.</p>
+     */
     private void apply(MyCalendarEntry entry, MyCalendarEntryRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("요청 내용이 비어 있습니다.");
         }
-        entry.setApplyDate(parseDate(request.getApplyDate()));
+        entry.setApplyDate(resolveApplyDate(request));
         entry.setCompanyName(requireCompanyName(request.getCompanyName()));
         entry.setUrl(normalizeUrl(request.getUrl()));
         entry.setMemo(trimToNull(request.getMemo(), MAX_MEMO_LENGTH, "메모"));
     }
 
+    /**
+     * 상시채용이면 날짜를 비운다. 날짜 입력을 지우지 않고 상시채용으로 바꾸는 일이 흔하므로
+     * 같이 온 날짜는 오류로 보지 않고 그냥 버린다.
+     */
+    private LocalDate resolveApplyDate(MyCalendarEntryRequest request) {
+        if (Boolean.TRUE.equals(request.getOngoing())) {
+            return null;
+        }
+        return parseDate(request.getApplyDate());
+    }
+
     private LocalDate parseDate(String applyDate) {
         if (isBlank(applyDate)) {
-            throw new IllegalArgumentException("날짜를 선택해 주세요.");
+            throw new IllegalArgumentException("날짜를 선택하거나 상시채용으로 저장해 주세요.");
         }
         try {
             return LocalDate.parse(applyDate.trim());
