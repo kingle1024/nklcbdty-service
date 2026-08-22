@@ -26,11 +26,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew  # gradlew에 실행 권한 부여
 
-      - name: Build with Gradle(without tests)
+      # 테스트를 안 돌리던 시절엔 nklcbdty-common 의 수정이 반영 안 된 채(옛 버전 pin)
+      # 배포돼도 아무도 몰랐다. 자격증명이 필요한 @SpringBootTest 는 스스로 skip 되므로
+      # 여기서 도는 건 DB/네트워크 없이 끝나는 단위 테스트뿐이다.
+      - name: Build with Gradle
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew clean bootJar
+        run: ./gradlew clean test bootJar
         working-directory: ./  # 루트 디렉토리로 설정
 
       - name: Log in to Docker Hub
