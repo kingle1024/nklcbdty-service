@@ -14,16 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 import com.nklcbdty.api.user.dto.DeltaResult;
 import com.nklcbdty.api.user.dto.UserInterestResponseDto;
 import com.nklcbdty.api.user.dto.UserSettingsRequest;
+import com.nklcbdty.api.user.repository.UserInterestQueryRepository;
 import com.nklcbdty.common.user.repository.UserInterestRepository;
 import com.nklcbdty.common.vo.UserInterestVo;
 
 @Service
 public class UserInterestService {
+    /** 경력은 한 사람당 하나뿐인 값이라 다른 itemType 과 달리 항상 1건만 유지한다. */
+    private static final String ITEM_TYPE_CAREER_YEAR = "career_year";
+
     private final UserInterestRepository repository;
+    private final UserInterestQueryRepository queryRepository;
 
     @Autowired
-    public UserInterestService(UserInterestRepository repository) {
+    public UserInterestService(UserInterestRepository repository, UserInterestQueryRepository queryRepository) {
         this.repository = repository;
+        this.queryRepository = queryRepository;
     }
 
     public List<UserInterestResponseDto> findByUserId(String userId) {
@@ -58,9 +64,7 @@ public class UserInterestService {
         // 5. 데이터베이스 삽입 처리 (processInsertions 사용)
         processInsertions(userId, "company", companyDelta.getToInsert());
         processInsertions(userId, "job", jobDelta.getToInsert());
-        List<String> career_year = new ArrayList<>();
-        career_year.add(userSettings.getSelectedCareerYears());
-        processInsertions(userId, "career_year", career_year);
+        applyCareerYear(userId, userSettings.getSelectedCareerYears());
 
         // 6. 변경 없이 유지된 항목 식별
         Set<String> companysRetained = originCompanys.stream()
@@ -72,6 +76,50 @@ public class UserInterestService {
 
         // 7. 유지된 항목의 update_dts 업데이트 (processRetainedUpdates 사용)
         processRetainedUpdates(userId, companysRetained, jobsRetained);
+    }
+
+    /**
+     * 저장된 경력 연차를 돌려줍니다. 설정한 적이 없으면 null.
+     *
+     * <p>경력은 {@link #applyCareerYear} 로 항상 1건만 유지하지만, 저장할 때마다 INSERT 만 해서
+     * 쌓인 예전 행이 남아 있을 수 있어 가장 나중에 들어온 행을 쓴다. id 순서를 명시해 조회하므로
+     * (정렬 없는 findByUserId 와 달리) 어떤 값이 나올지 보장된다.
+     */
+    public Integer findCareerYear(String userId) {
+        List<UserInterestVo> rows =
+            queryRepository.findByUserIdAndItemTypeOrderByIdAsc(userId, ITEM_TYPE_CAREER_YEAR);
+
+        for (int i = rows.size() - 1; i >= 0; i--) {
+            Integer careerYear = parseCareerYear(rows.get(i).getItemValue());
+            if (careerYear != null) {
+                return careerYear;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 경력 연차를 1건만 남도록 저장합니다. 값이 넘어오지 않으면 기존 설정을 그대로 둡니다.
+     */
+    private void applyCareerYear(String userId, String selectedCareerYears) {
+        if (parseCareerYear(selectedCareerYears) == null) {
+            return;
+        }
+
+        queryRepository.deleteByUserIdAndItemType(userId, ITEM_TYPE_CAREER_YEAR);
+        processInsertions(userId, ITEM_TYPE_CAREER_YEAR, List.of(selectedCareerYears.trim()));
+    }
+
+    /** 숫자가 아닌 값(과거 데이터)이 섞여 있어도 조회가 깨지지 않도록 null 로 넘긴다. */
+    private Integer parseCareerYear(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

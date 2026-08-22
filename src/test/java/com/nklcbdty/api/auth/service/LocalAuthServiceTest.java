@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.nklcbdty.api.auth.repository.LocalAccountRepository;
 import com.nklcbdty.api.auth.vo.LocalAccount;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.user.repository.UserProfileRepository;
 import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.common.vo.UserVo;
 
@@ -34,6 +36,9 @@ class LocalAuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserProfileRepository userProfileRepository;
 
     @Mock
     private TokenService tokenService;
@@ -97,6 +102,57 @@ class LocalAuthServiceTest {
         LocalAuthService.AuthResult result = service.signup("hong@example.com", "password123", null);
 
         assertThat(result.nickname()).isEqualTo("hong");
+    }
+
+    @Test
+    void signup_같은이메일의_카카오계정이_있으면_새_userId_대신_그_계정에_연동한다() {
+        when(localAccountRepository.existsByEmail("test@example.com")).thenReturn(false);
+        when(userProfileRepository.findByEmailOrderByIdAsc("test@example.com")).thenReturn(List.of(
+            UserVo.builder().id(1L).userId("kakao@2614615415").username("엄지").email("test@example.com").build()
+        ));
+        when(localAccountRepository.saveAndFlush(any(LocalAccount.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findByUserId("kakao@2614615415"))
+            .thenReturn(UserVo.builder().userId("kakao@2614615415").username("엄지").build());
+        when(utilityNklcb.generateToken("kakao@2614615415", false)).thenReturn("access-token");
+        when(utilityNklcb.generateToken("kakao@2614615415", true)).thenReturn("refresh-token");
+
+        LocalAuthService.AuthResult result = service.signup("Test@Example.com", "password123", "새닉네임");
+
+        // 기존 계정의 userId 를 그대로 쓴다 = 구독 설정/캘린더가 그대로 보인다
+        assertThat(result.userId()).isEqualTo("kakao@2614615415");
+        assertThat(result.nickname()).isEqualTo("엄지");
+        verify(tokenService, times(1)).saveRefreshToken("kakao@2614615415", "refresh-token");
+
+        // 자격증명만 추가하고 프로필(user 행)은 새로 만들지 않는다
+        ArgumentCaptor<LocalAccount> accountCaptor = ArgumentCaptor.forClass(LocalAccount.class);
+        verify(localAccountRepository).saveAndFlush(accountCaptor.capture());
+        assertThat(accountCaptor.getValue().getUserId()).isEqualTo("kakao@2614615415");
+        assertThat(new BCryptPasswordEncoder().matches("password123", accountCaptor.getValue().getPasswordHash()))
+            .isTrue();
+        verify(userRepository, never()).save(any(UserVo.class));
+        verify(localAccountRepository, never()).save(any(LocalAccount.class));
+    }
+
+    @Test
+    void signup_같은이메일_계정이_local이면_연동하지않고_새로_만든다() {
+        when(localAccountRepository.existsByEmail("test@example.com")).thenReturn(false);
+        // 자격증명이 정리되지 않고 남은 local@ 프로필은 연동 대상이 아니다
+        when(userProfileRepository.findByEmailOrderByIdAsc("test@example.com")).thenReturn(List.of(
+            UserVo.builder().id(4L).userId("local@3").username("엄지용").email("test@example.com").build()
+        ));
+        when(localAccountRepository.saveAndFlush(any(LocalAccount.class))).thenAnswer(inv -> {
+            LocalAccount account = inv.getArgument(0);
+            account.setId(9L);
+            return account;
+        });
+        when(localAccountRepository.save(any(LocalAccount.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(utilityNklcb.generateToken("local@9", false)).thenReturn("a");
+        when(utilityNklcb.generateToken("local@9", true)).thenReturn("r");
+
+        LocalAuthService.AuthResult result = service.signup("test@example.com", "password123", "테스터");
+
+        assertThat(result.userId()).isEqualTo("local@9");
+        verify(userRepository).save(any(UserVo.class));
     }
 
     @Test
