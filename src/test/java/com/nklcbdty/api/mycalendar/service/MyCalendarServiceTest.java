@@ -301,16 +301,34 @@ class MyCalendarServiceTest {
     }
 
     @Test
-    @DisplayName("같은 완료 요청을 두 번 보내도 결과가 같다 — 두 곳에서 눌릴 수 있다")
+    @DisplayName("같은 완료 요청을 두 번 보내도 결과가 같다 — 완료 시각도 그대로다")
     void completingTwiceIsHarmless() {
         MyCalendarEntry mine = entry(7L, ME, null, "카카오");
         when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
         when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
 
-        service.setCompleted(ME, 7L, true);
+        MyCalendarEntryDto first = service.setCompleted(ME, 7L, true);
         MyCalendarEntryDto again = service.setCompleted(ME, 7L, true);
 
         assertThat(again.isCompleted()).isTrue();
+        // 두 번 눌렀다고 "언제 지원했나" 가 지금으로 밀려나면 안 된다.
+        assertThat(again.getCompletedAt()).isEqualTo(first.getCompletedAt());
+    }
+
+    @Test
+    @DisplayName("완료를 되돌린 뒤 다시 완료하면 시각은 새로 찍힌다 — 다시 지원한 것이다")
+    void recompletingAfterUndoStampsAgain() {
+        MyCalendarEntry mine = entry(7L, ME, null, "카카오");
+        mine.setCompleted(true);
+        mine.setCompletedDts(LocalDateTime.of(2026, 8, 20, 10, 0));
+        when(entryRepository.findByIdAndUserId(7L, ME)).thenReturn(Optional.of(mine));
+        when(entryRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+
+        service.setCompleted(ME, 7L, false);
+        MyCalendarEntryDto redone = service.setCompleted(ME, 7L, true);
+
+        assertThat(redone.getCompletedAt()).isNotNull()
+                                           .isNotEqualTo("2026-08-20T10:00");
     }
 
     @Test

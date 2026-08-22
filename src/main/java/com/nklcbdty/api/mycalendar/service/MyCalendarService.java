@@ -93,9 +93,15 @@ public class MyCalendarService {
     @Transactional
     public MyCalendarEntryDto setCompleted(String userId, Long entryId, boolean completed) {
         final MyCalendarEntry entry = mine(userId, entryId);
+        if (!completed) {
+            // 되돌리면 시각도 지운다. 남겨 두면 "완료 아님 + 완료 시각 있음" 이라는 앞뒤 안 맞는 값이 된다.
+            entry.setCompletedDts(null);
+        } else if (!entry.isCompleted() || entry.getCompletedDts() == null) {
+            // 이미 완료였으면 처음 끝낸 시각을 그대로 둔다 — 두 번 눌렀다고 "언제 지원했나" 가
+            // 오늘로 밀려나면 안 된다. 시각이 비어 있는 옛 데이터만 지금으로 채운다.
+            entry.setCompletedDts(LocalDateTime.now());
+        }
         entry.setCompleted(completed);
-        // 되돌리면 시각도 지운다. 남겨 두면 "완료 아님 + 완료 시각 있음" 이라는 앞뒤 안 맞는 값이 된다.
-        entry.setCompletedDts(completed ? LocalDateTime.now() : null);
         return new MyCalendarEntryDto(entryRepository.save(entry));
     }
 
