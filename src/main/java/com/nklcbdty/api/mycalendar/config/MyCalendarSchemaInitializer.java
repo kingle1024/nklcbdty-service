@@ -1,5 +1,7 @@
 package com.nklcbdty.api.mycalendar.config;
 
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -7,6 +9,7 @@ import java.util.Map;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +57,10 @@ public class MyCalendarSchemaInitializer implements ApplicationRunner {
         RELAXED_COLUMNS.put("apply_date", "DATE NULL");
     }
 
+    /** 락을 기다리다 기동을 멈추지 않도록 하는 상한. 짧게 잡고 다음 기동에 다시 시도한다. */
+    private static final int LOCK_WAIT_SECONDS = 10;
+    private static final int QUERY_TIMEOUT_SECONDS = 20;
+
     private final JdbcTemplate jdbcTemplate;
 
     public MyCalendarSchemaInitializer(JdbcTemplate jdbcTemplate) {
@@ -81,7 +88,7 @@ public class MyCalendarSchemaInitializer implements ApplicationRunner {
             ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
         try {
-            jdbcTemplate.execute(ddl);
+            alterWithBoundedWait(ddl);
             log.info("[MyCalendar] my_calendar_entry 테이블 확인/생성 완료");
         } catch (Exception e) {
             log.error("[MyCalendar] my_calendar_entry 테이블 생성 실패: {}", e.getMessage(), e);
@@ -99,7 +106,7 @@ public class MyCalendarSchemaInitializer implements ApplicationRunner {
 
     private void addColumnIfMissing(String column, String definition) {
         try {
-            jdbcTemplate.execute(
+            alterWithBoundedWait(
                 "ALTER TABLE my_calendar_entry ADD COLUMN IF NOT EXISTS " + column + " " + definition);
         } catch (Exception e) {
             log.error("[MyCalendar] my_calendar_entry.{} 컬럼 추가 실패: {}", column, e.getMessage(), e);
@@ -112,11 +119,10 @@ public class MyCalendarSchemaInitializer implements ApplicationRunner {
      */
     private void relaxNotNull(String column, String definition) {
         try {
-            if (isNullable(column)) {
+            if (definitelyNullable(column)) {
                 return;
             }
-            jdbcTemplate.execute(
-                "ALTER TABLE my_calendar_entry MODIFY COLUMN " + column + " " + definition);
+            alterWithBoundedWait("ALTER TABLE my_calendar_entry MODIFY COLUMN " + column + " " + definition);
             log.info("[MyCalendar] my_calendar_entry.{} 를 NULL 허용으로 바꿨다 — 상시채용 저장 가능", column);
         } catch (Exception e) {
             // 실패하면 상시채용 저장이 500 이 난다. 원인을 바로 알 수 있게 남긴다.
@@ -125,14 +131,62 @@ public class MyCalendarSchemaInitializer implements ApplicationRunner {
         }
     }
 
-    /** 컬럼이 NULL 을 허용하는지. 컬럼이 없으면(=방금 추가됐다) 정의대로 NULL 허용이므로 true. */
-    private boolean isNullable(String column) {
-        final List<String> nullable = jdbcTemplate.queryForList(
-            "SELECT is_nullable FROM information_schema.columns "
-                + "WHERE table_schema = DATABASE() AND table_name = 'my_calendar_entry' "
-                + "  AND column_name = ?",
-            String.class, column);
-        return nullable.isEmpty() || "YES".equalsIgnoreCase(nullable.get(0));
+    /**
+     * DDL 을 <b>반드시 시간 안에 끝나게</b> 실행한다.
+     *
+     * <p>이 DB(travel 스키마)는 다른 프로젝트와 함께 쓴다. 남의 긴 트랜잭션이 이 테이블을 잡고 있으면
+     * ALTER 는 메타데이터 락을 기다리며 <b>예외도 없이 멈춘다</b>. 이 코드는 ApplicationRunner
+     * 안에서 돌기 때문에, 그대로 기다리면 기동이 끝나지 않고 컨테이너가 안 뜬다 —
+     * "재배포는 성공인데 앱이 안 뜬다" 가 이 프로젝트에서 이미 여러 번 있었다.</p>
+     *
+     * <p>그래서 두 겹으로 막는다. {@code lock_wait_timeout} 은 락 대기를, JDBC
+     * {@code queryTimeout} 은 그마저 안 통할 때를 자른다. 포기해도 다음 기동에서 다시 시도하므로
+     * 잃는 것이 없다(그때까지 상시채용 저장만 안 된다).</p>
+     *
+     * <p>두 문장이 <b>같은 커넥션</b>에서 돌아야 해서 ConnectionCallback 을 쓴다.
+     * {@code jdbcTemplate.execute(String)} 를 두 번 부르면 풀에서 다른 커넥션을 받아
+     * {@code SET SESSION} 이 ALTER 에 적용되지 않는다.</p>
+     */
+    private void alterWithBoundedWait(String ddl) {
+        jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
+            try (Statement statement = connection.createStatement()) {
+                // MySQL 5.5+/MariaDB 에만 있다. 없는 DB 라도 ALTER 는 시도해야 하므로 여기서 삼킨다.
+                try {
+                    statement.execute("SET SESSION lock_wait_timeout = " + LOCK_WAIT_SECONDS);
+                } catch (SQLException e) {
+                    log.debug("[MyCalendar] lock_wait_timeout 설정 실패(무시): {}", e.getMessage());
+                }
+                statement.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                statement.execute(ddl);
+            }
+            return null;
+        });
+    }
+
+    /**
+     * 컬럼이 NULL 을 허용한다고 <b>확인된</b> 경우에만 true.
+     *
+     * <p>모르겠으면 false 다. "모르겠다" 를 "허용한다" 로 보면 ALTER 를 건너뛰는데, 실제로는
+     * NOT NULL 이었을 때 상시채용 저장이 500 이 나면서 <b>로그에 아무것도 남지 않는다</b>.
+     * ALTER 는 같은 정의로 여러 번 걸어도 결과가 같으니, 확신이 없으면 그냥 걸어 보는 쪽이 안전하다.</p>
+     *
+     * <p>{@code table_schema = DATABASE()} 로 지금 쓰는 스키마만 본다 — 이 DB 는 여러 프로젝트가
+     * 공유하므로 같은 이름의 테이블이 다른 스키마에 있을 수 있다.</p>
+     */
+    private boolean definitelyNullable(String column) {
+        try {
+            final List<String> nullable = jdbcTemplate.queryForList(
+                "SELECT is_nullable FROM information_schema.columns "
+                    + "WHERE table_schema = DATABASE() AND LOWER(table_name) = 'my_calendar_entry' "
+                    + "  AND LOWER(column_name) = ?",
+                String.class, column);
+            return !nullable.isEmpty() && "YES".equalsIgnoreCase(nullable.get(0));
+        } catch (Exception e) {
+            // 조회 자체가 안 되면 알 수 없다. ALTER 를 걸어 보고 그 결과로 판단하게 둔다.
+            log.debug("[MyCalendar] {} 컬럼 nullability 조회 실패 — ALTER 를 그대로 시도한다: {}",
+                column, e.getMessage());
+            return false;
+        }
     }
 
     /**
