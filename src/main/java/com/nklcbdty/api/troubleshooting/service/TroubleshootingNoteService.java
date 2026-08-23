@@ -32,6 +32,9 @@ public class TroubleshootingNoteService {
 
     private static final int MAX_PAGE_SIZE = 100;
 
+    /** '전체 복사' 가 한 번에 받아갈 수 있는 최대 건수 */
+    private static final int MAX_EXPORT = 500;
+
     private final TroubleshootingNoteRepository repository;
 
     public TroubleshootingNoteService(TroubleshootingNoteRepository repository) {
@@ -69,6 +72,30 @@ public class TroubleshootingNoteService {
             .tags(popularTags())
             .severityCounts(severityCounts())
             .build();
+    }
+
+    /**
+     * 조건에 맞는 기록을 <b>본문까지 전부</b> 준다. 목록 화면의 '전체 복사' 가 쓴다.
+     *
+     * <p>목록 응답(요약)에는 증상·원인·해결 본문이 없어서, 화면에서 전체를 텍스트로 만들려면
+     * 건마다 상세를 다시 불러야 한다(N+1). 그 왕복을 없애려고 한 번에 내려준다.
+     *
+     * <p>정렬과 조건은 목록과 같다 — 화면에서 보고 있는 그대로가 복사돼야 한다. 페이징은
+     * 하지 않지만 상한을 둔다. 기록이 수백 건으로 늘면 응답이 수 MB 가 되고, 그쯤이면
+     * 붙여 넣어 쓰는 용도 자체가 성립하지 않는다.
+     */
+    public List<TroubleshootingNoteDetailDto> export(String keyword, String project,
+                                                     String severity, String tag) {
+        Sort sort = Sort.by(Sort.Order.desc("occurredOn"), Sort.Order.desc("id"));
+        return repository.search(
+                blankIfNull(keyword),
+                blankIfNull(project),
+                lowerBlankIfNull(severity),
+                lowerBlankIfNull(tag).replace(" ", ""),
+                PageRequest.of(0, MAX_EXPORT, sort)
+            ).getContent().stream()
+            .map(TroubleshootingNoteDetailDto::from)
+            .collect(Collectors.toList());
     }
 
     /** 상세 1건. 없으면 빈 값을 돌려주는 대신 호출부가 404 로 판단할 수 있게 null 을 준다 */

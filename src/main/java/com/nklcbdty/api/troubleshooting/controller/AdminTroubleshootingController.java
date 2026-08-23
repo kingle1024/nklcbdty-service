@@ -1,5 +1,6 @@
 package com.nklcbdty.api.troubleshooting.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import com.nklcbdty.api.troubleshooting.service.TroubleshootingNoteService;
  *
  * <ul>
  *   <li>GET /api/admin/troubleshooting?page=&size=&keyword=&project=&severity=&tag=</li>
+ *   <li>GET /api/admin/troubleshooting/export?keyword=&project=&severity=&tag= — 본문까지 전부</li>
  *   <li>GET /api/admin/troubleshooting/{slug}</li>
  * </ul>
  *
@@ -48,6 +50,25 @@ public class AdminTroubleshootingController {
     ) {
         return ResponseEntity.ok(
             troubleshootingNoteService.list(keyword, project, severity, tag, page, size));
+    }
+
+    /**
+     * 조건에 맞는 기록을 본문까지 전부. 목록 화면의 '전체 복사' 가 쓴다.
+     *
+     * <p>경로가 {@code /{slug}} 와 겹쳐 보이지만, 스프링은 경로 변수보다 <b>고정 문자열
+     * 패턴을 먼저</b> 고른다. 그래도 사람이 읽고 헷갈릴 수 있는 자리라 테스트로 못박아 뒀다
+     * ({@code AdminTroubleshootingRouteTest}).
+     */
+    @GetMapping("/export")
+    public ResponseEntity<?> export(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String project,
+        @RequestParam(required = false) String severity,
+        @RequestParam(required = false) String tag
+    ) {
+        List<TroubleshootingNoteDetailDto> notes =
+            troubleshootingNoteService.export(keyword, project, severity, tag);
+        return ResponseEntity.ok(Map.of("notes", notes, "count", notes.size()));
     }
 
     @GetMapping("/{slug}")
