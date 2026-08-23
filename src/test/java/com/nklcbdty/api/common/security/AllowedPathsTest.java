@@ -66,4 +66,17 @@ class AllowedPathsTest {
         assertThat(isPublic("/api/my-calendar/entries/12")).isFalse();
         assertThat(isPublic("/api/my-calendar/company-name")).isFalse();
     }
+
+    /**
+     * 트러블슈팅 기록에는 사내·고객사 시스템 이름과 장애 내용, 로그 원문이 그대로 들어 있다.
+     * 공개 목록에 들어가면 그게 전부 인증 없이 열린다. 컨트롤러에 따로 권한 검사를 두지 않고
+     * {@code AuthFilter} 의 {@code /api/admin/} 분기(role=ADMIN 요구)에 기대고 있으므로,
+     * 이 경로가 공개로 새지 않는다는 것이 그 전제다.
+     */
+    @Test
+    @DisplayName("트러블슈팅 기록은 공개 목록에 없다 — 관리자 토큰이 있어야 한다")
+    void troubleshootingStaysPrivate() {
+        assertThat(isPublic("/api/admin/troubleshooting")).isFalse();
+        assertThat(isPublic("/api/admin/troubleshooting/dart-tracker-list-json-page-shift-21000")).isFalse();
+    }
 }
