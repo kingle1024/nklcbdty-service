@@ -1,5 +1,6 @@
 package com.nklcbdty.api.auth.service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.nklcbdty.api.auth.repository.LocalAccountRepository;
 import com.nklcbdty.api.auth.vo.LocalAccount;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.user.repository.UserProfileRepository;
 import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.common.vo.UserVo;
 
@@ -23,6 +25,10 @@ import lombok.extern.slf4j.Slf4j;
  * 카카오 로그인(KakaoController)과 같은 토큰 체계를 쓴다:
  * userId 로 access/refresh JWT 를 발급하고 user 테이블에 프로필 행을 만든다.
  * 카카오 사용자는 "kakao@{id}", 자체 가입 사용자는 "local@{id}" userId 를 갖는다.
+ *
+ * <p>단, 이미 같은 이메일로 쓰던 계정(예: 카카오 로그인)이 있으면 새 userId 를 만들지 않고
+ * 그 계정에 비밀번호 자격증명만 붙인다. 그래야 구독 설정·캘린더가 로그인 방식에 따라 갈리지 않는다.
+ * (이메일 인증 절차가 없으므로, 남이 내 이메일로 가입해 계정을 이어받는 경로가 열려 있다는 점은 감수한 선택이다.)
  */
 @Slf4j
 @Service
@@ -35,14 +41,17 @@ public class LocalAuthService {
 
     private final LocalAccountRepository localAccountRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final TokenService tokenService;
     private final UtilityNklcb utilityNklcb;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public LocalAuthService(LocalAccountRepository localAccountRepository, UserRepository userRepository,
-                            TokenService tokenService, UtilityNklcb utilityNklcb) {
+                            UserProfileRepository userProfileRepository, TokenService tokenService,
+                            UtilityNklcb utilityNklcb) {
         this.localAccountRepository = localAccountRepository;
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
         this.tokenService = tokenService;
         this.utilityNklcb = utilityNklcb;
     }
@@ -57,6 +66,11 @@ public class LocalAuthService {
 
         if (localAccountRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        String linkableUserId = findLinkableUserId(normalizedEmail);
+        if (linkableUserId != null) {
+            return linkToExistingAccount(linkableUserId, normalizedEmail, rawPassword);
         }
 
         LocalAccount account = new LocalAccount();
@@ -106,6 +120,47 @@ public class LocalAuthService {
         String nickname = user != null ? user.getUsername() : localPart(account.getEmail());
 
         return issueTokens(account.getUserId(), nickname);
+    }
+
+    /**
+     * 같은 이메일로 이미 쓰던 계정의 userId. 없으면 null.
+     *
+     * <p>local@ 로 시작하는 userId 는 자체 가입으로 만들어진 것이라 제외한다
+     * (같은 이메일이면 위쪽 existsByEmail 에서 이미 걸리고, 남아 있다면 정리 안 된 옛 데이터다).
+     */
+    private String findLinkableUserId(String email) {
+        List<UserVo> sameEmailUsers = userProfileRepository.findByEmailOrderByIdAsc(email);
+        for (UserVo user : sameEmailUsers) {
+            String userId = user.getUserId();
+            if (userId != null && !userId.startsWith(LocalAccount.USER_ID_PREFIX)) {
+                return userId;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 기존 계정에 이메일+비밀번호 자격증명만 추가한다. 프로필(user 행)은 그대로 두고 새로 만들지 않는다.
+     */
+    private AuthResult linkToExistingAccount(String userId, String normalizedEmail, String rawPassword) {
+        LocalAccount account = new LocalAccount();
+        account.setEmail(normalizedEmail);
+        account.setPasswordHash(passwordEncoder.encode(rawPassword));
+        account.setUserId(userId);
+        try {
+            localAccountRepository.saveAndFlush(account);
+        } catch (DataIntegrityViolationException e) {
+            // 같은 이메일 또는 같은 userId 로 동시에 가입 요청이 들어온 경우(UNIQUE 위반)
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        UserVo user = userRepository.findByUserId(userId);
+        String nickname = user != null && user.getUsername() != null && !user.getUsername().isBlank()
+            ? user.getUsername()
+            : localPart(normalizedEmail);
+
+        log.info("[LocalAuth] 기존 계정에 자체 로그인 연동 userId={}", userId);
+        return issueTokens(userId, nickname);
     }
 
     /** 회원가입 화면의 중복 확인용 */
