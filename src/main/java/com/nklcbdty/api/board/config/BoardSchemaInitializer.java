@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
+@Order(0) // BoardContentInitializer(샘플 글·패치노트 공지)보다 반드시 먼저 — 테이블이 있어야 INSERT 가 된다
 public class BoardSchemaInitializer implements ApplicationRunner {
 
     /**
