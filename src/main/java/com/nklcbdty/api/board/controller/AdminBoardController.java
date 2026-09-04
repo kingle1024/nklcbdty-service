@@ -18,6 +18,7 @@ import com.nklcbdty.api.board.dto.BoardPostCreateRequest;
 import com.nklcbdty.api.board.dto.BoardPostDetailDto;
 import com.nklcbdty.api.board.dto.BoardPostUpdateRequest;
 import com.nklcbdty.api.board.service.BoardService;
+import com.nklcbdty.api.board.service.PatchNoteNoticeService;
 import com.nklcbdty.api.board.vo.BoardType;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
  * - DELETE /api/admin/boards/{boardType}/posts/{postId}          : 삭제(비밀번호 없이 강제)
  * - POST   /api/admin/boards/{boardType}/posts/{postId}/comments : 관리자 댓글
  * - DELETE /api/admin/boards/comments/{commentId}                : 댓글 강제 삭제
+ * - POST   /api/admin/boards/notice/patch-notes/sync             : 패치노트 자동 공지 재실행
  *
  * /api/admin/** 는 AuthFilter 가 role=ADMIN 토큰을 검증하고 adminUsername 속성을 채워 준다.
  */
@@ -40,9 +42,11 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminBoardController {
 
     private final BoardService boardService;
+    private final PatchNoteNoticeService patchNoteNoticeService;
 
-    public AdminBoardController(BoardService boardService) {
+    public AdminBoardController(BoardService boardService, PatchNoteNoticeService patchNoteNoticeService) {
         this.boardService = boardService;
+        this.patchNoteNoticeService = patchNoteNoticeService;
     }
 
     @PostMapping("/{boardType}/posts")
@@ -93,6 +97,18 @@ public class AdminBoardController {
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, HttpServletRequest httpRequest) {
         boardService.deleteComment(commentId, null, actor(httpRequest));
         return ResponseEntity.ok(Map.of("status", "deleted", "commentId", commentId));
+    }
+
+    /**
+     * 패치노트(board/patch-notes.md) 를 다시 읽어 아직 안 올라간 항목을 공지사항에 등록한다.
+     *
+     * <p>기동할 때 이미 한 번 실행된다. 그때 DB 가 잠깐 안 되는 등으로 실패했으면 재배포 없이
+     * 이 API 로 다시 시도할 수 있다. 이미 올라간 공지는 다시 올라가지 않는다.</p>
+     */
+    @PostMapping("/notice/patch-notes/sync")
+    public ResponseEntity<?> syncPatchNotes() {
+        int published = patchNoteNoticeService.publishNew();
+        return ResponseEntity.ok(Map.of("published", published));
     }
 
     /** AuthFilter 가 ADMIN 토큰 검증 후 넣어 준 관리자 계정 */
