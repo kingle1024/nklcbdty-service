@@ -2,6 +2,7 @@ package com.nklcbdty.api.crawler.service;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,21 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class KakaoCrawlerService {
 
+    /**
+     * 카카오모빌리티 채용 사이트(greetinghr). 목록·상세 모두 서버 렌더링이라 링크 점검 배치를 통과한다.
+     * careers.kakao.com 의 상세페이지는 SPA 셸이라 매일 종료 처리돼 공고가 전멸했었다
+     * ({@link #MOBILITY_COMPANY_NAME_EN} 를 건너뛰는 이유).
+     */
+    private static final String MOBILITY_BASE_URL = "https://kakaomobility.career.greetinghr.com";
+    private static final String MOBILITY_GUIDE_URL = MOBILITY_BASE_URL + "/ko/guide";
+    private static final String MOBILITY_COMPANY_NAME = "카카오 모빌리티";
+    /** careers.kakao.com 의 {@code companyNameEn} 중 카카오모빌리티를 가리키는 값. */
+    private static final String MOBILITY_COMPANY_NAME_EN = "kakao mobility";
+
+    /** greetinghr 의 마감일시는 UTC(Z) 로 내려온다. 담을 때 한국 시각으로 옮긴다. */
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter END_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private final CrawlerCommonService crawlerCommonService;
 
     @Autowired
@@ -55,6 +71,10 @@ public class KakaoCrawlerService {
             List<Job_mst> kakaopaySec = new ArrayList<>();
             addRecruitPaySec(kakaopaySec);
             result.addAll(kakaopaySec);
+
+            List<Job_mst> kakaoMobility = new ArrayList<>();
+            addRecruitMobility(kakaoMobility);
+            result.addAll(kakaoMobility);
 
             addRecruitContent("P", result);
             addRecruitContent("S", result);
@@ -215,9 +235,24 @@ public class KakaoCrawlerService {
                 job.setSubJobCdNm(JobEnums.DBA.getTitle());
             } else if (
                 job.getAnnoSubject().contains("AI Safety 엔지니어") ||
-                job.getAnnoSubject().contains("LLM Research")
+                job.getAnnoSubject().contains("LLM Research") ||
+                // 카카오모빌리티 자율주행 R&D 공고들. 분류가 비면 목록(subJobCdNm IS NOT NULL)에서 빠진다.
+                job.getAnnoSubject().contains("AI 엔지니어") ||
+                job.getAnnoSubject().contains("AI Perception") ||
+                job.getAnnoSubject().contains("SLAM") ||
+                job.getAnnoSubject().contains("Research Engineer") ||
+                job.getAnnoSubject().contains("research scientist")
             ) {
                 job.setSubJobCdNm(JobEnums.AI.getTitle());
+            } else if (
+                // 자율주행 하드웨어 쪽 공고(HW 테크니션 / HW 엔지니어 / E/E 엔지니어)와
+                // 네이티브 렌더링 엔진 개발. 딱 맞는 JobEnums 값이 없어 가장 가까운 EmbeddedSW 로 둔다.
+                job.getAnnoSubject().contains("HW 테크니션") ||
+                job.getAnnoSubject().contains("HW 엔지니어") ||
+                job.getAnnoSubject().contains("E/E 엔지니어") ||
+                job.getAnnoSubject().contains("렌더링 엔진")
+            ) {
+                job.setSubJobCdNm(JobEnums.EmbeddedSW.getTitle());
             } else if (job.getAnnoSubject().contains("안정성 관리") || job.getAnnoSubject().contains("Technical Writer")
                 || job.getAnnoSubject().contains("기술 문서") || job.getAnnoSubject().contains("기술지원 엔지니어")
                 || job.getAnnoSubject().contains("Developer Relations")
@@ -303,7 +338,9 @@ public class KakaoCrawlerService {
             }
 
             switch (job.getSysCompanyCdNm()) {
-                case "kakao mobility": {
+                // "kakao mobility" 는 careers.kakao.com 표기. greetinghr 크롤(addRecruitMobility)은
+                // 이미 정리된 이름으로 담으므로, 여기서 default 로 떨어져 "카카오"로 덮이지 않게 같이 받는다.
+                case "kakao mobility", "카카오 모빌리티": {
                     job.setSysCompanyCdNm("카카오 모빌리티");
                     break;
                 }
@@ -331,6 +368,144 @@ public class KakaoCrawlerService {
                     job.setSysCompanyCdNm("카카오");
                 }
             }
+        }
+    }
+
+    /**
+     * 카카오모빌리티 공고. greetinghr 채용 사이트의 목록 페이지를 그대로 받아 온다.
+     *
+     * <p>목록 페이지가 Next.js SSR 이라 {@code __NEXT_DATA__} 안에 react-query 캐시가 통째로 들어 있다.
+     * 여기서 공고 목록을 꺼내므로 {@code _next/data/<buildId>/...} 를 따로 부를 필요가 없다
+     * (buildId 는 배포마다 바뀌어 따로 긁어야 하는 값이다).</p>
+     */
+    private void addRecruitMobility(List<Job_mst> kakaoMobility) {
+        try {
+            Document doc = crawlerCommonService.jsoupConnect(MOBILITY_GUIDE_URL).get();
+            Element nextData = doc.getElementById("__NEXT_DATA__");
+            if (nextData == null) {
+                log.error("카카오모빌리티 __NEXT_DATA__ 미존재 url={}", MOBILITY_GUIDE_URL);
+                return;
+            }
+            parseMobilityOpenings(nextData.html(), kakaoMobility);
+        } catch (Exception e) {
+            log.error("Error occurred while fetching Kakao Mobility jobs: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * {@code __NEXT_DATA__} JSON 에서 공고 목록을 꺼내 {@link Job_mst} 로 옮긴다.
+     *
+     * <p>queries 배열의 순서는 페이지 구성이 바뀌면 밀리므로 인덱스로 찍지 않고 queryKey 로 찾는다.</p>
+     */
+    void parseMobilityOpenings(String nextDataJson, List<Job_mst> kakaoMobility) {
+        JSONObject root = new JSONObject(nextDataJson);
+        // 페이지 HTML 의 __NEXT_DATA__ 는 props 로 한 겹 더 싸여 있고, _next/data 응답은 pageProps 부터 시작한다.
+        JSONObject pageProps = root.has("props")
+            ? root.getJSONObject("props").getJSONObject("pageProps")
+            : root.getJSONObject("pageProps");
+        JSONArray queries = pageProps.getJSONObject("dehydratedState").getJSONArray("queries");
+
+        JSONArray openings = null;
+        for (int i = 0; i < queries.length(); i++) {
+            JSONArray queryKey = queries.getJSONObject(i).optJSONArray("queryKey");
+            if (queryKey == null || queryKey.isEmpty()) {
+                continue;
+            }
+            if (!"openings".equals(queryKey.opt(0))) {
+                continue;
+            }
+            openings = queries.getJSONObject(i).getJSONObject("state").optJSONArray("data");
+            break;
+        }
+
+        if (openings == null) {
+            log.error("카카오모빌리티 채용공고 openings 미존재");
+            return;
+        }
+
+        for (int i = 0; i < openings.length(); i++) {
+            try {
+                JSONObject opening = openings.getJSONObject(i);
+                Object dueDate = opening.opt("dueDate");
+                if (crawlerCommonService.isCloseDate(dueDate)) {
+                    continue;
+                }
+
+                Job_mst item = new Job_mst();
+                item.setAnnoId(String.valueOf(opening.getLong("openingId")));
+                item.setAnnoSubject(opening.getString("title").strip());
+                item.setJobDetailLink(MOBILITY_BASE_URL + "/ko/o/" + item.getAnnoId());
+                item.setSysCompanyCdNm(MOBILITY_COMPANY_NAME);
+
+                if (dueDate != null && !JSONObject.NULL.equals(dueDate)) {
+                    item.setEndDate(OffsetDateTime.parse(dueDate.toString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        .atZoneSameInstant(KST)
+                        .format(END_DATE_FORMATTER));
+                }
+
+                applyMobilityPositions(item, opening.getJSONObject("openingJobPosition")
+                    .optJSONArray("openingJobPositions"));
+
+                kakaoMobility.add(item);
+            } catch (Exception itemEx) {
+                log.error("카카오모빌리티 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+            }
+        }
+    }
+
+    /**
+     * 공고 하나에 붙은 포지션들에서 직군/고용형태/경력을 뽑는다.
+     *
+     * <p>한 공고가 여러 포지션(직군·근무지 조합)을 가질 수 있어, 경력은 가장 넓은 구간으로 잡고
+     * 고용형태는 정규직이 하나라도 있으면 정규로 본다.</p>
+     */
+    private void applyMobilityPositions(Job_mst item, JSONArray positions) {
+        item.setEmpTypeCdNm("정규");
+        if (positions == null) {
+            return;
+        }
+
+        long careerFrom = Long.MAX_VALUE;
+        long careerTo = 0;
+        boolean hasFullTime = false;
+        boolean hasNonRegular = false;
+
+        for (int i = 0; i < positions.length(); i++) {
+            JSONObject position = positions.getJSONObject(i);
+
+            if (item.getClassCdNm() == null && !position.isNull("workspaceJob")) {
+                item.setClassCdNm(position.getJSONObject("workspaceJob").optString("job", null));
+            }
+
+            if (!position.isNull("jobPositionEmployment")) {
+                String employmentType = position.getJSONObject("jobPositionEmployment")
+                    .optString("employmentType", "");
+                if ("FULL_TIME_WORKER".equals(employmentType)) {
+                    hasFullTime = true;
+                } else if (!employmentType.isBlank()) {
+                    hasNonRegular = true;
+                }
+            }
+
+            if (!position.isNull("jobPositionCareer")) {
+                JSONObject career = position.getJSONObject("jobPositionCareer");
+                if (!career.isNull("careerFrom")) {
+                    careerFrom = Math.min(careerFrom, career.getLong("careerFrom"));
+                }
+                if (!career.isNull("careerTo")) {
+                    careerTo = Math.max(careerTo, career.getLong("careerTo"));
+                }
+            }
+        }
+
+        if (!hasFullTime && hasNonRegular) {
+            item.setEmpTypeCdNm("비정규");
+        }
+        if (careerFrom != Long.MAX_VALUE) {
+            item.setPersonalHistory(careerFrom);
+        }
+        if (careerTo > 0) {
+            item.setPersonalHistoryEnd(careerTo);
         }
     }
 
@@ -745,6 +920,13 @@ public class KakaoCrawlerService {
             String qualification = edge.getString("qualification");
 
             String companyNameEn = edge.getString("companyNameEn");
+            // 카카오모빌리티는 자체 채용 사이트(greetinghr)에서 받는다 — addRecruitMobility.
+            // careers.kakao.com 에도 같은 공고가 걸려 있지만 상세페이지가 SPA 셸이라
+            // 링크 점검 배치가 매일 종료 처리해 버린다(실제로 41건 전원 마감으로 찍혀 목록에서 사라졌다).
+            // 두 곳에서 다 받으면 annoId 체계가 달라 같은 공고가 두 건으로 보이므로 여기서는 건너뛴다.
+            if (MOBILITY_COMPANY_NAME_EN.equals(companyNameEn)) {
+                continue;
+            }
             Job_mst item = new Job_mst();
             item.setAnnoSubject(String.valueOf(title).trim());
             item.setAnnoId(String.valueOf(jobOfferId));
