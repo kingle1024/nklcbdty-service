@@ -226,4 +226,112 @@ class KakaoCrawlerServiceTest {
         assertThat(result.get(0).getJobDetailLink())
             .isEqualTo("https://recruit.kakaobank.com/jobs/999");
     }
+
+    /**
+     * 카카오모빌리티 채용 사이트(greetinghr) 목록 페이지의 {@code __NEXT_DATA__} 축약본.
+     * queries 안에서 openings 가 마지막에 오는 것도 실제 응답과 같다 (인덱스로 찍으면 안 되는 이유).
+     */
+    private static final String MOBILITY_NEXT_DATA = """
+        {
+          "props": {
+            "pageProps": {
+              "dehydratedState": {
+                "queries": [
+                  { "queryKey": ["publicCareer", "getCareerBaseInfo", "kakaomobility"], "state": { "data": {} } },
+                  {
+                    "queryKey": ["openings"],
+                    "state": {
+                      "data": [
+                        {
+                          "openingId": 235808,
+                          "title": "[집중채용] 자율주행 Research Engineer (Ph.D) ",
+                          "dueDate": "2099-09-28T02:59:59Z",
+                          "openingJobPosition": {
+                            "openingJobPositions": [
+                              {
+                                "workspaceJob": { "job": "개발" },
+                                "jobPositionCareer": { "careerFrom": null, "careerTo": null, "careerType": "NOT_MATTER" },
+                                "jobPositionEmployment": { "employmentType": "FULL_TIME_WORKER" }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "openingId": 227958,
+                          "title": "[Contract] 자율주행 HW 테크니션",
+                          "dueDate": null,
+                          "openingJobPosition": {
+                            "openingJobPositions": [
+                              {
+                                "workspaceJob": { "job": "개발" },
+                                "jobPositionCareer": { "careerFrom": 3, "careerTo": 10, "careerType": "EXPERIENCED" },
+                                "jobPositionEmployment": { "employmentType": "CONTRACT_WORKER" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+        """;
+
+    @Test
+    @DisplayName("카카오모빌리티: __NEXT_DATA__ 의 openings 를 Job_mst 로 매핑한다")
+    void parseMobilityOpenings_mapsOpenings() {
+        List<Job_mst> result = new ArrayList<>();
+        kakaoCrawlerService.parseMobilityOpenings(MOBILITY_NEXT_DATA, result);
+
+        assertThat(result).hasSize(2);
+
+        Job_mst first = result.get(0);
+        assertThat(first.getAnnoId()).isEqualTo("235808");
+        assertThat(first.getAnnoSubject()).isEqualTo("[집중채용] 자율주행 Research Engineer (Ph.D)");
+        assertThat(first.getJobDetailLink())
+            .isEqualTo("https://kakaomobility.career.greetinghr.com/ko/o/235808");
+        assertThat(first.getSysCompanyCdNm()).isEqualTo("카카오 모빌리티");
+        assertThat(first.getClassCdNm()).isEqualTo("개발");
+        assertThat(first.getEmpTypeCdNm()).isEqualTo("정규");
+        // UTC 02:59:59 → 한국시각 11:59:59
+        assertThat(first.getEndDate()).isEqualTo("2099-09-28 11:59:59");
+        assertThat(first.getPersonalHistory()).isZero();
+
+        Job_mst second = result.get(1);
+        assertThat(second.getAnnoId()).isEqualTo("227958");
+        assertThat(second.getEmpTypeCdNm()).isEqualTo("비정규");
+        assertThat(second.getPersonalHistory()).isEqualTo(3L);
+        assertThat(second.getPersonalHistoryEnd()).isEqualTo(10L);
+        // 마감일 없는 상시채용은 endDate 를 비워 둔다 (JobEndDates 가 상시채용으로 읽는다)
+        assertThat(second.getEndDate()).isNull();
+    }
+
+    @Test
+    @DisplayName("카카오모빌리티: 마감일이 지난 공고는 결과에서 제외된다")
+    void parseMobilityOpenings_skipsExpiredItems() {
+        when(crawlerCommonService.isCloseDate(eq("2099-09-28T02:59:59Z"))).thenReturn(true);
+
+        List<Job_mst> result = new ArrayList<>();
+        kakaoCrawlerService.parseMobilityOpenings(MOBILITY_NEXT_DATA, result);
+
+        assertThat(result).extracting(Job_mst::getAnnoId).containsExactly("227958");
+    }
+
+    @Test
+    @DisplayName("카카오모빌리티: openings 쿼리가 없으면 예외 없이 빈 결과를 준다")
+    void parseMobilityOpenings_withoutOpeningsQuery() {
+        String nextData = """
+            { "props": { "pageProps": { "dehydratedState": { "queries": [
+                { "queryKey": ["publicCareer", "getCareerBaseInfo"], "state": { "data": {} } }
+            ] } } } }
+            """;
+
+        List<Job_mst> result = new ArrayList<>();
+        kakaoCrawlerService.parseMobilityOpenings(nextData, result);
+
+        assertThat(result).isEmpty();
+    }
 }
