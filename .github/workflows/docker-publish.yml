@@ -42,16 +42,43 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
+      # CloudType 은 `latest` 를 이미 받아둔 것으로 보고 새 이미지를 pull 하지 않는다.
+      # 2026-09-14 기준 운영 컨테이너의 /api/version buildTime 은 2026-08-23 이었다 —
+      # 그 사이 머지된 것들이 이미지에는 들어갔는데 컨테이너만 안 바뀐 것이다.
+      # 그래서 매 빌드마다 이름이 달라지는 커밋 SHA 태그를 함께 올린다. 처음 보는 태그는
+      # 캐시가 없으므로 CloudType 이 반드시 받아온다. `latest` 는 기존 참조용으로 유지.
+      # (batch 저장소가 먼저 같은 방식으로 고쳤다 — nklcbdty-batch PR #6)
+      - name: Resolve image tag
+        id: tag
+        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Build Docker image
         run: |
           docker build \
             --build-arg GITHUB_ACTOR=${{ github.actor }} \
             --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-            -t ejy1024/nklcbdty-service:latest .
+            -t ejy1024/nklcbdty-service:latest \
+            -t ejy1024/nklcbdty-service:${{ steps.tag.outputs.sha }} .
 
       - name: Push Docker image
         run: |
+          docker push ejy1024/nklcbdty-service:${{ steps.tag.outputs.sha }}
           docker push ejy1024/nklcbdty-service:latest
+
+      # CloudType 콘솔에 넣을 태그를 Actions 요약에 남긴다.
+      # 이 태그로 바꿔야 재배포가 실제로 새 코드를 올린다.
+      - name: Write deploy hint
+        run: |
+          {
+            echo "### CloudType 에 넣을 이미지 태그"
+            echo
+            echo '```'
+            echo "ejy1024/nklcbdty-service:${{ steps.tag.outputs.sha }}"
+            echo '```'
+            echo
+            echo "콘솔에서 이미지 태그를 위 값으로 바꾼 뒤 재배포하면 캐시를 우회해 새 코드가 뜬다."
+            echo "떠 있는 빌드는 \`/api/version\` 의 \`buildTime\` 으로 확인할 수 있다."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # 클라우드타입 자동 재배포.
   #
