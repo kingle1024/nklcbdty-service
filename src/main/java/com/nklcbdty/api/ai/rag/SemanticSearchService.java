@@ -38,7 +38,7 @@ public class SemanticSearchService {
     public List<Result> search(String query, int topK) {
         if (query == null || query.isBlank()) return List.of();
         if (!embedder.isAvailable()) {
-            log.warn("임베딩 모델 미로드 → 의미 검색 불가 (모델 다운로드/로드 중일 수 있음)");
+            log.warn("임베딩 공급자 비가용 → 의미 검색 불가 (API 키 미설정이거나 provider=none)");
             return List.of();
         }
 

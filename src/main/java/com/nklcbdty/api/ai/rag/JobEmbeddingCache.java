@@ -34,16 +34,24 @@ public class JobEmbeddingCache {
 
     private final CopyOnWriteArrayList<Entry> entries = new CopyOnWriteArrayList<>();
     private final JobEmbeddingRepository repo;
+    private final EmbeddingService embedder;
 
-    public JobEmbeddingCache(JobEmbeddingRepository repo) {
+    public JobEmbeddingCache(JobEmbeddingRepository repo, EmbeddingService embedder) {
         this.repo = repo;
+        this.embedder = embedder;
     }
 
     @PostConstruct
     public void warmUp() {
+        if (!embedder.isAvailable()) {
+            log.info("임베딩 비활성 → 캐시 워밍업 생략");
+            return;
+        }
         long t0 = System.currentTimeMillis();
         try {
-            List<Object[]> rows = repo.findAllEmbeddingsRaw();
+            // 지금 쓰는 모델 버전만 싣는다. 옛 버전 벡터는 차원이 달라 검색에 쓰이지도 못하면서
+            // 힙만 차지한다 (공고당 dimensions * 4 byte).
+            List<Object[]> rows = repo.findEmbeddingsRaw(embedder.modelVersion());
             for (Object[] row : rows) {
                 Long id = (Long) row[0];
                 byte[] bytes = (byte[]) row[1];
