@@ -13,14 +13,17 @@ import java.io.IOException;
  * 업로드된 이력서 PDF에서 텍스트를 추출한다.
  *
  * <p>추출된 텍스트는 의미 검색({@link SemanticSearchService})의 query 로 사용된다.
- * 임베딩 모델(paraphrase-multilingual-MiniLM-L12-v2)은 긴 입력일수록 벡터가 희석되므로
+ * 임베딩은 긴 입력일수록 벡터가 희석되므로(문서 전체의 평균에 가까워진다)
  * 앞부분 일부만 사용하도록 길이를 제한한다.</p>
  */
 @Slf4j
 @Service
 public class ResumePdfExtractor {
 
-    /** 임베딩에 넘길 최대 문자 수. 모델 토큰 한계(~512)와 매칭 정확도를 고려한 보수적 상한. */
+    /**
+     * 임베딩에 넘길 최대 문자 수. 매칭 정확도를 고려한 보수적 상한으로,
+     * 로컬 모델(토큰 한계 ~512)과 API 모델(~8191) 어느 쪽에도 안전한 값이다.
+     */
     private static final int MAX_CHARS = 3000;
 
     public static final class ExtractionException extends RuntimeException {
