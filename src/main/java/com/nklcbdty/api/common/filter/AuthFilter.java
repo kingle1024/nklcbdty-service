@@ -45,7 +45,7 @@ public class AuthFilter extends OncePerRequestFilter {
         if (requestUri.startsWith("/api/admin/")) {
             final String adminToken = getTokenByRequest(request);
             if (adminToken != null && validateToken(adminToken) && isAdminToken(adminToken)) {
-                request.setAttribute("adminUsername", getUserIdByToken(adminToken));
+                request.setAttribute("adminUsername", getAdminUsernameByToken(adminToken));
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -76,6 +76,24 @@ public class AuthFilter extends OncePerRequestFilter {
             return "ADMIN".equals(claims.get("role", String.class));
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * 관리자 이름(게시글 작성자 표기 등)으로 쓸 값.
+     * 관리자 계정 토큰은 subject 가 곧 아이디지만, 관리자 이메일로 로그인한 일반 사용자 토큰은
+     * subject 가 userId("local@3") 라서 그대로 쓰면 작성자에 내부 식별자가 노출된다. adminName 을 먼저 본다.
+     */
+    private String getAdminUsernameByToken(String token) {
+        try {
+            Claims claims = Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+            String adminName = claims.get("adminName", String.class);
+            if (adminName != null && !adminName.isBlank()) {
+                return adminName;
+            }
+            return claims.getSubject();
+        } catch (Exception e) {
+            return getUserIdByToken(token);
         }
     }
 

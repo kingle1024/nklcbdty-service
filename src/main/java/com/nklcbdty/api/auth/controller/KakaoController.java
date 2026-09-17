@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import com.nklcbdty.api.auth.service.TokenService;
 import com.nklcbdty.api.user.service.UserService;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.common.security.AdminEmailPolicy;
 
 @RestController
 @RequestMapping("/api")
@@ -26,12 +27,15 @@ public class KakaoController {
     private final UserService userService;
     private final TokenService tokenService;
     private final UtilityNklcb utilityNklcb;
+    private final AdminEmailPolicy adminEmailPolicy;
 
     @Autowired
-    public KakaoController(UserService userService, TokenService tokenService, UtilityNklcb utilityNklcb) {
+    public KakaoController(UserService userService, TokenService tokenService, UtilityNklcb utilityNklcb,
+                           AdminEmailPolicy adminEmailPolicy) {
         this.userService = userService;
         this.tokenService = tokenService;
         this.utilityNklcb = utilityNklcb;
+        this.adminEmailPolicy = adminEmailPolicy;
     }
 
     @PostMapping("/kakaoLogin")
@@ -50,13 +54,19 @@ public class KakaoController {
         JSONObject jsonObject = new JSONObject(response.getBody());
         Object id = jsonObject.get("id");
         String userId = "kakao@" + id;
-        String nickname = jsonObject.getJSONObject("kakao_account")
-                                     .getJSONObject("profile")
-                                     .getString("nickname");
+        JSONObject kakaoAccount = jsonObject.getJSONObject("kakao_account");
+        String nickname = kakaoAccount.getJSONObject("profile").getString("nickname");
+        // 이메일은 동의 항목이라 없을 수 있다. 없으면 관리자 판정을 하지 않는다.
+        String email = kakaoAccount.optString("email", null);
+        boolean admin = adminEmailPolicy.isAdminEmail(email);
 
-        String jwtToken = utilityNklcb.generateToken(userId, false);
+        String jwtToken = admin
+            ? utilityNklcb.generateAdminUserToken(userId, nickname)
+            : utilityNklcb.generateToken(userId, false);
         String refreshToken = utilityNklcb.generateToken(userId, true);
         UserDetails userDetails = userService.loadUserById(userId, nickname, refreshToken);
+        // 토큰 갱신 때는 user 테이블의 이메일로 관리자 여부를 다시 판정하므로 여기서 채워 둔다.
+        userService.updateEmail(userId, email);
         tokenService.saveRefreshToken(userId, refreshToken);
 
         Map<String, Object> responseBody = new HashMap<>();
@@ -65,6 +75,8 @@ public class KakaoController {
         responseBody.put("userId", userId);
         responseBody.put("nickname", nickname);
         responseBody.put("userDetails", userDetails);
+        // 관리자 이메일로 로그인했는지. 프론트는 이 값으로 헤더의 관리자 메뉴를 띄운다.
+        responseBody.put("isAdmin", admin);
 
         return ResponseEntity.ok(responseBody);
     }

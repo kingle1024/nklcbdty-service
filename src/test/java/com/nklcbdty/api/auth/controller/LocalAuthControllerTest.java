@@ -32,7 +32,7 @@ class LocalAuthControllerTest {
     @DisplayName("POST /api/auth/signup: 카카오 로그인과 같은 키(token/refreshToken/userId/nickname)로 응답한다")
     void signup_returnsKakaoShapedBody() throws Exception {
         when(localAuthService.signup("test@example.com", "password123", "테스터"))
-            .thenReturn(new LocalAuthService.AuthResult("access", "refresh", "local@7", "테스터"));
+            .thenReturn(new LocalAuthService.AuthResult("access", "refresh", "local@7", "테스터", false));
 
         mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -62,7 +62,7 @@ class LocalAuthControllerTest {
     @DisplayName("POST /api/auth/login: 성공하면 토큰을 돌려준다")
     void login_returnsTokens() throws Exception {
         when(localAuthService.login("test@example.com", "password123"))
-            .thenReturn(new LocalAuthService.AuthResult("access", "refresh", "local@7", "테스터"));
+            .thenReturn(new LocalAuthService.AuthResult("access", "refresh", "local@7", "테스터", false));
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

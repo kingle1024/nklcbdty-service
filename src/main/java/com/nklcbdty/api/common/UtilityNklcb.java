@@ -71,6 +71,26 @@ public class UtilityNklcb {
             .compact();
     }
 
+    /**
+     * 관리자 이메일(AdminEmailPolicy)로 로그인한 일반 사용자의 access 토큰.
+     * subject 는 그대로 userId 라서 일반 API 도 평소처럼 쓰이고, role=ADMIN 이 붙어 /api/admin/** 도 통과한다.
+     * adminName 은 관리자 이름이 필요한 곳(게시글 작성자 등)에서 userId 대신 쓰는 표시용 이름이다.
+     */
+    public String generateAdminUserToken(String userId, String displayName) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + 3_600_000); // 일반 access 토큰과 같은 1시간
+        SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
+
+        return Jwts.builder()
+            .setSubject(userId)
+            .claim("role", "ADMIN")
+            .claim("adminName", displayName != null && !displayName.isBlank() ? displayName : userId)
+            .setIssuedAt(now)
+            .setExpiration(expiryDate)
+            .signWith(secretKey)
+            .compact();
+    }
+
     public void validToken(String token) {
         SecretKey secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
         Claims claims = Jwts.parserBuilder()

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.nklcbdty.api.auth.repository.LocalAccountRepository;
 import com.nklcbdty.api.auth.vo.LocalAccount;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.common.security.AdminEmailPolicy;
 import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.common.vo.UserVo;
 
@@ -37,14 +38,17 @@ public class LocalAuthService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final UtilityNklcb utilityNklcb;
+    private final AdminEmailPolicy adminEmailPolicy;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public LocalAuthService(LocalAccountRepository localAccountRepository, UserRepository userRepository,
-                            TokenService tokenService, UtilityNklcb utilityNklcb) {
+                            TokenService tokenService, UtilityNklcb utilityNklcb,
+                            AdminEmailPolicy adminEmailPolicy) {
         this.localAccountRepository = localAccountRepository;
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.utilityNklcb = utilityNklcb;
+        this.adminEmailPolicy = adminEmailPolicy;
     }
 
     /**
@@ -54,6 +58,12 @@ public class LocalAuthService {
     public AuthResult signup(String email, String rawPassword, String nickname) {
         String normalizedEmail = normalizeEmail(email);
         validatePassword(rawPassword);
+
+        // 이메일 인증 절차가 없다. 관리자 이메일이 아직 가입돼 있지 않으면 아무나 그 주소로 가입해
+        // 관리자 권한을 가져갈 수 있으므로, 관리자 이메일은 자체 회원가입 자체를 막는다.
+        if (adminEmailPolicy.isAdminEmail(normalizedEmail)) {
+            throw new IllegalArgumentException("이 이메일로는 회원가입할 수 없습니다.");
+        }
 
         if (localAccountRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
@@ -84,7 +94,7 @@ public class LocalAuthService {
             .build());
 
         log.info("[LocalAuth] 회원가입 userId={}", account.getUserId());
-        return issueTokens(account.getUserId(), resolvedNickname);
+        return issueTokens(account.getUserId(), resolvedNickname, false);
     }
 
     /**
@@ -104,8 +114,16 @@ public class LocalAuthService {
         LocalAccount account = found.get();
         UserVo user = userRepository.findByUserId(account.getUserId());
         String nickname = user != null ? user.getUsername() : localPart(account.getEmail());
+        boolean admin = adminEmailPolicy.isAdminEmail(account.getEmail());
 
-        return issueTokens(account.getUserId(), nickname);
+        if (admin && user != null && (user.getEmail() == null || user.getEmail().isBlank())) {
+            // 토큰 갱신 때는 user 테이블의 이메일로 관리자 여부를 다시 판정한다.
+            // 이메일 없이 만들어진 옛 프로필이면 여기서 채워 둬야 1시간 뒤 갱신에서 관리자가 풀리지 않는다.
+            user.setEmail(account.getEmail());
+            userRepository.save(user);
+        }
+
+        return issueTokens(account.getUserId(), nickname, admin);
     }
 
     /** 회원가입 화면의 중복 확인용 */
@@ -117,11 +135,13 @@ public class LocalAuthService {
     }
 
     /** access/refresh 토큰 발급 + refresh 저장. 카카오 로그인과 같은 흐름. */
-    private AuthResult issueTokens(String userId, String nickname) {
-        String accessToken = utilityNklcb.generateToken(userId, false);
+    private AuthResult issueTokens(String userId, String nickname, boolean admin) {
+        String accessToken = admin
+            ? utilityNklcb.generateAdminUserToken(userId, nickname)
+            : utilityNklcb.generateToken(userId, false);
         String refreshToken = utilityNklcb.generateToken(userId, true);
         tokenService.saveRefreshToken(userId, refreshToken);
-        return new AuthResult(accessToken, refreshToken, userId, nickname);
+        return new AuthResult(accessToken, refreshToken, userId, nickname, admin);
     }
 
     private String normalizeEmail(String email) {
@@ -162,7 +182,7 @@ public class LocalAuthService {
         return at > 0 ? email.substring(0, at) : email;
     }
 
-    /** 로그인/회원가입 결과. 응답 형태는 kakaoLogin 과 맞춘다. */
-    public record AuthResult(String token, String refreshToken, String userId, String nickname) {
+    /** 로그인/회원가입 결과. 응답 형태는 kakaoLogin 과 맞춘다. admin 이면 프론트가 관리자 메뉴를 띄운다. */
+    public record AuthResult(String token, String refreshToken, String userId, String nickname, boolean admin) {
     }
 }

@@ -62,13 +62,15 @@ public class LocalAuthController {
         return ResponseEntity.ok(Map.of("exists", localAuthService.emailExists(email)));
     }
 
-    /** kakaoLogin 응답과 같은 키 구성(token/refreshToken/userId/nickname) */
+    /** kakaoLogin 응답과 같은 키 구성(token/refreshToken/userId/nickname/isAdmin) */
     private Map<String, Object> toBody(LocalAuthService.AuthResult result) {
         return Map.of(
             "token", result.token(),
             "refreshToken", result.refreshToken(),
             "userId", result.userId(),
-            "nickname", result.nickname()
+            "nickname", result.nickname(),
+            // 관리자 이메일로 로그인했는지. 프론트는 이 값으로 헤더의 관리자 메뉴를 띄운다.
+            "isAdmin", result.admin()
         );
     }
 }
