@@ -23,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import com.nklcbdty.api.auth.repository.LocalAccountRepository;
 import com.nklcbdty.api.auth.vo.LocalAccount;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.common.security.AdminEmailPolicy;
 import com.nklcbdty.common.user.repository.UserRepository;
 import com.nklcbdty.common.vo.UserVo;
 
@@ -40,6 +41,9 @@ class LocalAuthServiceTest {
 
     @Mock
     private UtilityNklcb utilityNklcb;
+
+    @Mock
+    private AdminEmailPolicy adminEmailPolicy;
 
     @InjectMocks
     private LocalAuthService service;
@@ -169,6 +173,71 @@ class LocalAuthServiceTest {
             .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.login("test@example.com", ""))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // --------------------------------------------------------------- 관리자
+
+    @Test
+    void 관리자_이메일로_로그인하면_ADMIN_토큰을_주고_isAdmin_을_알려준다() {
+        LocalAccount stored = account(3L, "teran1024@naver.com", "password123");
+        when(localAccountRepository.findByEmail("teran1024@naver.com")).thenReturn(Optional.of(stored));
+        when(userRepository.findByUserId("local@3")).thenReturn(
+            UserVo.builder().userId("local@3").username("관리자").email("teran1024@naver.com").build());
+        when(adminEmailPolicy.isAdminEmail("teran1024@naver.com")).thenReturn(true);
+        when(utilityNklcb.generateAdminUserToken("local@3", "관리자")).thenReturn("admin-access");
+        when(utilityNklcb.generateToken("local@3", true)).thenReturn("refresh-token");
+
+        LocalAuthService.AuthResult result = service.login("teran1024@naver.com", "password123");
+
+        assertThat(result.admin()).isTrue();
+        assertThat(result.token()).isEqualTo("admin-access");
+        verify(utilityNklcb, never()).generateToken("local@3", false);
+    }
+
+    @Test
+    void 관리자_이메일이_아니면_평소대로_일반_토큰을_준다() {
+        LocalAccount stored = account(4L, "user@example.com", "password123");
+        when(localAccountRepository.findByEmail("user@example.com")).thenReturn(Optional.of(stored));
+        when(userRepository.findByUserId("local@4")).thenReturn(
+            UserVo.builder().userId("local@4").username("유저").email("user@example.com").build());
+        when(utilityNklcb.generateToken("local@4", false)).thenReturn("access-token");
+        when(utilityNklcb.generateToken("local@4", true)).thenReturn("refresh-token");
+
+        LocalAuthService.AuthResult result = service.login("user@example.com", "password123");
+
+        assertThat(result.admin()).isFalse();
+        assertThat(result.token()).isEqualTo("access-token");
+        verify(utilityNklcb, never()).generateAdminUserToken(anyString(), anyString());
+    }
+
+    @Test
+    void 관리자_이메일로_로그인하면_비어있던_프로필_이메일을_채운다() {
+        // 토큰 갱신은 user 테이블 이메일로 관리자 여부를 다시 판정한다. 비어 있으면 1시간 뒤 권한이 풀린다.
+        LocalAccount stored = account(3L, "teran1024@naver.com", "password123");
+        UserVo profile = UserVo.builder().userId("local@3").username("관리자").build();
+        when(localAccountRepository.findByEmail("teran1024@naver.com")).thenReturn(Optional.of(stored));
+        when(userRepository.findByUserId("local@3")).thenReturn(profile);
+        when(adminEmailPolicy.isAdminEmail("teran1024@naver.com")).thenReturn(true);
+        when(utilityNklcb.generateAdminUserToken("local@3", "관리자")).thenReturn("admin-access");
+        when(utilityNklcb.generateToken("local@3", true)).thenReturn("refresh-token");
+
+        service.login("teran1024@naver.com", "password123");
+
+        ArgumentCaptor<UserVo> saved = ArgumentCaptor.forClass(UserVo.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getEmail()).isEqualTo("teran1024@naver.com");
+    }
+
+    @Test
+    void 관리자_이메일로는_회원가입할_수_없다() {
+        // 이메일 인증이 없어서 선점 가입으로 관리자 권한을 가져갈 수 있기 때문이다.
+        when(adminEmailPolicy.isAdminEmail("teran1024@naver.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.signup("teran1024@naver.com", "password123", "누구"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("회원가입할 수 없습니다");
+
+        verify(localAccountRepository, never()).saveAndFlush(any(LocalAccount.class));
     }
 
     // ------------------------------------------------------------- 중복 확인

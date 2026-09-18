@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.nklcbdty.api.auth.dto.TokenResponse;
 import com.nklcbdty.api.common.UtilityNklcb;
+import com.nklcbdty.api.common.security.AdminEmailPolicy;
 import com.nklcbdty.api.exception.InvalidTokenException;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +24,9 @@ class AuthServiceTest {
 
     @Mock
     private UtilityNklcb utilityNklcb;
+
+    @Mock
+    private AdminEmailPolicy adminEmailPolicy;
 
     @InjectMocks
     private AuthService authService;
@@ -41,6 +45,20 @@ class AuthServiceTest {
         assertThat(response.getRefreshToken()).isEqualTo("new-refresh");
         // 저장(회전)되는 토큰 = 응답으로 나간 토큰
         verify(tokenService).rotateRefreshToken("kakao@1", "old-refresh", "new-refresh");
+    }
+
+    @Test
+    void 관리자_이메일_사용자는_갱신된_토큰에도_ADMIN_이_남는다() {
+        // 안 그러면 1시간마다 관리자 화면에서 튕긴다.
+        when(tokenService.isRefreshTokenValid("local@3", "old-refresh")).thenReturn(true);
+        when(adminEmailPolicy.adminNameByUserId("local@3")).thenReturn("관리자");
+        when(utilityNklcb.generateAdminUserToken("local@3", "관리자")).thenReturn("new-admin-access");
+        when(utilityNklcb.generateToken("local@3", true)).thenReturn("new-refresh");
+
+        TokenResponse response = authService.refreshAccessToken("local@3", "old-refresh");
+
+        assertThat(response.getAccessToken()).isEqualTo("new-admin-access");
+        assertThat(response.isAdmin()).isTrue();
     }
 
     @Test
