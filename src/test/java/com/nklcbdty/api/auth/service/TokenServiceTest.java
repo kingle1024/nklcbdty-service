@@ -8,6 +8,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -67,10 +68,33 @@ class TokenServiceTest {
 
     @Test
     void 레디스에_같은_토큰이_있으면_DB를_보지_않고_통과한다() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("kakao@1:refreshToken")).thenReturn("refresh-token");
+        when(redisTemplate.hasKey(anyString())).thenReturn(true);
 
         assertThat(tokenService.isRefreshTokenValid("kakao@1", "refresh-token")).isTrue();
+    }
+
+    @Test
+    void 캐시에는_토큰_원문이_아니라_해시가_담긴다() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        tokenService.saveRefreshToken("kakao@1", "refresh-token");
+
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations).set(key.capture(), any(), any(Duration.class));
+        assertThat(key.getValue()).startsWith("refresh:kakao@1:").doesNotContain("refresh-token");
+        assertThat(key.getValue().substring("refresh:kakao@1:".length())).hasSize(64);
+    }
+
+    @Test
+    void 회전하면_옛_토큰의_캐시_키를_지운다() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        tokenService.rotateRefreshToken("kakao@1", "old-refresh", "new-refresh");
+
+        // 지우지 않으면 무효화한 토큰이 TTL 동안 빠른 경로로 계속 통과한다
+        ArgumentCaptor<String> deleted = ArgumentCaptor.forClass(String.class);
+        verify(redisTemplate).delete(deleted.capture());
+        assertThat(deleted.getValue()).startsWith("refresh:kakao@1:").doesNotContain("old-refresh");
     }
 
     @Test
