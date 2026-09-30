@@ -6,6 +6,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -29,10 +30,14 @@ public class MoaBookingPinger {
     private final String appKey;
 
     public MoaBookingPinger(
-            RestTemplate restTemplate,
             @Value("${moa.booking.url:}") String tickUrl,
             @Value("${moa.booking.app-key:}") String appKey) {
-        this.restTemplate = restTemplate;
+        // 공용 RestTemplate 은 응답 5초 제한이다. 모아 쪽은 서버리스 콜드스타트에 시트까지 읽어
+        // 첫 응답이 7초를 넘기도 하므로, 여기만 넉넉한 제한을 따로 둔다.
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(40_000);
+        this.restTemplate = new RestTemplate(factory);
         this.tickUrl = tickUrl == null ? "" : tickUrl.trim();
         this.appKey = appKey == null ? "" : appKey.trim();
     }
