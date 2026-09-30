@@ -2,6 +2,7 @@ package com.nklcbdty.api.ai.rag;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
@@ -50,6 +51,12 @@ public class OpenAiEmbeddingProvider implements EmbeddingProvider {
     private final int dimensions;
     private final RestTemplate rest;
 
+    /*
+     * 생성자가 둘이면 스프링은 어느 것을 쓸지 모르고 기본 생성자를 찾다 실패한다
+     * ("No default constructor found" 으로 기동이 죽어 컨테이너가 재시작을 반복했다).
+     * 스프링이 쓸 것을 @Autowired 로 못박는다.
+     */
+    @Autowired
     public OpenAiEmbeddingProvider(
             @Value("${spring.ai.openai.api-key:}") String apiKey,
             @Value("${nklcb.rag.embedding.openai.model:text-embedding-3-small}") String model,
