@@ -50,11 +50,29 @@ public class MoaBookingPinger {
             if (!appKey.isEmpty()) headers.set("x-app-key", appKey);
             ResponseEntity<String> res = restTemplate.exchange(
                     tickUrl, HttpMethod.POST, new HttpEntity<>(headers), String.class);
-            // 자리가 났을 때만 남긴다. 매분 한 줄씩 쌓이면 로그가 그것뿐이 된다.
+            // 매분 한 줄. 잘 도는지 콘솔 로그로 확인할 수 있어야 한다. 응답은 설정 전체가
+            // 딸려 와 길므로 확인 여부·결과 한 줄(summary 또는 reason)만 남긴다.
             String body = res.getBody() == null ? "" : res.getBody();
-            if (body.contains("\"available\":true")) log.info("모아 배편 자리 감시: 자리 남 → {}", body);
+            log.info("모아 배편 자리 감시 tick: HTTP {} checked={} {}",
+                    res.getStatusCode().value(), field(body, "checked"), summaryOf(body));
         } catch (Exception e) {
             log.warn("모아 배편 자리 감시 호출 실패: {}", e.getMessage());
         }
+    }
+
+    /** JSON 을 파싱하지 않고 키 하나의 값만 꺼낸다. 로그용이라 정확할 필요는 없다. */
+    private static String field(String json, String key) {
+        int i = json.indexOf("\"" + key + "\":");
+        if (i < 0) return "?";
+        int from = i + key.length() + 3;
+        int to = from;
+        while (to < json.length() && ",}".indexOf(json.charAt(to)) < 0) to++;
+        return json.substring(from, to).replace("\"", "");
+    }
+
+    /** "summary" 가 있으면 그것(잔여석), 없으면 "reason"(왜 안 봤는지). */
+    private static String summaryOf(String json) {
+        String s = field(json, "summary");
+        return "?".equals(s) ? "reason=" + field(json, "reason") : s;
     }
 }
