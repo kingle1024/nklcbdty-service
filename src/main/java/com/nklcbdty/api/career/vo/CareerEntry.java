@@ -14,9 +14,12 @@ import lombok.Getter;
 /**
  * 내 경력 기록. 회사별 경력과 경력기술서(프로젝트 단위) 내용을 남긴 것.
  *
- * <p>트러블슈팅 기록과 같은 방식이다 — 표는 로컬의 save-career 스킬이
- * {@code create table if not exists} 로 만들어 쓰고, 이 서비스는 <b>읽기만</b> 한다.
- * 트러블슈팅 표에 카테고리를 덧붙이지 않고 따로 둔 이유는 칸이 맞지 않아서다.
+ * <p>쓰는 길이 둘이다. 로컬의 save-career 스킬이 DB 에 바로 넣고(표도 그쪽이
+ * {@code create table if not exists} 로 만든다), 관리자 화면이 이 서비스를 거쳐
+ * 추가·수정·삭제한다. 그래서 {@code ddl-auto=none} 에 의존하고, 칼럼이 늘면
+ * 스킬의 DDL 이 먼저 바뀌고 이 엔티티가 따라온다.
+ *
+ * <p>트러블슈팅 표에 카테고리를 덧붙이지 않고 따로 둔 이유는 칸이 맞지 않아서다.
  * 그쪽은 증상·원인·해결이 필수인데, 경력은 기간·소속·역할·성과가 중심이다.
  *
  * <p>한 표에 세 종류가 같이 산다({@link #entryType}).
@@ -35,7 +38,7 @@ public class CareerEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 사람이 읽는 고유키. 같은 slug 로 다시 저장하면 갱신된다 */
+    /** 사람이 읽는 고유키. 스킬이 같은 slug 로 다시 저장하면 갱신된다. 화면에서 고쳐도 바꾸지 않는다 */
     @Column(nullable = false, length = 150)
     private String slug;
 
@@ -88,9 +91,42 @@ public class CareerEntry {
     @Column(columnDefinition = "TEXT")
     private String referenceLinks;
 
-    @Column(nullable = false, updatable = false)
+    /**
+     * 두 시각은 DB 가 채운다(default current_timestamp, updated_at 은 on update 까지).
+     * JPA 가 null 을 넣으면 not null 에 걸리므로 insert·update 대상에서 뺀다.
+     * columnDefinition 은 테스트(H2, ddl-auto=create)에서 표를 만들 때만 쓰인다.
+     */
+    @Column(nullable = false, insertable = false, updatable = false,
+        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, insertable = false, updatable = false,
+        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
+
+    /** 새 항목. slug 는 만든 뒤 바꾸지 않는다 */
+    public static CareerEntry create(String slug) {
+        CareerEntry entry = new CareerEntry();
+        entry.slug = slug;
+        return entry;
+    }
+
+    /** 화면에서 고칠 수 있는 칸을 통째로 바꾼다. 값 검사·정리는 서비스가 끝낸 뒤 부른다 */
+    public void apply(String entryType, String company, String title, String team, String role,
+                      LocalDate startedOn, LocalDate endedOn, String summary, String description,
+                      String achievements, String techStack, String tags, String referenceLinks) {
+        this.entryType = entryType;
+        this.company = company;
+        this.title = title;
+        this.team = team;
+        this.role = role;
+        this.startedOn = startedOn;
+        this.endedOn = endedOn;
+        this.summary = summary;
+        this.description = description;
+        this.achievements = achievements;
+        this.techStack = techStack;
+        this.tags = tags;
+        this.referenceLinks = referenceLinks;
+    }
 }

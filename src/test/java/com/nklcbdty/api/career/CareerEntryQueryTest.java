@@ -1,9 +1,14 @@
 package com.nklcbdty.api.career;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,8 +20,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 import com.nklcbdty.api.career.dto.CareerEntryDto;
+import com.nklcbdty.api.career.dto.CareerEntryRequest;
 import com.nklcbdty.api.career.repository.CareerEntryRepository;
 import com.nklcbdty.api.career.service.CareerEntryService;
+import com.nklcbdty.api.career.vo.CareerEntry;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import jakarta.persistence.EntityManager;
@@ -112,5 +119,91 @@ class CareerEntryQueryTest {
         assertEquals(List.of("응답시간 40% 단축", "장애 0건", "배포 자동화"), dto.getAchievements());
         assertEquals(List.of("Java", "Spring"), dto.getTechStack());
         assertTrue(dto.getTags().isEmpty());
+    }
+
+    private static CareerEntryRequest request(String type, String title) {
+        CareerEntryRequest r = new CareerEntryRequest();
+        r.setEntryType(type);
+        r.setTitle(title);
+        return r;
+    }
+
+    @Test
+    void 화면에서_추가하면_목록칸을_잇고_시각은_DB가_채운다() {
+        CareerEntryRequest r = request(" Project ", "  정산 개편  ");
+        r.setCompany("B사");
+        r.setTeam("   ");
+        r.setStartedOn(LocalDate.of(2023, 1, 1));
+        r.setAchievements(List.of("배치 50% 단축", " ", "장애 0건"));
+        r.setTechStack(List.of("Java", "Java", " Spring "));
+        r.setTags(List.of("Spring Batch", "erp"));
+        r.setReferenceLinks(List.of("PR: https://example.com/1"));
+
+        CareerEntryDto created = service.create(r);
+        em.flush();
+        em.clear();
+
+        CareerEntry saved = repository.findById(created.getId()).orElseThrow();
+        assertEquals("project", saved.getEntryType());
+        assertEquals("정산 개편", saved.getTitle());
+        // 공백만 있는 칸은 비어 있는 것으로
+        assertNull(saved.getTeam());
+        assertEquals("배치 50% 단축\n장애 0건", saved.getAchievements());
+        assertEquals("Java, Spring", saved.getTechStack());
+        assertEquals("spring-batch, erp", saved.getTags());
+        assertTrue(saved.getSlug().startsWith("project-"));
+        // insertable=false 로 뺀 칼럼을 DB 기본값이 채웠는지
+        assertNotNull(saved.getCreatedAt());
+        assertNotNull(saved.getUpdatedAt());
+    }
+
+    @Test
+    void 수정해도_slug_는_그대로다() {
+        entry("co-b", "company", "B사", "2021-03-01", null, null);
+        em.flush();
+        em.clear();
+        Long id = repository.findAll().get(0).getId();
+
+        CareerEntryRequest r = request("company", "백엔드 개발");
+        r.setCompany("B사");
+        r.setRole("주임연구원");
+        service.update(id, r);
+        em.flush();
+        em.clear();
+
+        CareerEntry saved = repository.findById(id).orElseThrow();
+        assertEquals("co-b", saved.getSlug());
+        assertEquals("주임연구원", saved.getRole());
+        // 요청에 시작일이 없으면 지운다 — 화면이 칸 전체를 보내는 '통째 교체' 다
+        assertNull(saved.getStartedOn());
+    }
+
+    @Test
+    void 잘못된_입력은_막는다() {
+        assertThrows(IllegalArgumentException.class, () -> service.create(request("", "제목")));
+        assertThrows(IllegalArgumentException.class, () -> service.create(request("project", " ")));
+        assertThrows(IllegalArgumentException.class, () -> service.create(request("회사", "제목")));
+
+        CareerEntryRequest reversed = request("company", "제목");
+        reversed.setStartedOn(LocalDate.of(2023, 5, 1));
+        reversed.setEndedOn(LocalDate.of(2023, 4, 1));
+        assertThrows(IllegalArgumentException.class, () -> service.create(reversed));
+    }
+
+    @Test
+    void 없는_항목은_수정도_삭제도_못한다() {
+        assertThrows(NoSuchElementException.class, () -> service.update(999L, request("company", "x")));
+        assertThrows(NoSuchElementException.class, () -> service.delete(999L));
+    }
+
+    @Test
+    void 삭제한다() {
+        CareerEntryDto created = service.create(request("certificate", "정보처리기사"));
+        em.flush();
+
+        service.delete(created.getId());
+        em.flush();
+
+        assertTrue(service.findAll().isEmpty());
     }
 }
