@@ -10,9 +10,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -50,6 +53,9 @@ public class OpenAiEmbeddingProvider implements EmbeddingProvider {
     private final String model;
     private final int dimensions;
     private final RestTemplate rest;
+
+    /** {@link #lastFailure()} 참고. 스케줄러 스레드가 쓰고 요청 스레드가 읽는다. */
+    private volatile String lastFailure;
 
     /*
      * 생성자가 둘이면 스프링은 어느 것을 쓸지 모르고 기본 생성자를 찾다 실패한다
@@ -153,6 +159,7 @@ public class OpenAiEmbeddingProvider implements EmbeddingProvider {
                     rest.postForObject(ENDPOINT, new HttpEntity<>(body, headers), EmbeddingResponse.class);
             if (res == null || res.data() == null || res.data().isEmpty()) {
                 log.warn("임베딩 응답이 비어 있음 (inputs={})", inputs.size());
+                recordFailure("빈 응답");
                 return null;
             }
 
@@ -163,13 +170,29 @@ public class OpenAiEmbeddingProvider implements EmbeddingProvider {
                 if (d.index() < 0 || d.index() >= out.length) continue;
                 out[d.index()] = d.embedding();
             }
+            lastFailure = null;
             return out;
-        } catch (RestClientException e) {
-            // 401(키 오류)·429(레이트리밋/쿼터)·5xx·타임아웃이 모두 여기로 온다.
-            // 앱을 죽이지 않고 다음 주기에 재시도하도록 null 만 돌려준다.
+        } catch (HttpStatusCodeException e) {
+            // 401(키 오류)·429(레이트리밋/쿼터 소진)·5xx. 본문에는 마스킹된 키 일부가 섞여 올 수 있어
+            // 공개되는 lastFailure 에는 상태 코드만 남긴다.
             log.warn("임베딩 API 호출 실패 (inputs={}): {}", inputs.size(), e.getMessage());
+            recordFailure("HTTP " + e.getStatusCode());
+            return null;
+        } catch (RestClientException e) {
+            // 타임아웃·연결 실패 등. 앱을 죽이지 않고 다음 주기에 재시도하도록 null 만 돌려준다.
+            log.warn("임베딩 API 호출 실패 (inputs={}): {}", inputs.size(), e.getMessage());
+            recordFailure(e.getClass().getSimpleName());
             return null;
         }
+    }
+
+    @Override
+    public String lastFailure() {
+        return lastFailure;
+    }
+
+    private void recordFailure(String what) {
+        lastFailure = what + " @ " + LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     private String clip(String text) {

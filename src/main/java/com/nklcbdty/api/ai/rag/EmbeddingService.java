@@ -41,6 +41,16 @@ public class EmbeddingService {
         return provider == null ? "none" : provider.modelVersion();
     }
 
+    /** 선택된 공급자가 있는지. false 면 {@code provider=none} 으로 꺼져 있는 것이다. */
+    public boolean hasProvider() {
+        return provider != null;
+    }
+
+    /** {@link EmbeddingProvider#lastFailure()} 위임. */
+    public String lastFailure() {
+        return provider == null ? null : provider.lastFailure();
+    }
+
     /** 입력 텍스트를 단위벡터로 임베딩한다. 실패/비가용 시 null. */
     public float[] embed(String text) {
         if (!isAvailable() || text == null || text.isBlank()) return null;
