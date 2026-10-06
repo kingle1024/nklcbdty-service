@@ -19,4 +19,6 @@ public interface CareerEntryRepository extends JpaRepository<CareerEntry, Long> 
          + "              when e.endedOn is null then 0 else 1 end, "
          + "         e.startedOn desc, e.id desc")
     List<CareerEntry> findAllRecentFirst();
+
+    boolean existsBySlug(String slug);
 }
