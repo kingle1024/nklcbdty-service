@@ -3,6 +3,7 @@ package com.nklcbdty.api.ai.rag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
@@ -187,5 +189,25 @@ class OpenAiEmbeddingProviderTest {
             b.append("{\"index\":").append(i).append(",\"embedding\":[1.0]}");
         }
         return b.append("]}").toString();
+    }
+
+    @Test
+    @DisplayName("실패하면 상태 코드만 lastFailure 에 남기고(본문 X), 다음 성공에서 지운다")
+    void 마지막_실패_기록() {
+        OpenAiEmbeddingProvider p = provider("sk-test", 2);
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"error\":{\"message\":\"quota exceeded for sk-****abcd\"}}"));
+        server.expect(requestTo(URL)).andRespond(withSuccess(
+                "{\"data\":[{\"index\":0,\"embedding\":[1.0,0.0]}]}", MediaType.APPLICATION_JSON));
+
+        assertNull(p.lastFailure());
+        assertNull(p.embed("a"));
+        assertTrue(p.lastFailure().startsWith("HTTP 429"), p.lastFailure());
+        assertFalse(p.lastFailure().contains("sk-"), "응답 본문이 새면 안 된다");
+
+        p.embed("b");
+        assertNull(p.lastFailure());
+        server.verify();
     }
 }

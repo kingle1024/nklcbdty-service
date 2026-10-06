@@ -27,6 +27,15 @@ public interface EmbeddingProvider {
     float[] embed(String text);
 
     /**
+     * 가장 최근 임베딩 실패의 요약(예: {@code "HTTP 429 TOO_MANY_REQUESTS @ 2026-10-06T11:40"}).
+     * 마지막 호출이 성공했거나 실패한 적이 없으면 null.
+     *
+     * <p>운영 로그를 볼 수 없는 환경에서 "왜 매칭이 안 되는지"를 밖에서 가리기 위한 값이라
+     * 공개 엔드포인트로 나간다 — 응답 본문(키 일부가 섞여 올 수 있다)은 절대 담지 않는다.</p>
+     */
+    default String lastFailure() { return null; }
+
+    /**
      * 여러 텍스트를 한 번에 임베딩한다.
      *
      * <p>입력과 같은 크기의 리스트를 돌려주며, 개별 실패는 그 위치에 null 을 담는다.
