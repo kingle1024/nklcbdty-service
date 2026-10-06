@@ -79,4 +79,11 @@ class AllowedPathsTest {
         assertThat(isPublic("/api/admin/troubleshooting")).isFalse();
         assertThat(isPublic("/api/admin/troubleshooting/dart-tracker-list-json-page-shift-21000")).isFalse();
     }
+
+    /** 경력 기록은 개인 이력이다. 트러블슈팅 기록과 같은 전제(관리자 토큰)에 기댄다 */
+    @Test
+    @DisplayName("경력 기록은 공개 목록에 없다 — 관리자 토큰이 있어야 한다")
+    void careerStaysPrivate() {
+        assertThat(isPublic("/api/admin/career")).isFalse();
+    }
 }
