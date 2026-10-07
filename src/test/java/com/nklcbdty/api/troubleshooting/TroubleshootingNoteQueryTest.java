@@ -1,10 +1,14 @@
 package com.nklcbdty.api.troubleshooting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteDetailDto;
+import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteRequest;
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteSummaryDto;
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingPageResponse;
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingTextParts.ReferenceLink;
@@ -201,6 +206,103 @@ class TroubleshootingNoteQueryTest {
 
         assertEquals(100, service.list(null, null, null, null, 0, 5000).getPageSize());
         assertEquals(20, service.list(null, null, null, null, 0, 0).getPageSize());
+    }
+
+    private static TroubleshootingNoteRequest request(String project, String title) {
+        TroubleshootingNoteRequest r = new TroubleshootingNoteRequest();
+        r.setOccurredOn(LocalDate.of(2026, 10, 7));
+        r.setProject(project);
+        r.setTitle(title);
+        r.setSymptom("  ERROR 1062 (23000): Duplicate entry  ");
+        r.setRootCause("원인");
+        r.setResolution("해결");
+        return r;
+    }
+
+    @Test
+    void 화면에서_추가하면_slug_를_만들고_시각은_DB가_채운다() {
+        TroubleshootingNoteRequest r = request("nklcbdty-service", "제목");
+        r.setSeverity("HIGH");
+        r.setTags(List.of("Race Condition", "batch", "batch"));
+        r.setTechStack(List.of("Java", " ", "Spring"));
+        r.setReferenceLinks(List.of("PR: https://example.com/pr/1", ""));
+
+        TroubleshootingNoteDetailDto created = service.create(r);
+        em.flush();
+        em.clear();
+
+        TroubleshootingNoteDetailDto saved = service.findBySlug(created.getSlug());
+        assertTrue(saved.getSlug().startsWith("nklcbdty-service-20"));
+        assertEquals("high", saved.getSeverity());
+        // 본문은 앞뒤 공백만 걷는다
+        assertEquals("ERROR 1062 (23000): Duplicate entry", saved.getSymptom());
+        assertEquals(List.of("race-condition", "batch"), saved.getTags());
+        assertEquals(List.of("Java", "Spring"), saved.getTechStack());
+        assertEquals(1, saved.getReferenceLinks().size());
+        assertNotNull(saved.getCreatedAt());
+        // 새 기록이 태그 필터에도 잡혀야 한다(저장 모양이 필터와 맞는지)
+        assertEquals(List.of(saved.getSlug()),
+            slugs(service.list(null, null, null, "race-condition", 0, 20)));
+    }
+
+    @Test
+    void 한글_프로젝트명이면_note_로_시작하고_직접_준_slug_는_그대로_쓴다() {
+        assertTrue(service.create(request("옴니이솔 ERP", "제목")).getSlug().startsWith("erp-"));
+        assertTrue(service.create(request("회계", "제목")).getSlug().startsWith("note-"));
+
+        TroubleshootingNoteRequest custom = request("p", "제목");
+        custom.setSlug("My-Slug-1");
+        assertEquals("my-slug-1", service.create(custom).getSlug());
+    }
+
+    @Test
+    void 쓸_수_없는_slug_와_빠진_필수칸은_막는다() {
+        seed();
+
+        TroubleshootingNoteRequest dup = request("p", "제목");
+        dup.setSlug("a-batch-halt");
+        assertThrows(IllegalArgumentException.class, () -> service.create(dup));
+
+        TroubleshootingNoteRequest reserved = request("p", "제목");
+        reserved.setSlug("export");
+        assertThrows(IllegalArgumentException.class, () -> service.create(reserved));
+
+        TroubleshootingNoteRequest badSlug = request("p", "제목");
+        badSlug.setSlug("한글 slug");
+        assertThrows(IllegalArgumentException.class, () -> service.create(badSlug));
+
+        TroubleshootingNoteRequest noCause = request("p", "제목");
+        noCause.setRootCause(" ");
+        assertThrows(IllegalArgumentException.class, () -> service.create(noCause));
+
+        TroubleshootingNoteRequest noDate = request("p", "제목");
+        noDate.setOccurredOn(null);
+        assertThrows(IllegalArgumentException.class, () -> service.create(noDate));
+
+        TroubleshootingNoteRequest badSeverity = request("p", "제목");
+        badSeverity.setSeverity("urgent");
+        assertThrows(IllegalArgumentException.class, () -> service.create(badSeverity));
+    }
+
+    @Test
+    void 수정해도_slug_는_그대로고_삭제하면_사라진다() {
+        seed();
+
+        TroubleshootingNoteRequest r = request("dart-tracker", "고친 제목");
+        r.setSlug("ignored-on-update");
+        service.update("a-batch-halt", r);
+        em.flush();
+        em.clear();
+
+        TroubleshootingNoteDetailDto saved = service.findBySlug("a-batch-halt");
+        assertEquals("고친 제목", saved.getTitle());
+        assertNull(service.findBySlug("ignored-on-update"));
+
+        service.delete("a-batch-halt");
+        em.flush();
+        assertNull(service.findBySlug("a-batch-halt"));
+        assertThrows(NoSuchElementException.class, () -> service.delete("a-batch-halt"));
+        assertThrows(NoSuchElementException.class, () -> service.update("a-batch-halt", r));
     }
 
     private static List<String> slugs(TroubleshootingPageResponse page) {

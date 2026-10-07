@@ -4,24 +4,34 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteDetailDto;
+import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteRequest;
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingPageResponse;
 import com.nklcbdty.api.troubleshooting.service.TroubleshootingNoteService;
 
 /**
- * 트러블슈팅 기록 열람 API. 읽기 전용이다.
+ * 트러블슈팅 기록 API.
  *
  * <ul>
  *   <li>GET /api/admin/troubleshooting?page=&size=&keyword=&project=&severity=&tag=</li>
  *   <li>GET /api/admin/troubleshooting/export?keyword=&project=&severity=&tag= — 본문까지 전부</li>
  *   <li>GET /api/admin/troubleshooting/{slug}</li>
+ *   <li>POST /api/admin/troubleshooting — 추가(slug 를 비우면 서버가 만든다)</li>
+ *   <li>PUT /api/admin/troubleshooting/{slug} — 수정(slug 는 그대로)</li>
+ *   <li>DELETE /api/admin/troubleshooting/{slug} — 삭제</li>
  * </ul>
+ *
+ * <p>쓰기의 잘못된 입력(400)과 없는 기록(404)은 {@link TroubleshootingExceptionHandler} 가 메시지로 바꾼다.
  *
  * <p><b>왜 관리자 경로인가.</b> 기록에는 사내·고객사 시스템 이름과 장애 내용, 로그 원문이
  * 그대로 들어 있다. 포트폴리오로 쓸 때는 사람이 골라서 옮기는 것이고, 화면은 본인이
@@ -78,5 +88,24 @@ public class AdminTroubleshootingController {
             return ResponseEntity.status(404).body(Map.of("message", "해당 기록을 찾을 수 없습니다."));
         }
         return ResponseEntity.ok(note);
+    }
+
+    @PostMapping
+    public ResponseEntity<TroubleshootingNoteDetailDto> create(@RequestBody TroubleshootingNoteRequest request) {
+        return ResponseEntity.ok(troubleshootingNoteService.create(request));
+    }
+
+    @PutMapping("/{slug}")
+    public ResponseEntity<TroubleshootingNoteDetailDto> update(
+        @PathVariable String slug,
+        @RequestBody TroubleshootingNoteRequest request
+    ) {
+        return ResponseEntity.ok(troubleshootingNoteService.update(slug, request));
+    }
+
+    @DeleteMapping("/{slug}")
+    public ResponseEntity<?> delete(@PathVariable String slug) {
+        troubleshootingNoteService.delete(slug);
+        return ResponseEntity.ok(Map.of("status", "deleted", "slug", slug));
     }
 }

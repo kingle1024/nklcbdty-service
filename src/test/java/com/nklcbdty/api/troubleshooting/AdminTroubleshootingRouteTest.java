@@ -7,21 +7,30 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.nklcbdty.api.troubleshooting.controller.AdminTroubleshootingController;
+import com.nklcbdty.api.troubleshooting.controller.TroubleshootingExceptionHandler;
 import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteDetailDto;
+import com.nklcbdty.api.troubleshooting.dto.TroubleshootingNoteRequest;
 import com.nklcbdty.api.troubleshooting.service.TroubleshootingNoteService;
 
 /**
@@ -43,7 +52,9 @@ class AdminTroubleshootingRouteTest {
     @BeforeEach
     void setUp() {
         service = mock(TroubleshootingNoteService.class);
-        mockMvc = standaloneSetup(new AdminTroubleshootingController(service)).build();
+        mockMvc = standaloneSetup(new AdminTroubleshootingController(service))
+            .setControllerAdvice(new TroubleshootingExceptionHandler())
+            .build();
     }
 
     private static TroubleshootingNoteDetailDto note(String slug) {
@@ -132,5 +143,46 @@ class AdminTroubleshootingRouteTest {
 
         // 매처를 쓰면 모든 인자를 매처로 줘야 한다. 숫자를 그대로 두면 InvalidUseOfMatchers 가 난다.
         verify(service).list(isNull(), isNull(), isNull(), isNull(), eq(0), eq(20));
+    }
+
+    @Test
+    @DisplayName("추가는 본문의 날짜·배열을 해석해 서비스로 넘긴다")
+    void createParsesBody() throws Exception {
+        when(service.create(any())).thenReturn(note("new-note"));
+
+        mockMvc.perform(post("/api/admin/troubleshooting")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"occurredOn\":\"2026-10-07\",\"project\":\"p\",\"title\":\"t\","
+                    + "\"tags\":[\"a\",\"b\"]}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.slug").value("new-note"));
+
+        ArgumentCaptor<TroubleshootingNoteRequest> captor =
+            ArgumentCaptor.forClass(TroubleshootingNoteRequest.class);
+        verify(service).create(captor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(LocalDate.of(2026, 10, 7), captor.getValue().getOccurredOn());
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("a", "b"), captor.getValue().getTags());
+    }
+
+    @Test
+    @DisplayName("수정·삭제는 slug 로 찾고, 검사 실패는 400·없으면 404 와 메세지")
+    void updateAndDeleteBySlug() throws Exception {
+        when(service.update(eq("a-note"), any())).thenThrow(new IllegalArgumentException("원인을(를) 입력해 주세요."));
+        doThrow(new NoSuchElementException("해당 기록을 찾을 수 없습니다.")).when(service).delete("gone");
+
+        mockMvc.perform(put("/api/admin/troubleshooting/a-note")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("원인을(를) 입력해 주세요."));
+
+        mockMvc.perform(delete("/api/admin/troubleshooting/gone"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").exists());
+
+        mockMvc.perform(delete("/api/admin/troubleshooting/a-note"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.slug").value("a-note"));
+        verify(service).delete("a-note");
     }
 }
