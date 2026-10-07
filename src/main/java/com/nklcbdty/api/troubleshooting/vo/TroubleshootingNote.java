@@ -15,9 +15,11 @@ import lombok.Getter;
  * 트러블슈팅 기록. 해결한 장애를 나중에 글로 옮길 수 있는 형태로 남긴 것.
  *
  * <p>이 표는 이 서비스가 만들지 않는다. 로컬의 save-troubleshooting 스킬이
- * {@code create table if not exists} 로 만들어 쓰고 있고, 여기서는 <b>읽기만</b> 한다.
- * 그래서 setter 를 두지 않고({@code @Getter} 만) {@code ddl-auto=none} 에 의존한다.
+ * {@code create table if not exists} 로 만들어 쓰고, 이 서비스는 {@code ddl-auto=none} 에 의존한다.
  * 칼럼이 늘어나면 스킬의 DDL 이 먼저 바뀌고 이 엔티티가 따라온다.
+ *
+ * <p>쓰는 길은 둘이다 — 스킬이 DB 에 바로 넣고, 관리자 화면이 이 서비스를 거쳐 추가·수정·삭제한다.
+ * setter 대신 {@link #create}·{@link #apply} 만 열어 둔다.
  *
  * <p>{@code travel} 스키마는 다른 프로젝트와 공유하므로 표 이름을 바꾸거나 지우지 않는다.
  */
@@ -86,9 +88,45 @@ public class TroubleshootingNote {
     @Column(columnDefinition = "TEXT")
     private String referenceLinks;
 
-    @Column(nullable = false, updatable = false)
+    /**
+     * 두 시각은 DB 가 채운다(default current_timestamp, updated_at 은 on update 까지).
+     * JPA 가 null 을 넣으면 not null 에 걸리므로 insert·update 대상에서 뺀다.
+     * columnDefinition 은 테스트(H2, ddl-auto=create)에서 표를 만들 때만 쓰인다.
+     */
+    @Column(nullable = false, insertable = false, updatable = false,
+        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, insertable = false, updatable = false,
+        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime updatedAt;
+
+    /** 새 기록. slug 는 상세 화면 주소라 만든 뒤 바꾸지 않는다 */
+    public static TroubleshootingNote create(String slug) {
+        TroubleshootingNote note = new TroubleshootingNote();
+        note.slug = slug;
+        return note;
+    }
+
+    /** 화면에서 고칠 수 있는 칸을 통째로 바꾼다. 값 검사·정리는 서비스가 끝낸 뒤 부른다 */
+    public void apply(LocalDate occurredOn, String project, String component, String title,
+                      String severity, String errorCode, String symptom, String rootCause,
+                      String resolution, String verification, String prevention, String lesson,
+                      String techStack, String tags, String referenceLinks) {
+        this.occurredOn = occurredOn;
+        this.project = project;
+        this.component = component;
+        this.title = title;
+        this.severity = severity;
+        this.errorCode = errorCode;
+        this.symptom = symptom;
+        this.rootCause = rootCause;
+        this.resolution = resolution;
+        this.verification = verification;
+        this.prevention = prevention;
+        this.lesson = lesson;
+        this.techStack = techStack;
+        this.tags = tags;
+        this.referenceLinks = referenceLinks;
+    }
 }
