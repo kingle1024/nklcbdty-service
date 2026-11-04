@@ -10,6 +10,8 @@ import com.nklcbdty.api.companyfeature.vo.FeatureType;
 
 public interface CompanyFeatureRepository extends JpaRepository<CompanyFeature, Long> {
 
+    List<CompanyFeature> findByFeatureType(FeatureType featureType);
+
     List<CompanyFeature> findByFeatureTypeAndFeatureCode(FeatureType featureType, String featureCode);
 
     List<CompanyFeature> findByFeatureTypeAndCompanyCdIn(FeatureType featureType, Collection<String> companyCds);

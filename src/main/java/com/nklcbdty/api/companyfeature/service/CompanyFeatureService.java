@@ -20,6 +20,7 @@ import com.nklcbdty.api.companyfeature.repository.WelfareCategoryRepository;
 import com.nklcbdty.api.companyfeature.vo.CompanyFeature;
 import com.nklcbdty.api.companyfeature.vo.FeatureType;
 import com.nklcbdty.api.companyfeature.vo.WelfareCategory;
+import com.nklcbdty.api.companyfeature.vo.WelfareMatch;
 import com.nklcbdty.api.companyfeature.vo.WorkStyle;
 import com.nklcbdty.api.crawler.common.CompanyEnums;
 
@@ -45,16 +46,24 @@ public class CompanyFeatureService {
     }
 
     /**
-     * @param welfareCodes 이 복지 카테고리를 <b>모두</b> 가진 회사만. 비활성/없는 코드는 무시한다
-     *                     (지난 링크로 들어와도 목록이 통째로 비지 않게).
+     * 근무형태 + 복지(모두 가진 회사만, AND). 기존 {@code /work-style/{workStyle}} 경로용.
      */
     public List<WorkStyleCompanyDto> findCompanies(WorkStyle workStyle, Collection<String> welfareCodes) {
-        List<CompanyFeature> styleRows =
-            featureRepository.findByFeatureTypeAndFeatureCode(FeatureType.WORK_STYLE, workStyle.name());
-        if (styleRows.isEmpty()) {
+        return findCompanies(workStyle, welfareCodes, WelfareMatch.ALL);
+    }
+
+    /**
+     * @param workStyle    null 이면 근무형태로 거르지 않고, 복지 근거가 있는 회사 전체에서 고른다.
+     * @param welfareCodes 비활성/없는 코드는 무시한다 (지난 링크로 들어와도 목록이 통째로 비지 않게).
+     * @param match        복지를 여러 개 골랐을 때 모두(ALL) / 하나라도(ANY).
+     */
+    public List<WorkStyleCompanyDto> findCompanies(WorkStyle workStyle, Collection<String> welfareCodes,
+                                                   WelfareMatch match) {
+        Map<String, List<CompanyFeature>> styleByCompany = workStyle == null ? null : groupByCompany(
+            featureRepository.findByFeatureTypeAndFeatureCode(FeatureType.WORK_STYLE, workStyle.name()));
+        if (styleByCompany != null && styleByCompany.isEmpty()) {
             return List.of();
         }
-        Map<String, List<CompanyFeature>> styleByCompany = groupByCompany(styleRows);
 
         List<WelfareCategory> activeCategories = categoryRepository.findByActiveTrueOrderBySortOrderAscIdAsc();
         Set<String> activeCodes = activeCategories.stream()
@@ -67,17 +76,24 @@ public class CompanyFeatureService {
             .filter(activeCodes::contains)
             .collect(Collectors.toSet());
 
-        Map<String, List<CompanyFeature>> welfareByCompany = groupByCompany(
-            featureRepository.findByFeatureTypeAndCompanyCdIn(FeatureType.WELFARE, styleByCompany.keySet()));
+        Map<String, List<CompanyFeature>> welfareByCompany = groupByCompany(styleByCompany == null
+            ? featureRepository.findByFeatureType(FeatureType.WELFARE)
+            : featureRepository.findByFeatureTypeAndCompanyCdIn(FeatureType.WELFARE, styleByCompany.keySet()));
+
+        // 근무형태를 고르지 않았으면 복지 근거가 있는 회사가 후보
+        Set<String> candidates = styleByCompany == null ? welfareByCompany.keySet() : styleByCompany.keySet();
 
         List<WorkStyleCompanyDto> result = new ArrayList<>();
-        for (Map.Entry<String, List<CompanyFeature>> entry : styleByCompany.entrySet()) {
-            String companyCd = entry.getKey();
+        for (String companyCd : candidates) {
             Map<String, List<CompanyFeature>> welfareByCode = welfareByCompany
                 .getOrDefault(companyCd, List.of()).stream()
+                .filter(f -> activeCodes.contains(f.getFeatureCode()))
                 .collect(Collectors.groupingBy(CompanyFeature::getFeatureCode));
 
-            if (!welfareByCode.keySet().containsAll(required)) {
+            if (!matchesWelfare(welfareByCode.keySet(), required, match)) {
+                continue;
+            }
+            if (styleByCompany == null && welfareByCode.isEmpty()) {
                 continue;
             }
 
@@ -91,15 +107,21 @@ public class CompanyFeatureService {
                 .collect(Collectors.toList());
 
             CompanyEnums company = CompanyEnums.fromCompanyCd(companyCd);
-            List<CompanyFeature> styleEvidence = entry.getValue();
+            // 근무형태로 골랐으면 그 근거 공고 수, 아니면 (고른 복지가 있으면 그 복지의) 근거 공고 수
+            List<CompanyFeature> countedRows = styleByCompany != null
+                ? styleByCompany.get(companyCd)
+                : welfareByCode.entrySet().stream()
+                    .filter(e -> required.isEmpty() || required.contains(e.getKey()))
+                    .flatMap(e -> e.getValue().stream())
+                    .collect(Collectors.toList());
             result.add(WorkStyleCompanyDto.builder()
                 .companyCd(companyCd)
                 .companyNm(company == null ? companyCd : company.getCompanyNm())
                 .careerPageUrl(company == null ? null : company.getCareerPageUrl())
-                .workStyle(workStyle.name())
-                .workStyleLabel(workStyle.getLabel())
-                .postingCount((int) styleEvidence.stream().map(CompanyFeature::getJobId).distinct().count())
-                .evidences(toEvidences(styleEvidence))
+                .workStyle(workStyle == null ? null : workStyle.name())
+                .workStyleLabel(workStyle == null ? null : workStyle.getLabel())
+                .postingCount((int) countedRows.stream().map(CompanyFeature::getJobId).distinct().count())
+                .evidences(styleByCompany == null ? List.of() : toEvidences(countedRows))
                 .welfares(welfares)
                 .build());
         }
@@ -108,6 +130,16 @@ public class CompanyFeatureService {
         result.sort(Comparator.comparingInt(WorkStyleCompanyDto::getPostingCount).reversed()
             .thenComparingInt(dto -> companyOrder(dto.getCompanyCd())));
         return result;
+    }
+
+    /** 고른 복지가 없으면 통과. ALL 은 모두, ANY 는 하나라도 */
+    private static boolean matchesWelfare(Set<String> has, Set<String> required, WelfareMatch match) {
+        if (required.isEmpty()) {
+            return true;
+        }
+        return match == WelfareMatch.ANY
+            ? required.stream().anyMatch(has::contains)
+            : has.containsAll(required);
     }
 
     private static Map<String, List<CompanyFeature>> groupByCompany(List<CompanyFeature> rows) {

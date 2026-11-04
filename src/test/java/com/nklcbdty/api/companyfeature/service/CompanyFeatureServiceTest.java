@@ -19,6 +19,7 @@ import com.nklcbdty.api.companyfeature.repository.WelfareCategoryRepository;
 import com.nklcbdty.api.companyfeature.vo.CompanyFeature;
 import com.nklcbdty.api.companyfeature.vo.FeatureType;
 import com.nklcbdty.api.companyfeature.vo.WelfareCategory;
+import com.nklcbdty.api.companyfeature.vo.WelfareMatch;
 import com.nklcbdty.api.companyfeature.vo.WorkStyle;
 
 class CompanyFeatureServiceTest {
@@ -80,6 +81,42 @@ class CompanyFeatureServiceTest {
             .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("LINE", "TOSS");
         assertThat(service.findCompanies(WorkStyle.REMOTE, List.of("meal", "HEALTH")))
             .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("LINE");
+    }
+
+    @Test
+    @DisplayName("ANY 면 고른 복지 중 하나라도 가진 회사가 남는다")
+    void filtersByAnySelectedWelfare() {
+        assertThat(service.findCompanies(WorkStyle.REMOTE, List.of("MEAL", "HEALTH"), WelfareMatch.ANY))
+            .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("LINE", "TOSS");
+        assertThat(service.findCompanies(WorkStyle.REMOTE, List.of("HEALTH"), WelfareMatch.ANY))
+            .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("LINE");
+    }
+
+    @Test
+    @DisplayName("근무형태 없이 복지만으로 고르면 재택이 아닌 회사도 나온다")
+    void filtersByWelfareWithoutWorkStyle() {
+        when(featureRepository.findByFeatureType(FeatureType.WELFARE)).thenReturn(List.of(
+            feature("LINE", FeatureType.WELFARE, "MEAL", 1L),
+            feature("LINE", FeatureType.WELFARE, "HEALTH", 2L),
+            feature("NAVER", FeatureType.WELFARE, "HEALTH", 5L),
+            feature("NAVER", FeatureType.WELFARE, "HEALTH", 6L),
+            // 비활성 카테고리만 가진 회사는 복지 회사로 치지 않는다
+            feature("TOSS", FeatureType.WELFARE, "VACATION", 3L)
+        ));
+
+        List<WorkStyleCompanyDto> health = service.findCompanies(null, List.of("HEALTH"), WelfareMatch.ALL);
+        assertThat(health).extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("NAVER", "LINE");
+        WorkStyleCompanyDto naver = health.get(0);
+        assertThat(naver.getWorkStyle()).isNull();
+        assertThat(naver.getPostingCount()).isEqualTo(2);
+        assertThat(naver.getEvidences()).isEmpty();
+
+        assertThat(service.findCompanies(null, List.of("MEAL", "HEALTH"), WelfareMatch.ALL))
+            .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactly("LINE");
+        assertThat(service.findCompanies(null, List.of("MEAL", "HEALTH"), WelfareMatch.ANY))
+            .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactlyInAnyOrder("LINE", "NAVER");
+        assertThat(service.findCompanies(null, List.of(), WelfareMatch.ALL))
+            .extracting(WorkStyleCompanyDto::getCompanyCd).containsExactlyInAnyOrder("LINE", "NAVER");
     }
 
     @Test
