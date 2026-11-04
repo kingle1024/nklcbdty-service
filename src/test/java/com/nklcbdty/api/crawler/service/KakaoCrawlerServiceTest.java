@@ -334,4 +334,116 @@ class KakaoCrawlerServiceTest {
 
         assertThat(result).isEmpty();
     }
+
+    @Test
+    @DisplayName("카카오게임즈: 같은 greetinghr 구조를 회사명·상세 주소만 바꿔 읽는다")
+    void parseGreetinghrOpenings_kakaoGames() {
+        List<Job_mst> result = new ArrayList<>();
+        kakaoCrawlerService.parseGreetinghrOpenings(
+            MOBILITY_NEXT_DATA, "https://recruit.kakaogames.com", "카카오 게임즈", result);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getSysCompanyCdNm()).isEqualTo("카카오 게임즈");
+        assertThat(result.get(0).getJobDetailLink()).isEqualTo("https://recruit.kakaogames.com/ko/o/235808");
+    }
+
+    /** ninehire(헬스케어·페이증권) 공고 목록 응답 축약본. 마감일은 endAt 으로 온다(예전 deadlineValue). */
+    private static final String NINEHIRE_RESPONSE = """
+        {
+          "count": 43,
+          "results": [
+            {
+              "externalTitle": " 검색발견 백엔드 개발자(시니어) ",
+              "addressKey": "HZZ8Yz5b",
+              "endAt": "2099-12-01T14:59:59.000Z",
+              "deadlineType": "date",
+              "employmentType": ["full_time"],
+              "career": { "type": "experienced", "range": { "over": 7, "below": 0 } },
+              "jobGroup": { "title": "개발" }
+            },
+            {
+              "externalTitle": "주소 키가 없는 공고",
+              "endAt": null,
+              "employmentType": ["full_time"]
+            },
+            {
+              "externalTitle": "고객센터 상담원(계약직)",
+              "addressKey": "590nPJF2",
+              "endAt": null,
+              "deadlineType": "until_filled",
+              "employmentType": ["contract"],
+              "career": { "type": "any", "range": null },
+              "jobGroup": null
+            }
+          ]
+        }
+        """;
+
+    @Test
+    @DisplayName("ninehire: endAt 을 한국시각으로 옮기고, 깨진 공고 하나 때문에 나머지를 버리지 않는다")
+    void parseNinehireRecruitments_mapsEndAtAndSkipsBrokenItem() {
+        List<Job_mst> result = new ArrayList<>();
+        int total = kakaoCrawlerService.parseNinehireRecruitments(
+            NINEHIRE_RESPONSE, "https://career.kakaopaysec.com", "카카오 페이증권", result);
+
+        assertThat(total).isEqualTo(43);
+        assertThat(result).extracting(Job_mst::getAnnoId).containsExactly("HZZ8Yz5b", "590nPJF2");
+
+        Job_mst first = result.get(0);
+        assertThat(first.getAnnoSubject()).isEqualTo("검색발견 백엔드 개발자(시니어)");
+        assertThat(first.getJobDetailLink()).isEqualTo("https://career.kakaopaysec.com/job_posting/HZZ8Yz5b");
+        assertThat(first.getSysCompanyCdNm()).isEqualTo("카카오 페이증권");
+        // UTC 14:59:59 → 한국시각 23:59:59
+        assertThat(first.getEndDate()).isEqualTo("2099-12-01 23:59:59");
+        assertThat(first.getEmpTypeCdNm()).isEqualTo("정규");
+        assertThat(first.getClassCdNm()).isEqualTo("개발");
+        assertThat(first.getPersonalHistory()).isEqualTo(7L);
+
+        Job_mst second = result.get(1);
+        assertThat(second.getEndDate()).isNull();
+        assertThat(second.getEmpTypeCdNm()).isEqualTo("비정규");
+    }
+
+    @Test
+    @DisplayName("ninehire: endAt 이 없으면 예전 필드 deadlineValue 를 읽는다")
+    void parseNinehireRecruitments_fallsBackToDeadlineValue() {
+        String json = """
+            { "count": 1, "results": [
+              { "externalTitle": "보안 엔지니어", "addressKey": "sbumX7WW",
+                "deadlineValue": "2099-01-01T00:00:00Z", "employmentType": ["full_time"] }
+            ] }
+            """;
+
+        List<Job_mst> result = new ArrayList<>();
+        kakaoCrawlerService.parseNinehireRecruitments(json, "https://recruit.kakaohealthcare.com", "카카오 헬스케어", result);
+
+        assertThat(result).singleElement().extracting(Job_mst::getEndDate).isEqualTo("2099-01-01 09:00:00");
+    }
+
+    private static Job_mst crawled(String companyNameEn, String title) {
+        Job_mst job = new Job_mst();
+        job.setSysCompanyCdNm(companyNameEn);
+        job.setAnnoSubject(title);
+        return job;
+    }
+
+    @Test
+    @DisplayName("회사명 정리: 페이손해보험을 따로 잡고, 자체 사이트 계열사 이름이 '카카오'로 덮이지 않는다")
+    void refineResult_mapsSubsidiaryNames() {
+        List<Job_mst> jobs = new ArrayList<>(List.of(
+            crawled("kpaylossinsurance", "[공동체] 카카오페이손해보험 DBA"),
+            crawled("Kakao Pay Corp.", "[공동체] 카카오페이 서버 개발자 - 데이터 플랫폼"),
+            crawled("카카오 게임즈", "[신입/경력] 수집형/방치형 RPG 마케팅PM 영입"),
+            crawled("Kakao Corp", "Data Scientist (경력)")
+        ));
+
+        kakaoCrawlerService.refineResult(jobs);
+
+        assertThat(jobs).extracting(Job_mst::getSysCompanyCdNm)
+            .containsExactly("카카오 페이손해보험", "카카오 페이", "카카오 게임즈", "카카오");
+        assertThat(jobs).extracting(Job_mst::getAnnoSubject)
+            .containsExactly("DBA", "서버 개발자 - 데이터 플랫폼", "수집형/방치형 RPG 마케팅PM 영입", "Data Scientist (경력)");
+        assertThat(jobs).extracting(Job_mst::getSubJobCdNm)
+            .containsExactly("DBA", "Backend", "PM", "DataAnalyst");
+    }
 }
