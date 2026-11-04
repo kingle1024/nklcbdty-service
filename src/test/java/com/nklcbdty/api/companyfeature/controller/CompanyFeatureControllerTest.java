@@ -2,6 +2,7 @@ package com.nklcbdty.api.companyfeature.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import com.nklcbdty.api.companyfeature.dto.WelfareCategoryDto;
 import com.nklcbdty.api.companyfeature.dto.WorkStyleCompanyDto;
 import com.nklcbdty.api.companyfeature.service.CompanyFeatureService;
 import com.nklcbdty.api.companyfeature.service.WelfareCategoryService;
+import com.nklcbdty.api.companyfeature.vo.WelfareMatch;
 import com.nklcbdty.api.companyfeature.vo.WorkStyle;
 
 class CompanyFeatureControllerTest {
@@ -53,6 +55,37 @@ class CompanyFeatureControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].companyCd").value("LINE"))
             .andExpect(jsonPath("$[0].postingCount").value(2));
+    }
+
+    @Test
+    @DisplayName("GET /api/company/features?welfare=MEAL&welfare=HEALTH&match=any: 근무형태 없이 복지만, OR 조건")
+    void features_welfareOnlyAny() throws Exception {
+        when(companyFeatureService.findCompanies(isNull(), eq(List.of("MEAL", "HEALTH")), eq(WelfareMatch.ANY)))
+            .thenReturn(List.of(WorkStyleCompanyDto.builder().companyCd("NAVER").companyNm("네이버").postingCount(3).build()));
+
+        mockMvc.perform(get("/api/company/features").param("welfare", "MEAL", "HEALTH").param("match", "any"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].companyCd").value("NAVER"));
+    }
+
+    @Test
+    @DisplayName("GET /api/company/features?workStyle=REMOTE: match 를 안 주면 ALL")
+    void features_defaultsToAll() throws Exception {
+        when(companyFeatureService.findCompanies(eq(WorkStyle.REMOTE), isNull(), eq(WelfareMatch.ALL)))
+            .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/company/features").param("workStyle", "REMOTE"))
+            .andExpect(status().isOk());
+
+        verify(companyFeatureService).findCompanies(eq(WorkStyle.REMOTE), isNull(), eq(WelfareMatch.ALL));
+    }
+
+    @Test
+    @DisplayName("없는 match 값은 400")
+    void features_unknownMatch() throws Exception {
+        mockMvc.perform(get("/api/company/features").param("match", "XOR"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value("error"));
     }
 
     @Test
