@@ -6,7 +6,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,6 +46,30 @@ public class KakaoCrawlerService {
     private static final String MOBILITY_COMPANY_NAME = "카카오 모빌리티";
     /** careers.kakao.com 의 {@code companyNameEn} 중 카카오모빌리티를 가리키는 값. */
     private static final String MOBILITY_COMPANY_NAME_EN = "kakao mobility";
+
+    /** 카카오게임즈도 greetinghr 다. 목록 페이지 {@code __NEXT_DATA__} 구조가 모빌리티와 같다. */
+    private static final String GAMES_BASE_URL = "https://recruit.kakaogames.com";
+    private static final String GAMES_LIST_URL = GAMES_BASE_URL + "/ko/joinjuskr";
+    private static final String GAMES_COMPANY_NAME = "카카오 게임즈";
+
+    private static final String HEALTH_COMPANY_NAME = "카카오 헬스케어";
+    private static final String PAY_SEC_COMPANY_NAME = "카카오 페이증권";
+    private static final String PAY_INSURANCE_COMPANY_NAME = "카카오 페이손해보험";
+
+    /**
+     * careers.kakao.com 에서 건너뛰는 계열사({@code companyNameEn} 을 소문자·공백 제거로 비교).
+     * 자체 채용 사이트를 따로 받으므로 여기서도 받으면 annoId 체계가 달라 같은 공고가 두 건이 된다.
+     * 자체 사이트 쪽이 공고가 더 많다(2026-11 기준 게임즈 19건 vs careers 1건, 헬스케어 13건 vs 2건).
+     */
+    private static final Set<String> CAREERS_SKIPPED_COMPANIES = Set.of(
+        normalizeCompanyNameEn(MOBILITY_COMPANY_NAME_EN), "kakaogames", "kakaohealthcare");
+
+    /** 헬스케어·페이증권 채용 사이트(ninehire)의 공고 목록 API. 한 쪽당 최대 20건이라 쪽을 넘겨 가며 받는다. */
+    private static final String NINEHIRE_RECRUITMENTS_URL =
+        "https://api.ninehire.com/identity-access/homepage/recruitments"
+            + "?companyId=%s&page=%d&countPerPage=%d&externalTitle=&order=created_at_desc";
+    private static final int NINEHIRE_PAGE_SIZE = 20;
+    private static final int NINEHIRE_MAX_PAGES = 20;
 
     /** greetinghr 의 마감일시는 UTC(Z) 로 내려온다. 담을 때 한국 시각으로 옮긴다. */
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -171,7 +197,7 @@ public class KakaoCrawlerService {
         }
     }
 
-    private void refineResult(List<Job_mst> result) {
+    void refineResult(List<Job_mst> result) {
         for (Job_mst job : result) {
             if (job.getAnnoSubject().contains("DevOps") ||
                 job.getAnnoSubject().contains("Kubernetes Engine 개발자") ||
@@ -188,6 +214,7 @@ public class KakaoCrawlerService {
             } else if (job.getAnnoSubject().contains("백엔드") ||
                 job.getAnnoSubject().contains("서버 개발자") ||
                 job.getAnnoSubject().contains("Back-End") ||
+                job.getAnnoSubject().contains("Backend") ||
                 job.getAnnoSubject().contains("CI/CD 서비스 개발") ||
                 job.getAnnoSubject().contains("데이터 응용 플랫폼 개발") ||
                 job.getAnnoSubject().contains("시스템(ActionBase) 개발") ||
@@ -205,6 +232,7 @@ public class KakaoCrawlerService {
             ) {
                 job.setSubJobCdNm(JobEnums.FullStack.getTitle());
             } else if (job.getAnnoSubject().contains("Data Analyst") ||
+                job.getAnnoSubject().contains("Data Scientist") ||
                 job.getAnnoSubject().contains("데이터 사이언티스트") ||
                 job.getAnnoSubject().contains("데이터 분석가") ||
                 job.getAnnoSubject().contains("데이터 분석 담당자")
@@ -231,7 +259,7 @@ public class KakaoCrawlerService {
                 job.getAnnoSubject().contains("데이터플랫폼 엔지니어")
             ) {
                 job.setSubJobCdNm(JobEnums.ML.getTitle());
-            } else if (job.getAnnoSubject().contains("DB운영")) {
+            } else if (job.getAnnoSubject().contains("DB운영") || job.getAnnoSubject().contains("DBA")) {
                 job.setSubJobCdNm(JobEnums.DBA.getTitle());
             } else if (
                 job.getAnnoSubject().contains("AI Safety 엔지니어") ||
@@ -320,7 +348,11 @@ public class KakaoCrawlerService {
             if ("Server".equals(job.getSubJobCdNm())) {
                 job.setSubJobCdNm(JobEnums.BackEnd.getTitle());
             }
-            if (job.getAnnoSubject().contains("카카오페이")) {
+            // 긴 이름부터 지운다. "카카오페이"를 먼저 지우면 "카카오페이손해보험 DBA" 가 "손해보험 DBA" 로 남는다.
+            if (job.getAnnoSubject().contains("카카오페이손해보험")) {
+                String replaceTitle = job.getAnnoSubject().replace("카카오페이손해보험", "");
+                job.setAnnoSubject(replaceTitle);
+            } else if (job.getAnnoSubject().contains("카카오페이")) {
                 String replaceTitle = job.getAnnoSubject().replace("카카오페이", "");
                 job.setAnnoSubject(replaceTitle);
             } else if (job.getAnnoSubject().contains("카카오모빌리티")) {
@@ -336,7 +368,11 @@ public class KakaoCrawlerService {
                 String replaceTitle = job.getAnnoSubject().replace("카카오헬스케어", "");
                 job.setAnnoSubject(replaceTitle);
             }
+            // "[공동체] 카카오페이 서버 개발자" 에서 회사명을 지우면 앞에 공백이 남는다
+            job.setAnnoSubject(job.getAnnoSubject().strip());
 
+            // 자체 사이트 크롤(게임즈·헬스케어·페이증권·모빌리티)은 이미 정리된 한글 이름으로 담는다.
+            // 그 이름도 case 로 받아야 default 로 떨어져 "카카오"로 덮이지 않는다.
             switch (job.getSysCompanyCdNm()) {
                 // "kakao mobility" 는 careers.kakao.com 표기. greetinghr 크롤(addRecruitMobility)은
                 // 이미 정리된 이름으로 담으므로, 여기서 default 로 떨어져 "카카오"로 덮이지 않게 같이 받는다.
@@ -352,16 +388,20 @@ public class KakaoCrawlerService {
                     job.setSysCompanyCdNm("카카오 엔터프라이즈");
                     break;
                 }
-                case "KakaoGames": {
-                    job.setSysCompanyCdNm("카카오 게임즈");
+                case "KakaoGames", GAMES_COMPANY_NAME: {
+                    job.setSysCompanyCdNm(GAMES_COMPANY_NAME);
                     break;
                 }
-                case "kakaohealthcare", "카카오 헬스케어": {
-                    job.setSysCompanyCdNm("카카오 헬스케어");
+                case "kakaohealthcare", HEALTH_COMPANY_NAME: {
+                    job.setSysCompanyCdNm(HEALTH_COMPANY_NAME);
                     break;
                 }
-                case "카카오 페이증권": {
-                    job.setSysCompanyCdNm("카카오 페이증권");
+                case PAY_SEC_COMPANY_NAME: {
+                    job.setSysCompanyCdNm(PAY_SEC_COMPANY_NAME);
+                    break;
+                }
+                case "kpaylossinsurance": {
+                    job.setSysCompanyCdNm(PAY_INSURANCE_COMPANY_NAME);
                     break;
                 }
                 default: {
@@ -398,6 +438,14 @@ public class KakaoCrawlerService {
      * <p>queries 배열의 순서는 페이지 구성이 바뀌면 밀리므로 인덱스로 찍지 않고 queryKey 로 찾는다.</p>
      */
     void parseMobilityOpenings(String nextDataJson, List<Job_mst> kakaoMobility) {
+        parseGreetinghrOpenings(nextDataJson, MOBILITY_BASE_URL, MOBILITY_COMPANY_NAME, kakaoMobility);
+    }
+
+    /**
+     * greetinghr 채용 사이트의 {@code __NEXT_DATA__} JSON 에서 공고 목록을 꺼내 {@link Job_mst} 로 옮긴다.
+     * 카카오모빌리티·카카오게임즈가 같은 구조를 쓴다. 상세 링크는 {@code {baseUrl}/ko/o/{openingId}}.
+     */
+    void parseGreetinghrOpenings(String nextDataJson, String baseUrl, String companyName, List<Job_mst> out) {
         JSONObject root = new JSONObject(nextDataJson);
         // 페이지 HTML 의 __NEXT_DATA__ 는 props 로 한 겹 더 싸여 있고, _next/data 응답은 pageProps 부터 시작한다.
         JSONObject pageProps = root.has("props")
@@ -419,7 +467,7 @@ public class KakaoCrawlerService {
         }
 
         if (openings == null) {
-            log.error("카카오모빌리티 채용공고 openings 미존재");
+            log.error("{} 채용공고 openings 미존재", companyName);
             return;
         }
 
@@ -434,8 +482,8 @@ public class KakaoCrawlerService {
                 Job_mst item = new Job_mst();
                 item.setAnnoId(String.valueOf(opening.getLong("openingId")));
                 item.setAnnoSubject(opening.getString("title").strip());
-                item.setJobDetailLink(MOBILITY_BASE_URL + "/ko/o/" + item.getAnnoId());
-                item.setSysCompanyCdNm(MOBILITY_COMPANY_NAME);
+                item.setJobDetailLink(baseUrl + "/ko/o/" + item.getAnnoId());
+                item.setSysCompanyCdNm(companyName);
 
                 if (dueDate != null && !JSONObject.NULL.equals(dueDate)) {
                     item.setEndDate(OffsetDateTime.parse(dueDate.toString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
@@ -443,12 +491,12 @@ public class KakaoCrawlerService {
                         .format(END_DATE_FORMATTER));
                 }
 
-                applyMobilityPositions(item, opening.getJSONObject("openingJobPosition")
+                applyGreetinghrPositions(item, opening.getJSONObject("openingJobPosition")
                     .optJSONArray("openingJobPositions"));
 
-                kakaoMobility.add(item);
+                out.add(item);
             } catch (Exception itemEx) {
-                log.error("카카오모빌리티 공고 파싱 실패 (index={}): {}", i, itemEx.getMessage(), itemEx);
+                log.error("{} 공고 파싱 실패 (index={}): {}", companyName, i, itemEx.getMessage(), itemEx);
             }
         }
     }
@@ -459,7 +507,7 @@ public class KakaoCrawlerService {
      * <p>한 공고가 여러 포지션(직군·근무지 조합)을 가질 수 있어, 경력은 가장 넓은 구간으로 잡고
      * 고용형태는 정규직이 하나라도 있으면 정규로 본다.</p>
      */
-    private void applyMobilityPositions(Job_mst item, JSONArray positions) {
+    private void applyGreetinghrPositions(Job_mst item, JSONArray positions) {
         item.setEmpTypeCdNm("정규");
         if (positions == null) {
             return;
@@ -509,261 +557,135 @@ public class KakaoCrawlerService {
         }
     }
 
+    /** 카카오게임즈 공고. 모빌리티와 같은 greetinghr 라 목록 페이지의 {@code __NEXT_DATA__} 를 그대로 읽는다. */
     private void addRecruitGames(List<Job_mst> kakaoGames) {
-        String buildName = "";
         try {
-            Document doc = crawlerCommonService.jsoupConnect("https://recruit.kakaogames.com/ko/joinjuskr").get();
-            Element scriptElement = doc.getElementById("__NEXT_DATA__");
-
-            if (scriptElement != null) {
-                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
-                String jsonData = scriptElement.html();
-
-                                // JSON 파싱
-                ObjectMapper objectMapper = new ObjectMapper();
-                JsonNode jsonNode = objectMapper.readTree(jsonData);
-
-                // buildId 값 추출
-                buildName = jsonNode.get("buildId").asText();
-
-
-                // 정규식에 매칭되는 부분이 있는지 확인
-                if (buildName == null) {
-                    log.error("No match found buildName");
-                    return;
-                }
-            }
-
-            final String apiUrl = "https://recruit.kakaogames.com/_next/data/" + buildName + "/ko/joinjuskr.json?locale=ko&page=joinjuskr";
-            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
-
-            // JSON 객체로 변환
-            JSONObject jsonResult = new JSONObject(jsonResponse);
-
-            JSONArray data = jsonResult.getJSONObject("pageProps")
-                .getJSONObject("dehydratedState")
-                .getJSONArray("queries")
-                .getJSONObject(2)
-                .getJSONObject("state")
-                .optJSONArray("data");
-            if (data == null) {
-                log.error("카카오게임즈 채용공고 data 미존재");
+            Document doc = crawlerCommonService.jsoupConnect(GAMES_LIST_URL).get();
+            Element nextData = doc.getElementById("__NEXT_DATA__");
+            if (nextData == null) {
+                log.error("카카오게임즈 __NEXT_DATA__ 미존재 url={}", GAMES_LIST_URL);
                 return;
             }
-
-            for (int i = 0; i < data.length(); i++) {
-                JSONObject jsonObject = data.getJSONObject(i);
-                Object endDateObj = jsonObject.get("dueDate");
-                if (crawlerCommonService.isCloseDate(endDateObj)) {
-                    continue;
-                }
-
-                Job_mst item = new Job_mst();
-                String endDate;
-                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
-                    endDate = endDateObj.toString();
-                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    String formattedDate = offsetDateTime.format(formatter);
-                    item.setEndDate(formattedDate);
-                }
-                String title = jsonObject.get("title").toString();
-                item.setAnnoSubject(title);
-                item.setSysCompanyCdNm("카카오 게임즈");
-                // jsonObject.getJSONObject("openingJobPosition").getJSONArray("openingJobPositions").getJSONObject(1)
-                JSONArray openingJobPositions = jsonObject.getJSONObject("openingJobPosition")
-                    .getJSONArray("openingJobPositions");
-                item.setEmpTypeCdNm("정규");
-                long minCareerFrom = Long.MAX_VALUE;
-                for (int j = 0; j < openingJobPositions.length(); j++) {
-                    JSONObject openingJobPosition = openingJobPositions.getJSONObject(j);
-                    String employ = null;
-                    if (!openingJobPosition.isNull("jobPositionEmployment") ) {
-                        employ = openingJobPosition.getJSONObject("jobPositionEmployment").getString("employmentType");
-                    }
-                    if (!openingJobPosition.isNull("jobPositionCareer")) {
-                        if (!openingJobPosition.getJSONObject("jobPositionCareer").isNull("careerFrom")) {
-                            final long careerFrom = openingJobPosition.getJSONObject("jobPositionCareer").getLong("careerFrom");
-                            minCareerFrom = Math.min(minCareerFrom, careerFrom);
-                        }
-                    }
-
-                    if ("FULL_TIME_WORKER".equals(employ)) {
-                        item.setEmpTypeCdNm("정규");
-                        break;
-                    } else if ("CONTRACT_WORKER".equals(employ)) {
-                        item.setEmpTypeCdNm("비정규");
-                    }
-                }
-                if (minCareerFrom != Long.MAX_VALUE) {
-                    item.setPersonalHistory(minCareerFrom);
-                }
-                Object from = jsonObject.getJSONObject("careerInfo").get("from");
-                if (from instanceof Integer) {
-                    item.setPersonalHistory(((Integer) from).longValue());
-                }
-                Object to = jsonObject.getJSONObject("careerInfo").get("to");
-                if (to instanceof Integer) {
-                    item.setPersonalHistoryEnd(((Integer) to).longValue());
-                }
-                String openingId = String.valueOf(jsonObject.getInt("openingId"));
-                item.setJobDetailLink("https://recruit.kakaogames.com/ko/o/" + openingId);
-                item.setAnnoId(openingId);
-                kakaoGames.add(item);
-            }
+            parseGreetinghrOpenings(nextData.html(), GAMES_BASE_URL, GAMES_COMPANY_NAME, kakaoGames);
         } catch (Exception e) {
             log.error("Error occurred while fetching Kakao Games jobs: {}", e.getMessage(), e);
         }
     }
 
-    private void addRecruitHealth(List<Job_mst> kakaopayHealth) {
-        String buildName = "";
+    private void addRecruitHealth(List<Job_mst> kakaoHealth) {
         try {
             Document doc = crawlerCommonService.jsoupConnect("https://recruit.kakaohealthcare.com/recruit").get();
-            Elements iconLinkTags = doc.select("link[rel=icon], link[rel=shortcut icon]");
-
-            if (!iconLinkTags.isEmpty()) {
-                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
-                String imageUrl = Objects.requireNonNull(iconLinkTags.first()).attr("href");
-
-                // URL에서 "brand/"와 그 다음 "/" 사이의 문자열을 추출하는 정규식
-                String regex = "/homepage/([^/]+)/";
-                Pattern pattern = Pattern.compile(regex);
-                Matcher matcher = pattern.matcher(imageUrl);
-
-                // 정규식에 매칭되는 부분이 있는지 확인
-                if (matcher.find()) {
-                    buildName = matcher.group(1); // 첫 번째 그룹 (UUID 부분) 추출
-                } else {
-                    log.error("No match found in the URL: {}", imageUrl);
-                    return;
-                }
+            String companyId = ninehireCompanyId(doc.select("link[rel=icon], link[rel=shortcut icon]"), "href",
+                "/homepage/([^/]+)/");
+            if (companyId == null) {
+                return;
             }
-
-            final String apiUrl = "https://api.ninehire.com/identity-access/homepage/recruitments?companyId="+buildName+"&page=1&countPerPage=20&externalTitle=&order=created_at_desc";
-            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
-
-            // JSON 객체로 변환
-            JSONObject jsonResult = new JSONObject(jsonResponse);
-
-            JSONArray jsonArray = jsonResult.getJSONArray("results");
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                Object endDateObj = jsonObject.get("deadlineValue");
-                if (crawlerCommonService.isCloseDate(endDateObj)) {
-                    continue;
-                }
-
-                Job_mst item = new Job_mst();
-                String endDate;
-                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
-                    endDate = jsonObject.getString("deadlineValue");
-                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    String formattedDate = offsetDateTime.format(formatter);
-                    item.setEndDate(formattedDate);
-                }
-                String title = jsonObject.get("externalTitle").toString();
-                item.setAnnoSubject(title);
-                String empTypeCdNm = jsonObject.getJSONArray("employmentType").getString(0);
-                if("full_time".equals(empTypeCdNm)) {
-                    item.setEmpTypeCdNm("정규");
-                } else {
-                    item.setEmpTypeCdNm("비정규");
-                }
-                if (!jsonObject.isNull("jobGroup")) {
-                    item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
-                }
-                item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
-                item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
-                item.setSysCompanyCdNm("카카오 헬스케어");
-                item.setJobDetailLink("https://recruit.kakaohealthcare.com/job_posting/" + jsonObject.get("addressKey"));
-                item.setAnnoId(jsonObject.getString("addressKey"));
-                kakaopayHealth.add(item);
-            }
+            addNinehireRecruitments(companyId, "https://recruit.kakaohealthcare.com", HEALTH_COMPANY_NAME, kakaoHealth);
         } catch (Exception e) {
             log.error("Error occurred while fetching Kakao Health jobs: {}", e.getMessage(), e);
         }
     }
 
     private void addRecruitPaySec(List<Job_mst> kakaopaySec) {
-        String buildName = "";
-
         try {
-            // 웹 페이지에 연결하여 Document 객체 가져오기
             Document doc = crawlerCommonService.jsoupConnect("https://career.kakaopaysec.com/job_posting").get();
-
-            // property 속성이 "og:image"인 meta 태그 선택
-            Elements metaTags = doc.select("meta[property=og:image]");
-
-            if (!metaTags.isEmpty()) {
-                // 첫 번째 og:image 메타 태그의 content 속성 값 가져오기
-                String imageUrl = Objects.requireNonNull(metaTags.first()).attr("content");
-
-                // URL에서 "brand/"와 그 다음 "/" 사이의 문자열을 추출하는 정규식
-                String regex = "/brand/([^/]+)/";
-                Pattern pattern = Pattern.compile(regex);
-                Matcher matcher = pattern.matcher(imageUrl);
-
-                // 정규식에 매칭되는 부분이 있는지 확인
-                if (matcher.find()) {
-                    buildName = matcher.group(1); // 첫 번째 그룹 (UUID 부분) 추출
-                } else {
-                    log.error("No match found in the URL: {}", imageUrl);
-                    return;
-                }
+            String companyId = ninehireCompanyId(doc.select("meta[property=og:image]"), "content", "/brand/([^/]+)/");
+            if (companyId == null) {
+                return;
             }
+            addNinehireRecruitments(companyId, "https://career.kakaopaysec.com", PAY_SEC_COMPANY_NAME, kakaopaySec);
+        } catch (Exception e) {
+            log.error("Error occurred while fetching Kakao Pay Sec jobs: {}", e.getMessage(), e);
+        }
+    }
 
-            final String apiUrl = "https://api.ninehire.com/identity-access/homepage/recruitments?companyId="+buildName+"&page=1&countPerPage=20&externalTitle=&order=created_at_desc";
-            log.info("카카오페이증권 buildName {}", buildName);
-            final String jsonResponse = crawlerCommonService.fetchApiResponse(apiUrl);
+    /** ninehire 채용 사이트는 회사 id(UUID)를 API 에 넘겨야 한다. 페이지의 아이콘/og:image 주소에 그 id 가 들어 있다. */
+    private String ninehireCompanyId(Elements tags, String attr, String regex) {
+        if (tags.isEmpty()) {
+            log.error("ninehire 회사 id 를 찾을 태그가 없음 regex={}", regex);
+            return null;
+        }
+        String url = Objects.requireNonNull(tags.first()).attr(attr);
+        Matcher matcher = Pattern.compile(regex).matcher(url);
+        if (!matcher.find()) {
+            log.error("No match found in the URL: {}", url);
+            return null;
+        }
+        return matcher.group(1);
+    }
 
-            // JSON 객체로 변환
-            JSONObject jsonResult = new JSONObject(jsonResponse);
+    /** ninehire 공고 목록을 쪽을 넘겨 가며 다 받는다. 한 쪽이 20건이라 페이증권(2026-11 기준 43건)은 첫 쪽만으로 모자란다. */
+    private void addNinehireRecruitments(String companyId, String siteBaseUrl, String companyName, List<Job_mst> out) {
+        for (int page = 1; page <= NINEHIRE_MAX_PAGES; page++) {
+            String json = crawlerCommonService.fetchApiResponse(
+                String.format(NINEHIRE_RECRUITMENTS_URL, companyId, page, NINEHIRE_PAGE_SIZE));
+            int total = parseNinehireRecruitments(json, siteBaseUrl, companyName, out);
+            if (page * NINEHIRE_PAGE_SIZE >= total) {
+                break;
+            }
+        }
+    }
 
-            JSONArray jsonArray = jsonResult.getJSONArray("results");
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                Object endDateObj = jsonObject.get("deadlineValue");
-                if (crawlerCommonService.isCloseDate(endDateObj)) {
+    /**
+     * ninehire 공고 목록 응답 한 쪽을 {@link Job_mst} 로 옮긴다. 전체 공고 수({@code count})를 돌려준다.
+     *
+     * <p>마감일 필드가 {@code deadlineValue} 에서 {@code endAt} 으로 바뀌었다(2026-10). 예전처럼
+     * {@code getString} 으로 꺼내면 공고 하나에서 터져 그 회사 공고가 통째로 빠지므로, 둘 다 읽고
+     * 공고마다 따로 잡는다. 상시채용({@code open_ended}/{@code until_filled})은 마감일이 없다.</p>
+     */
+    int parseNinehireRecruitments(String json, String siteBaseUrl, String companyName, List<Job_mst> out) {
+        JSONObject response = new JSONObject(json);
+        JSONArray results = response.optJSONArray("results");
+        if (results == null) {
+            log.error("{} ninehire 응답에 results 없음", companyName);
+            return 0;
+        }
+
+        for (int i = 0; i < results.length(); i++) {
+            try {
+                JSONObject recruitment = results.getJSONObject(i);
+                Object endAt = recruitment.opt("endAt");
+                if (endAt == null || JSONObject.NULL.equals(endAt)) {
+                    endAt = recruitment.opt("deadlineValue");
+                }
+                if (crawlerCommonService.isCloseDate(endAt)) {
                     continue;
                 }
 
                 Job_mst item = new Job_mst();
-                String endDate;
-                if (endDateObj != null && !JSONObject.NULL.equals(endDateObj)) {
-                    endDate = jsonObject.getString("deadlineValue");
-                    OffsetDateTime offsetDateTime = OffsetDateTime.parse(endDate, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    String formattedDate = offsetDateTime.format(formatter);
-                    item.setEndDate(formattedDate);
+                if (endAt != null && !JSONObject.NULL.equals(endAt)) {
+                    item.setEndDate(OffsetDateTime.parse(endAt.toString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        .atZoneSameInstant(KST)
+                        .format(END_DATE_FORMATTER));
                 }
-                String title = jsonObject.get("externalTitle").toString();
-                item.setAnnoSubject(title);
-                String empTypeCdNm = jsonObject.getJSONArray("employmentType").isEmpty() ? "" : jsonObject.getJSONArray("employmentType").getString(0);
-                if("full_time".equals(empTypeCdNm)) {
-                    item.setEmpTypeCdNm("정규");
-                } else {
-                    item.setEmpTypeCdNm("비정규");
-                }
-                if (!jsonObject.isNull("jobGroup")) {
-                    item.setClassCdNm(jsonObject.getJSONObject("jobGroup").get("title").toString());
-                }
-                if (jsonObject.get("career") instanceof JSONObject) {
-                    if (jsonObject.getJSONObject("career").get("range") instanceof JSONObject) {
-                        item.setPersonalHistory(jsonObject.getJSONObject("career").getJSONObject("range").getLong("over"));
-                        item.setPersonalHistoryEnd(jsonObject.getJSONObject("career").getJSONObject("range").getLong("below"));
-                    }
-                }
-                item.setSysCompanyCdNm("카카오 페이증권");
-                item.setJobDetailLink("https://career.kakaopaysec.com/job_posting/" + jsonObject.get("addressKey"));
-                item.setAnnoId(jsonObject.getString("addressKey"));
-                kakaopaySec.add(item);
-            }
+                item.setAnnoSubject(recruitment.getString("externalTitle").strip());
 
-        } catch (Exception e) {
-            log.error("Error occurred while fetching Kakao Pay jobs: {}", e.getMessage(), e);
+                JSONArray employmentType = recruitment.optJSONArray("employmentType");
+                boolean fullTime = employmentType != null && !employmentType.isEmpty()
+                    && "full_time".equals(employmentType.optString(0));
+                item.setEmpTypeCdNm(fullTime ? "정규" : "비정규");
+
+                JSONObject jobGroup = recruitment.optJSONObject("jobGroup");
+                if (jobGroup != null) {
+                    item.setClassCdNm(jobGroup.optString("title", null));
+                }
+                JSONObject career = recruitment.optJSONObject("career");
+                JSONObject range = career == null ? null : career.optJSONObject("range");
+                if (range != null) {
+                    item.setPersonalHistory(range.optLong("over"));
+                    item.setPersonalHistoryEnd(range.optLong("below"));
+                }
+
+                String addressKey = recruitment.getString("addressKey");
+                item.setSysCompanyCdNm(companyName);
+                item.setJobDetailLink(siteBaseUrl + "/job_posting/" + addressKey);
+                item.setAnnoId(addressKey);
+                out.add(item);
+            } catch (Exception itemEx) {
+                log.error("{} 공고 파싱 실패 (index={}): {}", companyName, i, itemEx.getMessage(), itemEx);
+            }
         }
+        return response.optInt("count", 0);
     }
 
     public void addRecruitKakaoBank(List<Job_mst> result) {
@@ -919,12 +841,11 @@ public class KakaoCrawlerService {
             }
             String qualification = edge.getString("qualification");
 
-            String companyNameEn = edge.getString("companyNameEn");
-            // 카카오모빌리티는 자체 채용 사이트(greetinghr)에서 받는다 — addRecruitMobility.
-            // careers.kakao.com 에도 같은 공고가 걸려 있지만 상세페이지가 SPA 셸이라
-            // 링크 점검 배치가 매일 종료 처리해 버린다(실제로 41건 전원 마감으로 찍혀 목록에서 사라졌다).
+            // 앞뒤 공백이 섞여 온다(" Kakao Corp", "KakaoGames "). 그대로 두면 회사명 매핑이 빗나간다.
+            String companyNameEn = edge.getString("companyNameEn").strip();
+            // 모빌리티·게임즈·헬스케어는 자체 채용 사이트에서 받는다(addRecruitMobility 등).
             // 두 곳에서 다 받으면 annoId 체계가 달라 같은 공고가 두 건으로 보이므로 여기서는 건너뛴다.
-            if (MOBILITY_COMPANY_NAME_EN.equals(companyNameEn)) {
+            if (CAREERS_SKIPPED_COMPANIES.contains(normalizeCompanyNameEn(companyNameEn))) {
                 continue;
             }
             Job_mst item = new Job_mst();
@@ -966,6 +887,11 @@ public class KakaoCrawlerService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** careers.kakao.com 의 companyNameEn 비교용. 대소문자·공백 표기가 계열사마다 들쭉날쭉하다. */
+    private static String normalizeCompanyNameEn(String companyNameEn) {
+        return companyNameEn == null ? "" : companyNameEn.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
     }
 
     private boolean isCloseDate(Object endDate) {
