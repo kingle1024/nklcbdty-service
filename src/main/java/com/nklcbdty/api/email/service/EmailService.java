@@ -161,6 +161,7 @@ public class EmailService {
                 jobPosting.setEndDate(job.getEndDate());
                 jobPosting.setPersonalHistory(job.getPersonalHistory());
                 jobPosting.setPersonalHistoryEnd(job.getPersonalHistoryEnd());
+                jobPosting.setEmpType(job.getEmpTypeCdNm());
                 jobPostings.add(jobPosting);
             }
 
