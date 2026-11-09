@@ -55,7 +55,7 @@ public class ResumeReviewService {
         final List<ReviewDocument> documents = uploads.stream().map(extractor::extract).toList();
 
         final GeminiJsonClient.Answer answer = gemini.generate(buildPrompt(posting, documents));
-        return toResponse(answer, documents);
+        return toResponse(answer, documents, posting);
     }
 
     /** 붙여넣은 글이 있으면 그것을 쓴다. 사용자가 직접 준 글이 페이지를 긁은 것보다 정확하다. */
@@ -117,6 +117,10 @@ public class ResumeReviewService {
     }
 
     ResumeReviewResponse toResponse(GeminiJsonClient.Answer answer, List<ReviewDocument> documents) {
+        return toResponse(answer, documents, "");
+    }
+
+    ResumeReviewResponse toResponse(GeminiJsonClient.Answer answer, List<ReviewDocument> documents, String posting) {
         final JSONObject root;
         try {
             root = new JSONObject(stripFence(answer.json()));
@@ -160,10 +164,13 @@ public class ResumeReviewService {
             }
         }
 
+        // 모델은 다른 문서(포트폴리오)에 적힌 사실을 끌어와도 된다 — 근거는 올린 문서 전체로 본다.
+        final String allDocuments = String.join("\n", documents.stream().map(ReviewDocument::text).toList());
         final List<ResumeReviewResponse.Document> outDocs = new ArrayList<>();
         for (int i = 0; i < documents.size(); i++) {
             final ReviewDocument d = documents.get(i);
-            final ChangeApplier.Result applied = ChangeApplier.apply(d.text(), proposedByDoc.get(i));
+            final ChangeApplier.Result applied = ChangeApplier.apply(
+                    d.text(), proposedByDoc.get(i), allDocuments, posting);
             outDocs.add(new ResumeReviewResponse.Document(
                     d.fileName(), summaries.get(i), d.text(), applied.revisedText(), applied.changes()));
         }

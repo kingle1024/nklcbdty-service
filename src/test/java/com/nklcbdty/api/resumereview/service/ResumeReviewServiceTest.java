@@ -45,7 +45,7 @@ class ResumeReviewServiceTest {
                  "fit":[{"requirement":"Spring Boot","status":"partial","evidence":"Java 만 있음"},
                         {"requirement":"Kafka","status":"???","evidence":""}],
                  "documents":[{"index":0,"summary":"Spring 강조","changes":[
-                   {"type":"REPLACE","section":"경력","before":"주문 API 개발","after":"Spring Boot 주문 API 개발","reason":"요구사항"},
+                   {"type":"REPLACE","section":"경력","before":"주문 API 개발","after":"Java 로 주문 API 개발","reason":"요구사항"},
                    {"type":"insert","section":"기술","before":"기술: Java","after":"- [직접 입력: 사용 기간]","reason":"구체화"},
                    {"type":"REPLACE","section":"","before":"없는 문장","after":"x","reason":""}]}],
                  "suggestions":["Kafka 경험을 보강하세요"]}
@@ -59,7 +59,7 @@ class ResumeReviewServiceTest {
         ResumeReviewResponse.Document doc = res.documents().get(0);
         assertThat(doc.fileName()).isEqualTo("이력서.txt");
         assertThat(doc.originalText()).isEqualTo("경력\n주문 API 개발\n기술: Java");
-        assertThat(doc.revisedText()).isEqualTo("경력\nSpring Boot 주문 API 개발\n기술: Java\n- [직접 입력: 사용 기간]");
+        assertThat(doc.revisedText()).isEqualTo("경력\nJava 로 주문 API 개발\n기술: Java\n- [직접 입력: 사용 기간]");
         assertThat(doc.changes()).extracting(ResumeReviewResponse.Change::applied).containsExactly(true, true, false);
         assertThat(res.suggestions()).containsExactly("Kafka 경험을 보강하세요");
         assertThat(res.model()).isEqualTo("m");

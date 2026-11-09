@@ -64,7 +64,7 @@ public class JobMatchController {
         out.put("indexedJobs", cache.size());
         out.put("lastFailure", embedder.lastFailure());
         // 지금 매칭이 어느 길로 나가는지. keyword 면 임베딩이 멈춰 키워드 매칭으로 대신하는 중이다.
-        out.put("mode", embedder.isAvailable() && cache.size() > 0 ? "semantic" : "keyword");
+        out.put("mode", search.semanticReady() ? "semantic" : "keyword");
         return out;
     }
 

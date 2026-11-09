@@ -21,7 +21,8 @@ class SemanticSearchServiceTest {
     private final JobEmbeddingCache cache = mock(JobEmbeddingCache.class);
     private final JobEmbeddingRepository repo = mock(JobEmbeddingRepository.class);
     private final KeywordJobMatcher keywords = mock(KeywordJobMatcher.class);
-    private final SemanticSearchService service = new SemanticSearchService(embedder, cache, repo, keywords);
+    private final JobEmbeddingIndexer indexer = mock(JobEmbeddingIndexer.class);
+    private final SemanticSearchService service = new SemanticSearchService(embedder, cache, repo, keywords, indexer);
 
     private static Job_mst job(long id) {
         Job_mst j = new Job_mst();
@@ -50,6 +51,7 @@ class SemanticSearchServiceTest {
     void 질의_임베딩_실패() {
         when(embedder.isAvailable()).thenReturn(true);
         when(cache.size()).thenReturn(100);
+        when(indexer.isCaughtUp()).thenReturn(true);
         when(embedder.embed(anyString())).thenReturn(null);
         when(keywords.search(anyString(), anyInt())).thenReturn(List.of(new KeywordJobMatcher.Hit(8L, 0.3f)));
         when(repo.findAllById(List.of(8L))).thenReturn(List.of(job(8L)));
@@ -62,11 +64,25 @@ class SemanticSearchServiceTest {
     void 의미검색_우선() {
         when(embedder.isAvailable()).thenReturn(true);
         when(cache.size()).thenReturn(100);
+        when(indexer.isCaughtUp()).thenReturn(true);
         when(embedder.embed(anyString())).thenReturn(new float[]{1f, 0f});
         when(cache.search(any(), anyInt())).thenReturn(List.of(new JobEmbeddingCache.Hit(9L, 0.6f)));
         when(repo.findAllById(List.of(9L))).thenReturn(List.of(job(9L)));
 
         assertEquals(9L, service.search("Kafka", 3).get(0).job.getId());
         verify(keywords, never()).search(anyString(), anyInt());
+    }
+
+    @Test
+    @DisplayName("색인을 다 따라잡기 전에는(공급자 교체 직후) 일부 공고만으로 고르지 않고 키워드 매칭을 쓴다")
+    void 색인_중이면_키워드() {
+        when(embedder.isAvailable()).thenReturn(true);
+        when(cache.size()).thenReturn(50);
+        when(indexer.isCaughtUp()).thenReturn(false);
+        when(keywords.search(anyString(), anyInt())).thenReturn(List.of(new KeywordJobMatcher.Hit(5L, 0.5f)));
+        when(repo.findAllById(List.of(5L))).thenReturn(List.of(job(5L)));
+
+        assertEquals(5L, service.search("Java", 3).get(0).job.getId());
+        verify(embedder, never()).embed(any());
     }
 }
