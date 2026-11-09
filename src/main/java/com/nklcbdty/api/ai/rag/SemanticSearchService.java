@@ -26,26 +26,32 @@ public class SemanticSearchService {
     private final EmbeddingService embedder;
     private final JobEmbeddingCache cache;
     private final JobEmbeddingRepository repo;
+    private final KeywordJobMatcher keywords;
 
     public SemanticSearchService(EmbeddingService embedder,
                                  JobEmbeddingCache cache,
-                                 JobEmbeddingRepository repo) {
+                                 JobEmbeddingRepository repo,
+                                 KeywordJobMatcher keywords) {
         this.embedder = embedder;
         this.cache = cache;
         this.repo = repo;
+        this.keywords = keywords;
     }
 
+    /**
+     * 의미 검색이 되면 그것을, 안 되면(공급자 없음·인덱스 0건·질의 임베딩 실패) 키워드 매칭을 쓴다.
+     * 임베딩이 쿼터 소진(429)으로 멈춰도 이력서 매칭·검색이 빈손으로 끝나지 않게 하려는 것이다.
+     */
     public List<Result> search(String query, int topK) {
         if (query == null || query.isBlank()) return List.of();
-        if (!embedder.isAvailable()) {
-            log.warn("임베딩 공급자 비가용 → 의미 검색 불가 (API 키 미설정이거나 provider=none)");
-            return List.of();
+        final int k = Math.max(1, topK);
+
+        List<JobEmbeddingCache.Hit> hits = semanticHits(query, k);
+        if (hits.isEmpty()) {
+            hits = keywords.search(query, k).stream()
+                    .map(h -> new JobEmbeddingCache.Hit(h.jobId(), h.score()))
+                    .collect(Collectors.toList());
         }
-
-        float[] q = embedder.embed(query);
-        if (q == null) return List.of();
-
-        List<JobEmbeddingCache.Hit> hits = cache.search(q, Math.max(1, topK));
         if (hits.isEmpty()) return List.of();
 
         List<Long> ids = hits.stream().map(h -> h.jobId).collect(Collectors.toList());
@@ -62,5 +68,19 @@ public class SemanticSearchService {
             out.add(r);
         }
         return out;
+    }
+
+    private List<JobEmbeddingCache.Hit> semanticHits(String query, int k) {
+        if (!embedder.isAvailable() || cache.size() == 0) {
+            log.info("의미 검색 불가(available={}, indexedJobs={}, lastFailure={}) → 키워드 매칭으로 대신한다",
+                    embedder.isAvailable(), cache.size(), embedder.lastFailure());
+            return List.of();
+        }
+        float[] q = embedder.embed(query);
+        if (q == null) {
+            log.info("질의 임베딩 실패(lastFailure={}) → 키워드 매칭으로 대신한다", embedder.lastFailure());
+            return List.of();
+        }
+        return cache.search(q, k);
     }
 }

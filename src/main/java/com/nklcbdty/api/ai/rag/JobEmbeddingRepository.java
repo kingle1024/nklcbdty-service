@@ -29,4 +29,12 @@ public interface JobEmbeddingRepository extends JpaRepository<Job_mst, Long> {
     @Query("SELECT j.id, j.embedding FROM Job_mst j "
          + "WHERE j.embedding IS NOT NULL AND j.embeddingVersion = :version")
     List<Object[]> findEmbeddingsRaw(@Param("version") String version);
+
+    /**
+     * 키워드 대체 매칭({@link KeywordJobMatcher})용. 공고 전체를 엔티티로 올리지 않고 필요한 칸만 읽는다.
+     * <p>[0]=Long id, [1]=annoSubject, [2]=subJobCdNm, [3]=classCdNm, [4]=sysCompanyCdNm, [5]=workplace, [6]=endDate</p>
+     */
+    @Query("SELECT j.id, j.annoSubject, j.subJobCdNm, j.classCdNm, j.sysCompanyCdNm, j.workplace, j.endDate "
+         + "FROM Job_mst j")
+    List<Object[]> findKeywordRows();
 }

@@ -127,4 +127,24 @@ class JobEmbeddingRepositoryTest {
         assertEquals(current.getId(), rows.get(0)[0]);
         assertEquals(2, Vectors.fromBytes((byte[]) rows.get(0)[1]).length);
     }
+
+    @Test
+    @DisplayName("키워드 매칭용 행은 id 와 제목·직무·회사·근무지·마감일을 순서대로 준다")
+    void 키워드_행() {
+        Job_mst j = job(null, null);
+        j.setSubJobCdNm("백엔드");
+        j.setWorkplace("판교");
+        j.setEndDate("2099-12-31 23:59:59");
+        em.flush();
+
+        List<Object[]> rows = repository.findKeywordRows();
+
+        assertEquals(1, rows.size());
+        Object[] row = rows.get(0);
+        assertEquals(j.getId(), row[0]);
+        assertEquals("서버 개발자", row[1]);
+        assertEquals("백엔드", row[2]);
+        assertEquals("판교", row[5]);
+        assertEquals("2099-12-31 23:59:59", row[6]);
+    }
 }
