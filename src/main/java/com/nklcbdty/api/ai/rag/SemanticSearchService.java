@@ -27,15 +27,18 @@ public class SemanticSearchService {
     private final JobEmbeddingCache cache;
     private final JobEmbeddingRepository repo;
     private final KeywordJobMatcher keywords;
+    private final JobEmbeddingIndexer indexer;
 
     public SemanticSearchService(EmbeddingService embedder,
                                  JobEmbeddingCache cache,
                                  JobEmbeddingRepository repo,
-                                 KeywordJobMatcher keywords) {
+                                 KeywordJobMatcher keywords,
+                                 JobEmbeddingIndexer indexer) {
         this.embedder = embedder;
         this.cache = cache;
         this.repo = repo;
         this.keywords = keywords;
+        this.indexer = indexer;
     }
 
     /**
@@ -70,10 +73,15 @@ public class SemanticSearchService {
         return out;
     }
 
+    /** 의미 검색을 쓸 수 있는지 — 공급자가 살아 있고, 공고 색인을 끝까지 따라잡았을 때만. */
+    public boolean semanticReady() {
+        return embedder.isAvailable() && cache.size() > 0 && indexer.isCaughtUp();
+    }
+
     private List<JobEmbeddingCache.Hit> semanticHits(String query, int k) {
-        if (!embedder.isAvailable() || cache.size() == 0) {
-            log.info("의미 검색 불가(available={}, indexedJobs={}, lastFailure={}) → 키워드 매칭으로 대신한다",
-                    embedder.isAvailable(), cache.size(), embedder.lastFailure());
+        if (!semanticReady()) {
+            log.info("의미 검색 불가(available={}, indexedJobs={}, caughtUp={}, lastFailure={}) → 키워드 매칭으로 대신한다",
+                    embedder.isAvailable(), cache.size(), indexer.isCaughtUp(), embedder.lastFailure());
             return List.of();
         }
         float[] q = embedder.embed(query);

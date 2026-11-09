@@ -31,6 +31,14 @@ public final class ChangeApplier {
     }
 
     public static Result apply(String original, List<Proposed> proposals) {
+        return apply(original, proposals, null, null);
+    }
+
+    /**
+     * {@code source} 가 있으면 고친 글에 원문 근거 없는 낱말이 끼어든 변경은 적용하지 않고
+     * 이유에 무엇이 문제인지 덧붙인다({@link UnsupportedFactCheck}).
+     */
+    public static Result apply(String original, List<Proposed> proposals, String source, String posting) {
         String text = original;
         final List<Change> changes = new ArrayList<>(proposals.size());
         for (Proposed p : proposals) {
@@ -38,8 +46,15 @@ public final class ChangeApplier {
             final String after = p.after() == null ? "" : p.after().strip();
             final ChangeType type = p.type() == null ? ChangeType.REPLACE : p.type();
 
+            String reason = p.reason();
             String next = null;
-            if (type == ChangeType.REPLACE) {
+            final java.util.Set<String> unsupported = source == null ? java.util.Set.of()
+                    : UnsupportedFactCheck.unsupported(after, source, posting);
+            if (!unsupported.isEmpty()) {
+                reason = (reason == null || reason.isBlank() ? "" : reason + " ")
+                        + "※ 원문에 없는 내용(" + String.join(", ", unsupported) + ")이 들어 있어 자동으로 반영하지 않았습니다."
+                        + " 실제로 한 일이라면 직접 고쳐 쓰세요.";
+            } else if (type == ChangeType.REPLACE) {
                 if (!before.isEmpty() && !before.equals(after)) {
                     next = replaceFirst(text, before, after);
                 }
@@ -51,7 +66,7 @@ public final class ChangeApplier {
             if (applied) {
                 text = next;
             }
-            changes.add(new Change(type, p.section(), before, after, p.reason(), applied));
+            changes.add(new Change(type, p.section(), before, after, reason, applied));
         }
         return new Result(text, changes);
     }

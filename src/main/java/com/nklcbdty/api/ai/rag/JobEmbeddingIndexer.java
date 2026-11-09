@@ -25,6 +25,13 @@ public class JobEmbeddingIndexer {
     private final EmbeddingService embedder;
     private final JobEmbeddingCache cache;
 
+    /**
+     * 남은 공고를 다 색인했는지. 다 되기 전에 의미 검색을 쓰면 색인된 일부 공고 안에서만 고르게 돼서
+     * (공급자를 바꾼 직후 50건만 있는 식) 키워드 매칭보다 못하다. 한 번 따라잡으면 재시작 전까지 유지한다 —
+     * 그 뒤 매일 들어오는 새 공고는 몇 분 안에 따라잡는다.
+     */
+    private volatile boolean caughtUp;
+
     public JobEmbeddingIndexer(JobEmbeddingRepository repo,
                                EmbeddingService embedder,
                                JobEmbeddingCache cache) {
@@ -47,7 +54,10 @@ public class JobEmbeddingIndexer {
             log.warn("임베딩 대상 조회 실패: {}", e.getMessage());
             return;
         }
-        if (targets.isEmpty()) return;
+        if (targets.isEmpty()) {
+            caughtUp = true;
+            return;
+        }
 
         List<Job_mst> jobs = new ArrayList<>(targets.size());
         List<String> texts = new ArrayList<>(targets.size());
@@ -74,8 +84,14 @@ public class JobEmbeddingIndexer {
             cache.put(j.getId(), vec);
             ok++;
         }
+        // 마지막 페이지(50건 미만)까지 전부 성공했으면 따라잡은 것이다.
+        if (targets.size() < BATCH_SIZE && ok == jobs.size()) caughtUp = true;
         log.info("임베딩 배치: {}/{}건 ({}ms, version={})",
                 ok, jobs.size(), System.currentTimeMillis() - t0, version);
+    }
+
+    public boolean isCaughtUp() {
+        return caughtUp;
     }
 
     private String textFor(Job_mst j) {

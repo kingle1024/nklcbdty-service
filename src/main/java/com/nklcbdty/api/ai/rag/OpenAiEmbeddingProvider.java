@@ -35,7 +35,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "nklcb.rag.embedding.provider", havingValue = "openai", matchIfMissing = true)
+@ConditionalOnProperty(name = "nklcb.rag.embedding.provider", havingValue = "openai")
 public class OpenAiEmbeddingProvider implements EmbeddingProvider {
 
     private static final String ENDPOINT = "https://api.openai.com/v1/embeddings";
