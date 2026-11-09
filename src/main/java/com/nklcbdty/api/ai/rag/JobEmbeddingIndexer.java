@@ -7,6 +7,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +34,15 @@ public class JobEmbeddingIndexer {
      */
     private volatile boolean caughtUp;
 
+    /**
+     * 한도 초과(429)를 받으면 이 시각까지 쉰다. 무료 한도는 하루 단위라 1분마다 다시 두드려 봐야 계속 429 이고
+     * 로그만 쌓인다. 한 시간 뒤에 한 번 다시 본다.
+     */
+    private volatile LocalDateTime pausedUntil;
+
+    static final long PAUSE_MINUTES_ON_429 = 60;
+    private static final DateTimeFormatter END_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     public JobEmbeddingIndexer(JobEmbeddingRepository repo,
                                EmbeddingService embedder,
                                JobEmbeddingCache cache) {
@@ -44,12 +55,14 @@ public class JobEmbeddingIndexer {
     @Transactional
     public void indexBatch() {
         if (!embedder.isAvailable()) return;
+        LocalDateTime now = LocalDateTime.now();
+        if (pausedUntil != null && now.isBefore(pausedUntil)) return;
 
         String version = embedder.modelVersion();
 
         List<Job_mst> targets;
         try {
-            targets = repo.findStale(version, PageRequest.of(0, BATCH_SIZE));
+            targets = repo.findStale(version, now.format(END_DATE), PageRequest.of(0, BATCH_SIZE));
         } catch (Exception e) {
             log.warn("임베딩 대상 조회 실패: {}", e.getMessage());
             return;
@@ -84,10 +97,22 @@ public class JobEmbeddingIndexer {
             cache.put(j.getId(), vec);
             ok++;
         }
+        String failure = embedder.lastFailure();
+        if (ok == 0 && failure != null && failure.contains("429")) {
+            pausedUntil = LocalDateTime.now().plusMinutes(PAUSE_MINUTES_ON_429);
+            log.warn("임베딩 한도 초과(429) → {} 까지 색인을 쉰다. 그동안 매칭은 키워드로 한다", pausedUntil);
+            return;
+        }
         // 마지막 페이지(50건 미만)까지 전부 성공했으면 따라잡은 것이다.
         if (targets.size() < BATCH_SIZE && ok == jobs.size()) caughtUp = true;
         log.info("임베딩 배치: {}/{}건 ({}ms, version={})",
                 ok, jobs.size(), System.currentTimeMillis() - t0, version);
+    }
+
+    /** 429 로 쉬는 중이면 다시 시도할 시각, 아니면 null. */
+    public LocalDateTime pausedUntil() {
+        LocalDateTime p = pausedUntil;
+        return p != null && LocalDateTime.now().isBefore(p) ? p : null;
     }
 
     public boolean isCaughtUp() {

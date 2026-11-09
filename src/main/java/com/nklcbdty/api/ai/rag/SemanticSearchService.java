@@ -4,6 +4,7 @@ import com.nklcbdty.common.vo.Job_mst;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +50,8 @@ public class SemanticSearchService {
         if (query == null || query.isBlank()) return List.of();
         final int k = Math.max(1, topK);
 
-        List<JobEmbeddingCache.Hit> hits = semanticHits(query, k);
+        // 캐시에는 색인 뒤 마감된 공고도 남아 있어, 마감분을 거르고도 k 건이 남도록 넉넉히 뽑는다.
+        List<JobEmbeddingCache.Hit> hits = semanticHits(query, k * 4);
         if (hits.isEmpty()) {
             hits = keywords.search(query, k).stream()
                     .map(h -> new JobEmbeddingCache.Hit(h.jobId(), h.score()))
@@ -61,10 +63,12 @@ public class SemanticSearchService {
         Map<Long, Job_mst> byId = new HashMap<>();
         for (Job_mst j : repo.findAllById(ids)) byId.put(j.getId(), j);
 
-        List<Result> out = new ArrayList<>(hits.size());
+        LocalDateTime now = LocalDateTime.now();
+        List<Result> out = new ArrayList<>(k);
         for (JobEmbeddingCache.Hit h : hits) {
+            if (out.size() >= k) break;
             Job_mst j = byId.get(h.jobId);
-            if (j == null) continue;
+            if (j == null || KeywordJobMatcher.isClosed(j.getEndDate(), now)) continue;
             Result r = new Result();
             r.job = j;
             r.score = h.score;
