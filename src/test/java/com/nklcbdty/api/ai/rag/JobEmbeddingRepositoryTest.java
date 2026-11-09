@@ -44,6 +44,7 @@ class JobEmbeddingRepositoryTest {
 
     private static final String CURRENT = "text-embedding-3-small-512";
     private static final String OLD = "paraphrase-multilingual-MiniLM-L12-v2";
+    private static final String NOW = "2026-11-09 12:00:00";
 
     /**
      * {@code @EnableJpaRepositories} 가 common jar 의 리포지토리까지 함께 올린다.
@@ -84,7 +85,7 @@ class JobEmbeddingRepositoryTest {
         Job_mst target = job(null, null);
         em.flush();
 
-        List<Job_mst> result = repository.findStale(CURRENT, PageRequest.of(0, 10));
+        List<Job_mst> result = repository.findStale(CURRENT, NOW, PageRequest.of(0, 10));
 
         assertEquals(List.of(target.getId()), result.stream().map(Job_mst::getId).toList());
     }
@@ -97,11 +98,30 @@ class JobEmbeddingRepositoryTest {
         job(vec(0.4f, 0.5f), CURRENT); // 최신 버전 → 대상 아님
         em.flush();
 
-        List<Long> ids = repository.findStale(CURRENT, PageRequest.of(0, 10))
+        List<Long> ids = repository.findStale(CURRENT, NOW, PageRequest.of(0, 10))
                 .stream().map(Job_mst::getId).toList();
 
         assertEquals(2, ids.size());
         assertTrue(ids.containsAll(List.of(stale.getId(), versionless.getId())));
+    }
+
+    @Test
+    @DisplayName("마감된 공고는 색인하지 않는다 — 무료 한도를 마감 공고에 쓰지 않게")
+    void 마감_공고_제외() {
+        Job_mst open = job(null, null);
+        open.setEndDate("2026-11-30 23:59:59");
+        Job_mst always = job(null, null);
+        always.setEndDate("영입종료시");
+        Job_mst noDate = job(null, null);
+        job(null, null).setEndDate("2026-11-01 00:00:00");   // 마감
+        job(null, null).setEndDate("2000-01-01 00:00:00");   // 링크 점검 실패 표시
+        em.flush();
+
+        List<Long> ids = repository.findStale(CURRENT, NOW, PageRequest.of(0, 10))
+                .stream().map(Job_mst::getId).toList();
+
+        assertEquals(3, ids.size());
+        assertTrue(ids.containsAll(List.of(open.getId(), always.getId(), noDate.getId())));
     }
 
     @Test
@@ -110,7 +130,7 @@ class JobEmbeddingRepositoryTest {
         for (int i = 0; i < 5; i++) job(null, null);
         em.flush();
 
-        assertEquals(2, repository.findStale(CURRENT, PageRequest.of(0, 2)).size());
+        assertEquals(2, repository.findStale(CURRENT, NOW, PageRequest.of(0, 2)).size());
     }
 
     @Test

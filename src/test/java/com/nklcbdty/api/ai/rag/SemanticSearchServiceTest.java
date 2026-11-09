@@ -85,4 +85,24 @@ class SemanticSearchServiceTest {
         assertEquals(5L, service.search("Java", 3).get(0).job.getId());
         verify(embedder, never()).embed(any());
     }
+
+    @Test
+    @DisplayName("색인 뒤에 마감된 공고는 의미 검색 결과에서 뺀다")
+    void 마감_공고_제외() {
+        when(embedder.isAvailable()).thenReturn(true);
+        when(cache.size()).thenReturn(100);
+        when(indexer.isCaughtUp()).thenReturn(true);
+        when(embedder.embed(anyString())).thenReturn(new float[]{1f, 0f});
+        when(cache.search(any(), anyInt())).thenReturn(List.of(
+                new JobEmbeddingCache.Hit(1L, 0.9f), new JobEmbeddingCache.Hit(2L, 0.8f)));
+        Job_mst closed = job(1L);
+        closed.setEndDate("2020-01-01 00:00:00");
+        Job_mst open = job(2L);
+        open.setEndDate("2999-12-31 23:59:59");
+        when(repo.findAllById(List.of(1L, 2L))).thenReturn(List.of(closed, open));
+
+        List<SemanticSearchService.Result> out = service.search("Java", 3);
+
+        assertEquals(List.of(2L), out.stream().map(r -> r.job.getId()).toList());
+    }
 }
