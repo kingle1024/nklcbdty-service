@@ -1,22 +1,20 @@
 # jar 파일 빌드
-FROM eclipse-temurin:17-jdk AS builder
+# Gradle 이 들어 있는 공식 이미지로 빌드한다. gradlew 는 시작할 때마다 GitHub Releases 에서 배포판(gradle-8.7-bin.zip)을
+# 내려받는데, CloudType 빌드 환경에서는 그 주소가 계속 504 를 돌려줘 재시도로도 못 넘겼다(2026-11-09).
+# Docker Hub 이미지는 받아지므로 배포판 다운로드 자체를 없앤다. 버전은 gradle-wrapper.properties(8.7)와 맞춘다.
+FROM gradle:8.7-jdk17 AS builder
+WORKDIR /workspace
 
-COPY gradlew .
-COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
 COPY offline-repo offline-repo
 COPY src src
-RUN chmod +x ./gradlew
-# Gradle 배포판 다운로드가 504·타임아웃으로 실패하는 일이 잦다(2026-11-09 열 번 넘게).
-# 코드와 무관한 네트워크 실패라 배포판만 먼저 받으며 몇 번 다시 시도한다.
-RUN for i in 1 2 3 4 5 6; do ./gradlew --version && exit 0; echo "Gradle 다운로드 재시도 $i/6"; sleep 20; done; exit 1
-RUN ./gradlew bootjar
+RUN gradle bootJar --no-daemon
 
 # jar 실행
 FROM eclipse-temurin:17-jre as runtime
 
-COPY --from=builder build/libs/*.jar app.jar
+COPY --from=builder /workspace/build/libs/*.jar app.jar
 
 ENV PROFILE ${PROFILE}
 
