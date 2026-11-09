@@ -63,6 +63,8 @@ public class JobMatchController {
         out.put("modelVersion", embedder.modelVersion());
         out.put("indexedJobs", cache.size());
         out.put("lastFailure", embedder.lastFailure());
+        // 지금 매칭이 어느 길로 나가는지. keyword 면 임베딩이 멈춰 키워드 매칭으로 대신하는 중이다.
+        out.put("mode", embedder.isAvailable() && cache.size() > 0 ? "semantic" : "keyword");
         return out;
     }
 
@@ -80,15 +82,12 @@ public class JobMatchController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
 
+        // 임베딩이 안 되면 SemanticSearchService 가 키워드 매칭으로 대신한다. 그래도 비었으면
+        // 이력서와 겹치는 공고가 없는 것이므로 빈 목록(200)을 준다 — 화면이 "맞는 공고 없음" 을 보여 준다.
         List<SemanticSearchService.Result> results = search.search(resumeText, topK);
         if (results.isEmpty()) {
-            // 503 으로 내리면 CloudType 게이트웨이가 본문을 자기 HTML 로 바꾸고 CORS 헤더까지 지워서
-            // 브라우저엔 "네트워크 오류" 로만 보인다. 문구가 사용자에게 닿도록 4xx + JSON 본문으로 준다.
-            // (ResponseStatusException 은 server.error.include-message=never 라 사유가 빠진다)
-            log.warn("PDF 매칭 결과 없음 — available={} indexedJobs={} lastFailure={}",
+            log.info("PDF 매칭 결과 없음 — available={} indexedJobs={} lastFailure={}",
                     embedder.isAvailable(), cache.size(), embedder.lastFailure());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", unavailableMessage()));
         }
 
         List<JobSearchController.JobSearchHit> out = new ArrayList<>(results.size());
@@ -98,10 +97,4 @@ public class JobMatchController {
         return ResponseEntity.ok(out);
     }
 
-    private String unavailableMessage() {
-        if (embedder.isAvailable() && embedder.lastFailure() == null) {
-            return "공고 매칭을 준비하는 중입니다. 잠시 후 다시 시도해주세요.";
-        }
-        return "지금은 공고 매칭을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.";
-    }
 }
