@@ -134,6 +134,19 @@ class JobEmbeddingRepositoryTest {
     }
 
     @Test
+    @DisplayName("워밍업은 마감된 공고의 벡터를 싣지 않는다")
+    void 워밍업은_열린_공고만() {
+        Job_mst open = job(vec(0.4f, 0.5f), CURRENT);
+        job(vec(0.1f, 0.2f), CURRENT).setEndDate("2026-11-01 00:00:00");
+        em.flush();
+
+        List<Object[]> rows = repository.findEmbeddingsRaw(CURRENT, NOW);
+
+        assertEquals(1, rows.size());
+        assertEquals(open.getId(), rows.get(0)[0]);
+    }
+
+    @Test
     @DisplayName("워밍업은 현재 버전 벡터만 싣는다")
     void 워밍업은_현재_버전만() {
         Job_mst current = job(vec(0.4f, 0.5f), CURRENT);
@@ -141,7 +154,7 @@ class JobEmbeddingRepositoryTest {
         job(null, null);
         em.flush();
 
-        List<Object[]> rows = repository.findEmbeddingsRaw(CURRENT);
+        List<Object[]> rows = repository.findEmbeddingsRaw(CURRENT, NOW);
 
         assertEquals(1, rows.size());
         assertEquals(current.getId(), rows.get(0)[0]);
