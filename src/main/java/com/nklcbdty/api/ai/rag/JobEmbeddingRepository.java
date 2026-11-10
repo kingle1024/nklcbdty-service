@@ -31,10 +31,13 @@ public interface JobEmbeddingRepository extends JpaRepository<Job_mst, Long> {
     /**
      * 캐시 워밍업용. 지금 쓰는 모델 버전의 (id, embedding) 만 가볍게 가져옴.
      * <p>리턴 타입은 Object[] 배열: [0]=Long id, [1]=byte[] embedding</p>
+     * <p>마감된 공고는 싣지 않는다. 벡터가 남아 있는 공고의 대부분이 마감분이라(2026-11-10: 2,519건 중 열린 공고 689건)
+     * 같이 실으면 상위 결과가 마감 공고로 채워져, 걸러 내고 나면 매칭이 1~2건만 남았다.</p>
      */
     @Query("SELECT j.id, j.embedding FROM Job_mst j "
-         + "WHERE j.embedding IS NOT NULL AND j.embeddingVersion = :version")
-    List<Object[]> findEmbeddingsRaw(@Param("version") String version);
+         + "WHERE j.embedding IS NOT NULL AND j.embeddingVersion = :version "
+         + "AND (j.endDate IS NULL OR j.endDate IN ('영입종료시', 'error') OR j.endDate >= :now)")
+    List<Object[]> findEmbeddingsRaw(@Param("version") String version, @Param("now") String now);
 
     /**
      * 키워드 대체 매칭({@link KeywordJobMatcher})용. 공고 전체를 엔티티로 올리지 않고 필요한 칸만 읽는다.

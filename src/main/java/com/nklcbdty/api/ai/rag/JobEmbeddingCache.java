@@ -2,8 +2,11 @@ package com.nklcbdty.api.ai.rag;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -32,13 +35,21 @@ public class JobEmbeddingCache {
         public Hit(Long jobId, float score) { this.jobId = jobId; this.score = score; }
     }
 
-    private final CopyOnWriteArrayList<Entry> entries = new CopyOnWriteArrayList<>();
+    private static final DateTimeFormatter END_DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private volatile CopyOnWriteArrayList<Entry> entries = new CopyOnWriteArrayList<>();
     private final JobEmbeddingRepository repo;
     private final EmbeddingService embedder;
 
     public JobEmbeddingCache(JobEmbeddingRepository repo, EmbeddingService embedder) {
         this.repo = repo;
         this.embedder = embedder;
+    }
+
+    /** 그새 마감된 공고를 빼려고 한 시간마다 다시 싣는다. */
+    @Scheduled(fixedDelay = 3_600_000L, initialDelay = 3_600_000L)
+    public void reload() {
+        warmUp();
     }
 
     @PostConstruct
@@ -51,14 +62,17 @@ public class JobEmbeddingCache {
         try {
             // 지금 쓰는 모델 버전만 싣는다. 옛 버전 벡터는 차원이 달라 검색에 쓰이지도 못하면서
             // 힙만 차지한다 (공고당 dimensions * 4 byte).
-            List<Object[]> rows = repo.findEmbeddingsRaw(embedder.modelVersion());
+            List<Object[]> rows = repo.findEmbeddingsRaw(embedder.modelVersion(), LocalDateTime.now().format(END_DATE));
+            List<Entry> loaded = new ArrayList<>(rows.size());
             for (Object[] row : rows) {
                 Long id = (Long) row[0];
                 byte[] bytes = (byte[]) row[1];
                 float[] v = Vectors.fromBytes(bytes);
-                if (v.length > 0) entries.add(new Entry(id, v));
+                if (v.length > 0) loaded.add(new Entry(id, v));
             }
-            log.info("임베딩 캐시 워밍업 완료: {}건 ({}ms)", entries.size(), System.currentTimeMillis() - t0);
+            // 통째로 바꿔 끼운다 — 다시 싣는 동안에도 검색은 옛 목록으로 계속 된다.
+            entries = new CopyOnWriteArrayList<>(loaded);
+            log.info("임베딩 캐시 적재 완료: {}건 ({}ms)", loaded.size(), System.currentTimeMillis() - t0);
         } catch (Exception e) {
             log.warn("임베딩 캐시 워밍업 실패 (테이블 컬럼 미생성 가능): {}", e.getMessage());
         }
@@ -70,9 +84,10 @@ public class JobEmbeddingCache {
     }
 
     public List<Hit> search(float[] query, int topK) {
-        if (query == null || query.length == 0 || entries.isEmpty()) return List.of();
-        List<Hit> hits = new ArrayList<>(entries.size());
-        for (Entry e : entries) {
+        List<Entry> snapshot = entries;
+        if (query == null || query.length == 0 || snapshot.isEmpty()) return List.of();
+        List<Hit> hits = new ArrayList<>(snapshot.size());
+        for (Entry e : snapshot) {
             if (e.vec.length != query.length) continue;
             hits.add(new Hit(e.jobId, Vectors.dot(query, e.vec)));
         }
