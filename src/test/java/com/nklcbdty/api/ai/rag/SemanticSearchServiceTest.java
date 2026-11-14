@@ -86,6 +86,35 @@ class SemanticSearchServiceTest {
         verify(embedder, never()).embed(any());
     }
 
+    private static Job_mst posting(long id, String company, String annoId) {
+        Job_mst j = job(id);
+        j.setCompanyCd(company);
+        j.setAnnoId(annoId);
+        return j;
+    }
+
+    @Test
+    @DisplayName("같은 공고가 여러 행으로 들어 있어도 한 번만 보여 주고, 빈자리는 다음 공고로 채운다")
+    void 같은_공고_중복_제거() {
+        when(embedder.isAvailable()).thenReturn(true);
+        when(cache.size()).thenReturn(100);
+        when(indexer.isCaughtUp()).thenReturn(true);
+        when(embedder.embed(anyString())).thenReturn(new float[]{1f, 0f});
+        when(cache.search(any(), anyInt())).thenReturn(List.of(
+                new JobEmbeddingCache.Hit(1L, 0.9f), new JobEmbeddingCache.Hit(2L, 0.9f),
+                new JobEmbeddingCache.Hit(3L, 0.9f), new JobEmbeddingCache.Hit(4L, 0.8f),
+                new JobEmbeddingCache.Hit(5L, 0.7f), new JobEmbeddingCache.Hit(6L, 0.6f)));
+        when(repo.findAllById(List.of(1L, 2L, 3L, 4L, 5L, 6L))).thenReturn(List.of(
+                posting(1L, "TOSS", "6434513003"), posting(2L, "TOSS", "6434513003"),
+                posting(3L, "TOSS", "6434513003"),
+                posting(4L, "KAKAO", "6434513003"), // 회사가 다르면 번호가 같아도 다른 공고
+                posting(5L, "NAVER", null), posting(6L, "NAVER", null))); // 번호 없으면 합치지 않는다
+
+        List<SemanticSearchService.Result> out = service.search("재무 데이터", 4);
+
+        assertEquals(List.of(1L, 4L, 5L, 6L), out.stream().map(r -> r.job.getId()).toList());
+    }
+
     @Test
     @DisplayName("색인 뒤에 마감된 공고는 의미 검색 결과에서 뺀다")
     void 마감_공고_제외() {

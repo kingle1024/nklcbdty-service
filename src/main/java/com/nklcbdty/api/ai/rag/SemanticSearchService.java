@@ -7,8 +7,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -50,10 +52,11 @@ public class SemanticSearchService {
         if (query == null || query.isBlank()) return List.of();
         final int k = Math.max(1, topK);
 
-        // 캐시에는 색인 뒤 마감된 공고도 남아 있어, 마감분을 거르고도 k 건이 남도록 넉넉히 뽑는다.
-        List<JobEmbeddingCache.Hit> hits = semanticHits(query, k * 4);
+        // 캐시에는 색인 뒤 마감된 공고와 같은 공고의 중복 행도 있어, 그걸 거르고도 k 건이 남도록 넉넉히 뽑는다.
+        final int pool = k * 8;
+        List<JobEmbeddingCache.Hit> hits = semanticHits(query, pool);
         if (hits.isEmpty()) {
-            hits = keywords.search(query, k).stream()
+            hits = keywords.search(query, pool).stream()
                     .map(h -> new JobEmbeddingCache.Hit(h.jobId(), h.score()))
                     .collect(Collectors.toList());
         }
@@ -65,16 +68,27 @@ public class SemanticSearchService {
 
         LocalDateTime now = LocalDateTime.now();
         List<Result> out = new ArrayList<>(k);
+        Set<String> seen = new HashSet<>();
         for (JobEmbeddingCache.Hit h : hits) {
             if (out.size() >= k) break;
             Job_mst j = byId.get(h.jobId);
             if (j == null || KeywordJobMatcher.isClosed(j.getEndDate(), now)) continue;
+            // 크롤러가 같은 공고를 여러 행으로 넣어 둔 경우가 있다(2026-11-14: 토스 공고 하나가 14행).
+            // 벡터도 같아서 그대로 두면 한 공고가 상위를 다 차지한다. 점수순이라 처음 것만 남긴다.
+            if (!seen.add(postingKey(j))) continue;
             Result r = new Result();
             r.job = j;
             r.score = h.score;
             out.add(r);
         }
         return out;
+    }
+
+    /** 같은 공고인지 가리는 키. 회사 + 공고번호, 공고번호가 없으면 행 id 로(합치지 않는다). */
+    static String postingKey(Job_mst j) {
+        String anno = j.getAnnoId();
+        if (anno == null || anno.isBlank()) return "id:" + j.getId();
+        return j.getCompanyCd() + "|" + anno;
     }
 
     /** 의미 검색을 쓸 수 있는지 — 공급자가 살아 있고, 공고 색인을 끝까지 따라잡았을 때만. */
