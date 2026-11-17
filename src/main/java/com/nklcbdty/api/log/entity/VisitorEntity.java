@@ -34,4 +34,6 @@ public class VisitorEntity {
     private String city_name;
     private String insert_ip;
     private Date insert_dts; // 방문 시간
+    /** 접속 출처(IpOrigin 이름). 컬럼은 VisitorSchemaInitializer 가 만든다. */
+    private String ip_origin;
 }
