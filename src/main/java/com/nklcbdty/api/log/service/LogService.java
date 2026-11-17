@@ -23,6 +23,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import com.nklcbdty.api.log.dto.JobHistoryLog;
 import com.nklcbdty.api.log.entity.JobHistoryEntity;
 import com.nklcbdty.api.log.entity.VisitorEntity;
+import com.nklcbdty.api.log.geo.InternalVisitors;
+import com.nklcbdty.api.log.geo.IpOriginClassifier;
 import com.nklcbdty.api.log.repository.JobHistoryRepository;
 import com.nklcbdty.api.log.repository.VisitorRepository;
 
@@ -34,14 +36,17 @@ public class LogService {
 
     private final VisitorRepository logRepository;
     private final JobHistoryRepository jobHistoryRepository;
+    private final IpOriginClassifier ipOriginClassifier;
 
     @Value("${ip2location.api.key}")  // application.properties에서 API 키를 가져옵니다.
     private String API_KEY;
 
     @Autowired
-    public LogService(VisitorRepository logRepository, JobHistoryRepository jobHistoryRepository) {
+    public LogService(VisitorRepository logRepository, JobHistoryRepository jobHistoryRepository,
+                      IpOriginClassifier ipOriginClassifier) {
         this.logRepository = logRepository;
         this.jobHistoryRepository = jobHistoryRepository;
+        this.ipOriginClassifier = ipOriginClassifier;
     }
 
     public VisitorEntity insertLog() {
@@ -87,31 +92,8 @@ public class LogService {
             result.setCity_name((String)ipLocation.get("city_name"));
         }
 
-        switch (result.getInsert_ip()) {
-            case "59.30.128.202" : {
-                result.setInsert_ip("지용_춘천방");
-                break;
-            }
-            case "221.133.55.105": {
-                result.setInsert_ip("지용_사무실");
-                break;
-            }
-            case "210.90.19.117": {
-                result.setInsert_ip("민재_집");
-                break;
-            }
-            case "175.210.195.224": {
-                result.setInsert_ip("민재_3");
-                break;
-            }
-            case "221.151.13.104": {
-                result.setInsert_ip("청년동");
-                break;
-            }
-        }
-        if (result.getInsert_ip().contains("115.21.251.")) {
-            result.setInsert_ip("민재_집");
-        }
+        result.setIp_origin(ipOriginClassifier.classify(clientIpAddr).name());
+        result.setInsert_ip(InternalVisitors.labelOf(result.getInsert_ip()));
         return logRepository.save(result);
     }
 
@@ -141,6 +123,9 @@ public class LogService {
 
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
+            // 방문 로그는 공고 목록 요청 앞에서 동기로 돈다. 외부 API 가 늘어지면 목록까지 늘어지지 않게 끊는다.
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.4472.114 Safari/537.36"); // 없으면 에러
 
             // API 응답메시지를 불러와서 문자열로 저장
@@ -152,7 +137,9 @@ public class LogService {
             }
 
             // 결과 출력
-            JSONObject jsonObject = new JSONObject(sb);
+            // new JSONObject(sb) 는 StringBuilder 를 빈(bean)으로 읽어 {"empty":false} 가 된다.
+            // 그래서 visitor.country_name 이 지금까지 한 번도 채워지지 않았다.
+            JSONObject jsonObject = new JSONObject(sb.toString());
             return jsonObject.toMap();
         } catch (Exception e) {
             e.printStackTrace();
