@@ -56,7 +56,7 @@ public class CareerEntryDto {
     }
 
     /** 성과는 한 줄에 하나. 붙여 넣으며 딸려 온 글머리표("- ", "• ")는 화면이 다시 붙이므로 뗀다 */
-    static List<String> splitLines(String raw) {
+    public static List<String> splitLines(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();
         }
