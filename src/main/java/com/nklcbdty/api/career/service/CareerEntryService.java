@@ -4,10 +4,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +26,6 @@ import com.nklcbdty.api.career.vo.CareerEntry;
 @Service
 @Transactional(readOnly = true)
 public class CareerEntryService {
-
-    /** 칼럼 길이. 넘기면 DB 가 잘라내거나 오류를 내기 전에 여기서 막는다 */
-    private static final int MAX_TYPE = 20;
-    private static final int MAX_SHORT = 100;
-    private static final int MAX_TITLE = 300;
-    private static final int MAX_JOINED = 300;
-
-    /** 영문 소문자와 하이픈만 — 스킬이 쓰는 값(company, project, certificate …)과 맞춘다 */
-    private static final Pattern ENTRY_TYPE = Pattern.compile("[a-z][a-z-]*");
 
     private static final DateTimeFormatter SLUG_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -76,49 +64,19 @@ public class CareerEntryService {
         repository.deleteById(id);
     }
 
-    /** 값을 검사하고 정리해서 엔티티에 넣는다. 빈 문자열은 null 로 — 화면이 '비어 있음' 을 한 가지로 보게 */
-    private void apply(CareerEntry entry, CareerEntryRequest r) {
-        if (r == null) {
-            throw new IllegalArgumentException("요청 내용이 비어 있습니다.");
-        }
-        String entryType = trimToNull(r.getEntryType());
-        if (entryType == null) {
-            throw new IllegalArgumentException("종류를 선택해 주세요.");
-        }
-        entryType = entryType.toLowerCase();
-        if (entryType.length() > MAX_TYPE || !ENTRY_TYPE.matcher(entryType).matches()) {
-            throw new IllegalArgumentException("종류는 영문 소문자로 " + MAX_TYPE + "자 이하여야 합니다.");
-        }
-        String title = trimToNull(r.getTitle());
-        if (title == null) {
-            throw new IllegalArgumentException("제목을 입력해 주세요.");
-        }
-        if (r.getStartedOn() != null && r.getEndedOn() != null && r.getEndedOn().isBefore(r.getStartedOn())) {
-            throw new IllegalArgumentException("종료일이 시작일보다 빠릅니다.");
-        }
-
-        entry.apply(
-            entryType,
-            limit(trimToNull(r.getCompany()), MAX_SHORT, "회사명"),
-            limit(title, MAX_TITLE, "제목"),
-            limit(trimToNull(r.getTeam()), MAX_SHORT, "부서"),
-            limit(trimToNull(r.getRole()), MAX_SHORT, "직급·역할"),
-            r.getStartedOn(),
-            r.getEndedOn(),
-            trimToNull(r.getSummary()),
-            trimToNull(r.getDescription()),
-            joinLines(r.getAchievements()),
-            limit(joinComma(r.getTechStack(), false), MAX_JOINED, "기술"),
-            limit(joinComma(r.getTags(), true), MAX_JOINED, "태그"),
-            joinLines(r.getReferenceLinks())
-        );
+    /** 값을 검사하고 정리해서 엔티티에 넣는다. 검사 규칙은 마이페이지 경력과 같다({@link CareerInput}) */
+    private void apply(CareerEntry entry, CareerEntryRequest request) {
+        CareerInput in = CareerInput.of(request);
+        entry.apply(in.entryType(), in.company(), in.title(), in.team(), in.role(),
+            in.startedOn(), in.endedOn(), in.summary(), in.description(),
+            in.achievements(), in.techStack(), in.tags(), in.referenceLinks());
     }
 
     /** 화면에서 만든 항목의 slug. 스킬이 쓰는 이름과 겹치지 않게 종류 + 시각 + 난수로 만든다 */
     private String newSlug(CareerEntryRequest request) {
-        String type = request == null ? null : trimToNull(request.getEntryType());
+        String type = request == null ? null : CareerInput.trimToNull(request.getEntryType());
         String prefix = type == null ? "entry" : type.toLowerCase().replaceAll("[^a-z-]", "");
-        if (prefix.isEmpty() || prefix.length() > MAX_TYPE) {
+        if (prefix.isEmpty() || prefix.length() > CareerInput.MAX_TYPE) {
             prefix = "entry";
         }
         for (int i = 0; i < 5; i++) {
@@ -129,47 +87,5 @@ public class CareerEntryService {
             }
         }
         throw new IllegalStateException("고유키를 만들지 못했습니다. 다시 시도해 주세요.");
-    }
-
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private static String limit(String value, int max, String label) {
-        if (value != null && value.length() > max) {
-            throw new IllegalArgumentException(label + "은(는) " + max + "자 이하로 입력해 주세요.");
-        }
-        return value;
-    }
-
-    private static String joinLines(List<String> items) {
-        if (items == null) {
-            return null;
-        }
-        String joined = items.stream()
-            .filter(Objects::nonNull)
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .collect(Collectors.joining("\n"));
-        return joined.isEmpty() ? null : joined;
-    }
-
-    /** 쉼표로 잇는다. 태그는 검색 필터와 맞추려고 소문자 kebab-case 로 바꾼다 */
-    private static String joinComma(List<String> items, boolean kebab) {
-        if (items == null) {
-            return null;
-        }
-        String joined = items.stream()
-            .filter(Objects::nonNull)
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .map(s -> kebab ? s.toLowerCase().replaceAll("\\s+", "-") : s)
-            .distinct()
-            .collect(Collectors.joining(", "));
-        return joined.isEmpty() ? null : joined;
     }
 }
